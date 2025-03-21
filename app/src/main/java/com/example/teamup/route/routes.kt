@@ -1,8 +1,9 @@
 package com.example.teamup.route
 
 sealed class Routes(val routes: String) {
-    object TeamList : Routes("team_list")
-    object AddTeam : Routes("add_team")
+    object TeamManagement : Routes("team_management")
+    object TeamList : Routes("team_list") //contoh firebase
+    object AddTeam : Routes("add_team") //contoh firebase
     object Login : Routes("login")
     object Register : Routes("register")
     object Dashboard : Routes("dashboard")
