@@ -53,6 +53,9 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
                 val id = it.arguments?.getInt("id") ?: 0
                 DetailScreen(navController = navController, id = id)
             }
+            composable(Routes.TeamManagement.routes) {
+                TeamManagementScreen(navController = navController)
+            }
         }
     }
 }

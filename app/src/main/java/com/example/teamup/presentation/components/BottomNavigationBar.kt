@@ -26,6 +26,7 @@ fun BottomNavigationBar(navController: NavController) {
         NavigationItem.Sail,
         NavigationItem.Wishlist,
         NavigationItem.Profile,
+        NavigationItem.TeamManagement,
     )
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
