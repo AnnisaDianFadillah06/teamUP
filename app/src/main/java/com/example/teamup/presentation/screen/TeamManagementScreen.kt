@@ -28,6 +28,7 @@ import androidx.navigation.NavController
 import com.example.teamup.R
 import com.example.teamup.common.theme.*
 import com.example.teamup.data.model.TeamMemberModel
+import com.example.teamup.route.Routes
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -156,11 +157,7 @@ fun TeamManagementScreen(
                             showBottomSheet = false
                         }
                     },
-                    onCreateTeam = {
-                        scope.launch { bottomSheetState.hide() }.invokeOnCompletion {
-                            showBottomSheet = false
-                        }
-                    }
+                    navController = navController
                 )
             }
         }
@@ -208,7 +205,7 @@ fun TeamMemberItem(member: TeamMemberModel) {
 @Composable
 fun TeamOptionsBottomSheet(
     onJoinTeam: () -> Unit,
-    onCreateTeam: () -> Unit
+    navController: NavController,
 ) {
     Column(
         modifier = Modifier
@@ -241,7 +238,13 @@ fun TeamOptionsBottomSheet(
         OutlinedCard(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onCreateTeam),
+                .clickable {
+                    navController.navigate(Routes.FormAddTeam.routes) {
+                        popUpTo(Routes.FormAddTeam.routes) {
+                            inclusive = true
+                        }
+                    }
+                },
             shape = RoundedCornerShape(8.dp)
         ) {
             Row(

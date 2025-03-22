@@ -23,7 +23,7 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
     val currentRoute = navBackStackEntry?.destination?.route
 
     Scaffold(bottomBar = {
-        if (currentRoute != Routes.Detail.routes && currentRoute != Routes.Cart.routes && currentRoute != Routes.Search.routes) {
+        if (currentRoute != Routes.Detail.routes && currentRoute != Routes.FormAddTeam.routes && currentRoute != Routes.Cart.routes && currentRoute != Routes.Search.routes) {
             BottomNavigationBar(navController)
         }
     }) { paddingValues ->
@@ -55,6 +55,9 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
             }
             composable(Routes.TeamManagement.routes) {
                 TeamManagementScreen(navController = navController)
+            }
+            composable(Routes.FormAddTeam.routes) {
+                FormCreateTeamScreen(navController = navController)
             }
         }
     }
