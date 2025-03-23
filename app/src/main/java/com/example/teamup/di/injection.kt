@@ -2,6 +2,7 @@ package com.example.teamup.di
 
 import com.example.teamup.data.repositories.*
 import com.example.teamup.data.repositories.TeamRepository
+import com.example.teamup.data.sources.remote.FirebaseStorageHelper
 import com.example.teamup.data.sources.remote.FirebaseTeamDataSource
 
 object Injection {
@@ -35,6 +36,10 @@ object Injection {
 
     fun provideTeamRepository(): TeamRepository {
         return TeamRepository.getInstance(provideFirebaseTeamDataSource())
+    }
+
+    fun provideFirebaseStorageHelper(): FirebaseStorageHelper {
+        return FirebaseStorageHelper()
     }
 
 }

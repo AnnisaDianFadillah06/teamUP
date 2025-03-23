@@ -152,11 +152,6 @@ fun TeamManagementScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 TeamOptionsBottomSheet(
-                    onJoinTeam = {
-                        scope.launch { bottomSheetState.hide() }.invokeOnCompletion {
-                            showBottomSheet = false
-                        }
-                    },
                     navController = navController
                 )
             }
@@ -167,7 +162,7 @@ fun TeamManagementScreen(
 @Composable
 fun TeamMemberItem(member: TeamMemberModel) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
@@ -204,7 +199,6 @@ fun TeamMemberItem(member: TeamMemberModel) {
 
 @Composable
 fun TeamOptionsBottomSheet(
-    onJoinTeam: () -> Unit,
     navController: NavController,
 ) {
     Column(
@@ -218,7 +212,13 @@ fun TeamOptionsBottomSheet(
         OutlinedCard(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onJoinTeam),
+                .clickable {
+                    navController.navigate(Routes.JoinTeam.routes) {
+                        popUpTo(Routes.JoinTeam.routes) {
+                            inclusive = true
+                        }
+                    }
+                },
             shape = RoundedCornerShape(8.dp)
         ) {
             Row(

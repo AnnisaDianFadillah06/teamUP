@@ -1,14 +1,20 @@
 package com.example.teamup.presentation.screen
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,22 +22,33 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import com.example.teamup.common.theme.*
 import com.example.teamup.data.model.TeamModel
 import com.example.teamup.data.viewmodels.TeamViewModel
+import com.example.teamup.data.viewmodels.TeamViewModelFactory
+import com.example.teamup.di.Injection
 import com.google.firebase.Timestamp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FormCreateTeamScreen(
     navController: NavController,
-    teamViewModel: TeamViewModel? = null
-) {
+    viewModel: TeamViewModel = viewModel(
+        factory = TeamViewModelFactory(
+            Injection.provideTeamRepository()
+        )
+    )
+){
     var teamName by remember { mutableStateOf("") }
     var teamDescription by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("") }
@@ -40,6 +57,19 @@ fun FormCreateTeamScreen(
     var showBranchDropdown by remember { mutableStateOf(false) }
     var maxMembers by remember { mutableStateOf("") }
     var isPrivate by remember { mutableStateOf(true) }
+
+    // For image selection
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    val context = LocalContext.current
+
+    // Image picker launcher
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        // Handle selected image
+        selectedImageUri = uri
+    }
+
 
     // List options for dropdowns
     val categoryOptions = listOf("Teknologi", "Sains", "Desain", "Bisnis", "Olahraga", "Edukasi", "Lainnya")
@@ -96,6 +126,59 @@ fun FormCreateTeamScreen(
             )
 
             Spacer(modifier = Modifier.height(24.dp))
+// Team Avatar Selection
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                    .clickable { imagePickerLauncher.launch("image/*") },
+                contentAlignment = Alignment.Center
+            ) {
+                if (selectedImageUri != null) {
+                    // Display selected image
+                    Image(
+                        painter = rememberAsyncImagePainter(
+                            ImageRequest.Builder(context)
+                                .data(selectedImageUri)
+                                .build()
+                        ),
+                        contentDescription = "Team Avatar",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    // Display placeholder icon
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = "Select Image",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(40.dp)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Add Photo",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Team Profile Picture",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Category dropdown
             Text(
@@ -383,11 +466,9 @@ fun FormCreateTeamScreen(
             // Submit button
             Button(
                 onClick = {
-                    teamViewModel?.addTeam(
-                        name = teamName,
-                        description = teamDescription,
-                        category = "$selectedCategory - $selectedBranch"
-                    )
+                    val avatarResId = selectedImageUri?.toString() ?: "default_avatar"
+                    viewModel.addTeam(teamName, teamDescription, "$selectedCategory - $selectedBranch", avatarResId)
+
 
                     // Navigate back or to team detail on success
                     navController.popBackStack()
