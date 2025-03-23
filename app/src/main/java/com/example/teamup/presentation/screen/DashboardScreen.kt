@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -11,7 +12,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.teamup.data.viewmodels.JoinTeamViewModel
+import com.example.teamup.di.ViewModelJoinFactory
 import com.example.teamup.presentation.components.*
+import com.example.teamup.presentation.screens.JoinTeamScreen
 import com.example.teamup.route.Routes
 import com.example.teamup.ui.components.*
 
@@ -58,6 +62,15 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
             }
             composable(Routes.FormAddTeam.routes) {
                 FormCreateTeamScreen(navController = navController)
+            }
+            composable(Routes.JoinTeam.routes) {
+                val viewModelFactory = ViewModelJoinFactory.getInstance()
+                val joinTeamViewModel: JoinTeamViewModel = viewModel(factory = viewModelFactory)
+
+                JoinTeamScreen(
+                    navController = navController,
+                    viewModel = joinTeamViewModel
+                )
             }
         }
     }

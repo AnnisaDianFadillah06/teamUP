@@ -28,11 +28,13 @@ fun TeamListScreen(
     navController: NavController,
     viewModel: TeamViewModel = viewModel(
         factory = TeamViewModelFactory(
-            Injection.provideTeamRepository()
+            Injection.provideTeamRepository(),
+            Injection.provideFirebaseStorageHelper()
         )
     )
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val teams by viewModel.teams.collectAsState()
 
     Scaffold(
         topBar = {
@@ -53,11 +55,11 @@ fun TeamListScreen(
                 .padding(paddingValues)
                 .fillMaxSize()
         ) {
-            if (uiState.isLoading && uiState.teams.isEmpty()) {
+            if (uiState.isLoading && teams.isEmpty()) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center)
                 )
-            } else if (uiState.teams.isEmpty()) {
+            } else if (teams.isEmpty()) {
                 Text(
                     text = "No teams found. Click + to add a team.",
                     modifier = Modifier
@@ -70,7 +72,7 @@ fun TeamListScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(uiState.teams) { team ->
+                    items(teams) { team ->
                         TeamCard(team = team)
                     }
                 }
@@ -91,26 +93,38 @@ fun TeamListScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TeamCard(team: TeamModel) {
+fun TeamCard(team: TeamModel, modifier: Modifier = Modifier, onClick: (TeamModel) -> Unit = {}) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
+            .clickable { onClick(team) }
     ) {
         Column(
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth()
         ) {
+            // Debug text to check if ID is present
+            if (team.id.isNotEmpty()) {
+                Text(
+                    text = "ID: ${team.id}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+
             Text(
-                text = team.name,
+                text = "Name: ${team.name}",
                 style = MaterialTheme.typography.titleMedium
             )
 
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = team.description,
+                text = "Description: ${team.description}",
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -127,10 +141,12 @@ fun TeamCard(team: TeamModel) {
                     style = MaterialTheme.typography.bodySmall
                 )
 
-                Text(
-                    text = team.createdAt.toDate().toString(),
-                    style = MaterialTheme.typography.bodySmall
-                )
+                team.createdAt?.let {
+                    Text(
+                        text = it.toDate().toString(),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         }
     }
