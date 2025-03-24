@@ -43,12 +43,6 @@ fun StartSail(
             composable(Routes.Dashboard.routes) {
                 DashboardScreen()
             }
-            composable(Routes.Competition.routes) {
-                CompetitionScreen(navController = navController)
-            }
-            composable(Routes.AddCompetition.routes) {
-                AddCompetitionScreen(navController = navController)
-            }
             composable(Routes.TeamList.routes) {
                 TeamListScreen(navController = navController)
             }
