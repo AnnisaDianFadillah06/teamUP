@@ -14,6 +14,7 @@ import androidx.navigation.navArgument
 import com.example.teamup.presentation.components.*
 import com.example.teamup.route.Routes
 import com.example.teamup.ui.components.*
+import com.example.teamup.data.model.CompetitionModel // Add this import
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,7 +39,17 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
                 ProfileScreen(navController = navController)
             }
             composable(Routes.Competition.routes) {
-                ProfileScreen(navController = navController)
+                CompetitionScreen(navController = navController)
+            }
+            composable(Routes.AddCompetition.routes) {
+                AddCompetitionScreen(
+                    navController = navController,
+                    onCreateCompetition = { competition ->
+                        // TODO: Implement competition saving logic
+                        // For now, just navigate back
+                        navController.popBackStack()
+                    }
+                )
             }
             composable(Routes.Wishlist.routes) {
                 WishlistScreen(navController = navController, paddingValues = paddingValues)
