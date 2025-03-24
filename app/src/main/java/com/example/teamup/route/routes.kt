@@ -12,6 +12,7 @@ sealed class Routes(val routes: String) {
     data object Search : Routes("search")
     data object Profile : Routes("profile")
     data object Wishlist : Routes("wishlist")
+    data object Competition : Routes("competition")
     data object Cart : Routes("cart")
     data object MyCourse : Routes("my_courses")
     data object Detail : Routes("detail/{id}") {

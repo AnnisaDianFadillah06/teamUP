@@ -1,20 +1,46 @@
 package com.example.teamup.presentation.screen
 
 import android.widget.Toast
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -22,26 +48,23 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavController
 import com.example.teamup.R
 import com.example.teamup.common.theme.DodgerBlue
 import com.example.teamup.common.theme.SoftGray2
-import com.example.teamup.common.utils.BiometricHelper
-import com.example.teamup.presentation.components.PasswordTextField
-import com.example.teamup.presentation.components.PrimaryButton
 import com.example.teamup.route.Routes
-import androidx.biometric.BiometricPrompt
-import androidx.core.content.ContextCompat
-import androidx.fragment.app.FragmentActivity
 
 @Composable
 fun LoginScreenV5(navController: NavController) {
     val scrollState = rememberScrollState()
     val context = LocalContext.current
+    val fragmentActivity = context as? FragmentActivity
 
     // State untuk tab email/phone
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Email", "Phone Number")
 
     // State untuk remember me checkbox
@@ -53,6 +76,9 @@ fun LoginScreenV5(navController: NavController) {
     // State untuk menyimpan email/phone dan password
     var emailOrPhone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+
+    // State untuk dialog fingerprint
+    var showFingerprintDialog by remember { mutableStateOf(false) }
 
     // Fungsi untuk proses login normal
     fun performLogin() {
@@ -74,63 +100,53 @@ fun LoginScreenV5(navController: NavController) {
         }
     }
 
-    // Fungsi untuk melakukan autentikasi biometrik
-    fun showBiometricPrompt() {
-        val fragmentActivity = context as? FragmentActivity
+    // Fungsi untuk membuka dialog fingerprint
+    fun openFingerprintDialog() {
         if (fragmentActivity == null) {
-            Toast.makeText(context, "Cannot initialize biometric authentication", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "This feature requires a FragmentActivity context", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val biometricHelper = BiometricHelper(fragmentActivity)
+        showFingerprintDialog = true
+    }
 
-        // Periksa apakah perangkat mendukung biometrik dan ada sidik jari terdaftar
-        if (!biometricHelper.canAuthenticate()) {
-            Toast.makeText(context, "Biometric authentication not available or no fingerprints enrolled", Toast.LENGTH_SHORT).show()
-            return
+    // Observasi lifecycle untuk memastikan dialog tidak muncul saat aplikasi di background
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) {
+                showFingerprintDialog = false
+            }
         }
+        lifecycleOwner.lifecycle.addObserver(observer)
 
-        // Buat executor untuk BiometricPrompt
-        val executor = ContextCompat.getMainExecutor(context)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
-        // Callback untuk hasil autentikasi biometrik
-        val authCallback = object : BiometricPrompt.AuthenticationCallback() {
-            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                super.onAuthenticationSucceeded(result)
-                // Autentikasi berhasil, navigasi ke dashboard
+    // Dialog Fingerprint Authentication
+    if (showFingerprintDialog && fragmentActivity != null) {
+        FingerprintAuthDialog(
+            onAuthSuccess = {
+                showFingerprintDialog = false
                 Toast.makeText(context, "Authentication successful", Toast.LENGTH_SHORT).show()
                 navController.navigate(Routes.Dashboard.routes) {
                     popUpTo(Routes.Login.routes) {
                         inclusive = true
                     }
                 }
-            }
-
-            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                super.onAuthenticationError(errorCode, errString)
-                // Tampilkan pesan error
-                Toast.makeText(context, "Authentication error: $errString", Toast.LENGTH_SHORT).show()
-            }
-
-            override fun onAuthenticationFailed() {
-                super.onAuthenticationFailed()
-                // Autentikasi gagal
+            },
+            onAuthFailed = {
                 Toast.makeText(context, "Authentication failed", Toast.LENGTH_SHORT).show()
+            },
+            onAuthError = { errorMessage ->
+                Toast.makeText(context, "Authentication error: $errorMessage", Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = {
+                showFingerprintDialog = false
             }
-        }
-
-        // Inisialisasi BiometricPrompt
-        val biometricPrompt = BiometricPrompt(fragmentActivity, executor, authCallback)
-
-        // Konfigurasi prompt
-        val promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Login with Fingerprint")
-            .setSubtitle("Log in using your biometric credential")
-            .setNegativeButtonText("Cancel")
-            .build()
-
-        // Tampilkan prompt biometrik
-        biometricPrompt.authenticate(promptInfo)
+        )
     }
 
     Column(
@@ -139,19 +155,6 @@ fun LoginScreenV5(navController: NavController) {
             .verticalScroll(scrollState)
             .padding(24.dp)
     ) {
-        // Back Button
-//        IconButton(
-//            onClick = { navController.popBackStack() },
-//            modifier = Modifier.align(Alignment.Start)
-//        ) {
-//            Icon(
-//                imageVector = Icons.Default.ArrowBack,
-//                contentDescription = "Back"
-//            )
-//        }
-//
-//        Spacer(modifier = Modifier.height(16.dp))
-
         // TeamUp Icon
         Box(
             modifier = Modifier.fillMaxWidth(),
@@ -379,7 +382,7 @@ fun LoginScreenV5(navController: NavController) {
 
             // Fingerprint Button
             IconButton(
-                onClick = { showBiometricPrompt() },  // Panggil fungsi biometric authentication
+                onClick = { openFingerprintDialog() },  // Panggil fungsi untuk membuka dialog fingerprint
                 modifier = Modifier
                     .size(48.dp)
             ) {
