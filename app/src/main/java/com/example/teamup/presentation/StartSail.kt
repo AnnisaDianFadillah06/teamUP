@@ -26,7 +26,7 @@ fun StartSail(
         val padding = paddingValues
         NavHost(
             navController = navController,
-            startDestination = Routes.FingerprintLogin.routes // Ubah startDestination ke FingerprintLogin
+            startDestination = Routes.LoginV5.routes // Ubah startDestination ke FingerprintLogin
         ) {
             composable(Routes.Login.routes) {
                 LoginScreen(navController = navController)
@@ -34,8 +34,11 @@ fun StartSail(
             composable(Routes.Register.routes) {
                 RegisterScreen(navController = navController)
             }
-            composable(route = Routes.FingerprintLogin.routes) {
-                FingerprintLoginScreen(navController = navController)
+//            composable(route = Routes.FingerprintLogin.routes) {
+//                FingerprintLoginScreen(navController = navController)
+//            }
+            composable(route = Routes.LoginV5.routes) {
+                LoginScreenV5(navController = navController)
             }
             composable(Routes.Dashboard.routes) {
                 DashboardScreen()

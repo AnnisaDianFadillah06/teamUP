@@ -4,6 +4,7 @@ sealed class Routes(val routes: String) {
     data object TeamList : Routes("team_list")
     data object AddTeam : Routes("add_team")
     data object Login : Routes("login")
+    object LoginV5 : Routes("login_v5")
     data object Register : Routes("register")
     data object FingerprintLogin : Routes("fingerprint_login")
     data object Dashboard : Routes("dashboard")
