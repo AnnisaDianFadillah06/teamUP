@@ -12,20 +12,21 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.example.teamup.R
 import com.example.teamup.data.model.CompetitionModel
-import com.example.teamup.route.NavigationItem
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
-
+import androidx.navigation.NavController
+import com.example.teamup.route.Routes // Add this import
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompetitionScreen(
-    onAddCompetitionClick: () -> Unit = {}
+    navController: NavController
+    // Removed unused parameter
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Competition") },
+                title = { Text("Kompetisi") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
@@ -57,7 +58,9 @@ fun CompetitionScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = onAddCompetitionClick,
+                onClick = {
+                    navController.navigate(Routes.AddCompetition.routes)
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Add Competition")
@@ -69,8 +72,8 @@ fun CompetitionScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddCompetitionScreen(
-    onCreateCompetition: (CompetitionModel) -> Unit = {},
-    onBackClick: () -> Unit = {}
+    navController: NavController,
+    onCreateCompetition: (CompetitionModel) -> Unit = { _ -> } // Explicitly define lambda type
 ) {
     var namaLomba by remember { mutableStateOf("") }
     var cabangLomba by remember { mutableStateOf("") }
@@ -82,7 +85,7 @@ fun AddCompetitionScreen(
             TopAppBar(
                 title = { Text("Buat Kompetisi") },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
                             painter = painterResource(id = R.drawable.arrow_back),
                             contentDescription = "Back"
@@ -129,7 +132,6 @@ fun AddCompetitionScreen(
                 )
             )
 
-            // Date Picker for Tanggal Pelaksanaan
             OutlinedTextField(
                 value = tanggalPelaksanaan,
                 onValueChange = { tanggalPelaksanaan = it },
@@ -158,7 +160,6 @@ fun AddCompetitionScreen(
                 )
             )
 
-            // File Upload Section
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -180,6 +181,7 @@ fun AddCompetitionScreen(
                         deskripsiLomba
                     )
                     onCreateCompetition(competitionData)
+                    navController.navigateUp()
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
