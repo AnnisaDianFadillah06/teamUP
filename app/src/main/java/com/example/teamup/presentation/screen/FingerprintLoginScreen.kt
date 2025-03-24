@@ -1,5 +1,6 @@
 package com.example.teamup.presentation.screen
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -28,12 +30,15 @@ import com.example.teamup.common.theme.SoftGray2
 import com.example.teamup.common.utils.BiometricHelper
 import com.example.teamup.presentation.components.PasswordTextField
 import com.example.teamup.presentation.components.PrimaryButton
-//import com.example.teamup.presentation.components.PrimaryTextField
 import com.example.teamup.route.Routes
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 
 @Composable
 fun LoginScreenV5(navController: NavController) {
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
 
     // State untuk tab email/phone
     var selectedTab by remember { mutableStateOf(0) }
@@ -45,6 +50,89 @@ fun LoginScreenV5(navController: NavController) {
     // State untuk password visibility
     var passwordVisible by remember { mutableStateOf(false) }
 
+    // State untuk menyimpan email/phone dan password
+    var emailOrPhone by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+
+    // Fungsi untuk proses login normal
+    fun performLogin() {
+        // Validasi input sebelum navigasi
+        if ((selectedTab == 0 && emailOrPhone.isEmpty()) ||
+            (selectedTab == 1 && emailOrPhone.isEmpty()) ||
+            password.isEmpty()) {
+            Toast.makeText(context, "Please fill all fields", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Anda bisa tambahkan logika autentikasi di sini
+
+        // Navigasi ke dashboard setelah login sukses
+        navController.navigate(Routes.Dashboard.routes) {
+            popUpTo(Routes.Login.routes) {
+                inclusive = true
+            }
+        }
+    }
+
+    // Fungsi untuk melakukan autentikasi biometrik
+    fun showBiometricPrompt() {
+        val fragmentActivity = context as? FragmentActivity
+        if (fragmentActivity == null) {
+            Toast.makeText(context, "Cannot initialize biometric authentication", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val biometricHelper = BiometricHelper(fragmentActivity)
+
+        // Periksa apakah perangkat mendukung biometrik dan ada sidik jari terdaftar
+        if (!biometricHelper.canAuthenticate()) {
+            Toast.makeText(context, "Biometric authentication not available or no fingerprints enrolled", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Buat executor untuk BiometricPrompt
+        val executor = ContextCompat.getMainExecutor(context)
+
+        // Callback untuk hasil autentikasi biometrik
+        val authCallback = object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                super.onAuthenticationSucceeded(result)
+                // Autentikasi berhasil, navigasi ke dashboard
+                Toast.makeText(context, "Authentication successful", Toast.LENGTH_SHORT).show()
+                navController.navigate(Routes.Dashboard.routes) {
+                    popUpTo(Routes.Login.routes) {
+                        inclusive = true
+                    }
+                }
+            }
+
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                super.onAuthenticationError(errorCode, errString)
+                // Tampilkan pesan error
+                Toast.makeText(context, "Authentication error: $errString", Toast.LENGTH_SHORT).show()
+            }
+
+            override fun onAuthenticationFailed() {
+                super.onAuthenticationFailed()
+                // Autentikasi gagal
+                Toast.makeText(context, "Authentication failed", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // Inisialisasi BiometricPrompt
+        val biometricPrompt = BiometricPrompt(fragmentActivity, executor, authCallback)
+
+        // Konfigurasi prompt
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Login with Fingerprint")
+            .setSubtitle("Log in using your biometric credential")
+            .setNegativeButtonText("Cancel")
+            .build()
+
+        // Tampilkan prompt biometrik
+        biometricPrompt.authenticate(promptInfo)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -52,17 +140,17 @@ fun LoginScreenV5(navController: NavController) {
             .padding(24.dp)
     ) {
         // Back Button
-        IconButton(
-            onClick = { navController.popBackStack() },
-            modifier = Modifier.align(Alignment.Start)
-        ) {
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Back"
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
+//        IconButton(
+//            onClick = { navController.popBackStack() },
+//            modifier = Modifier.align(Alignment.Start)
+//        ) {
+//            Icon(
+//                imageVector = Icons.Default.ArrowBack,
+//                contentDescription = "Back"
+//            )
+//        }
+//
+//        Spacer(modifier = Modifier.height(16.dp))
 
         // TeamUp Icon
         Box(
@@ -70,7 +158,7 @@ fun LoginScreenV5(navController: NavController) {
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                painter = painterResource(id = R.drawable.teamup_logo),
+                painter = painterResource(id = R.drawable.google),
                 contentDescription = "TeamUp Logo",
                 tint = DodgerBlue,
                 modifier = Modifier.size(48.dp)
@@ -140,8 +228,8 @@ fun LoginScreenV5(navController: NavController) {
         Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
-            value = "",
-            onValueChange = { },
+            value = emailOrPhone,
+            onValueChange = { emailOrPhone = it },
             placeholder = { Text(if (selectedTab == 0) "Email" else "Phone Number") },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
@@ -162,8 +250,8 @@ fun LoginScreenV5(navController: NavController) {
         Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
-            value = "",
-            onValueChange = { },
+            value = password,
+            onValueChange = { password = it },
             placeholder = { Text("Password") },
             modifier = Modifier.fillMaxWidth(),
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -221,13 +309,7 @@ fun LoginScreenV5(navController: NavController) {
 
         // Login Button
         Button(
-            onClick = {
-                navController.navigate(Routes.Dashboard.routes) {
-                    popUpTo(Routes.Login.routes) {
-                        inclusive = true
-                    }
-                }
-            },
+            onClick = { performLogin() },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
@@ -297,7 +379,7 @@ fun LoginScreenV5(navController: NavController) {
 
             // Fingerprint Button
             IconButton(
-                onClick = { /* Handle Fingerprint login */ },
+                onClick = { showBiometricPrompt() },  // Panggil fungsi biometric authentication
                 modifier = Modifier
                     .size(48.dp)
             ) {

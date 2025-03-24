@@ -2,84 +2,45 @@ package com.example.teamup.common.utils
 
 import android.content.Context
 import androidx.biometric.BiometricManager
-import androidx.biometric.BiometricPrompt
-import androidx.core.content.ContextCompat
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
+import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.fragment.app.FragmentActivity
 
-/**
- * Helper class untuk mengimplementasikan autentikasi biometrik
- */
-class BiometricHelper(private val context: Context) {
+class BiometricHelper(private val activity: FragmentActivity) {
 
     /**
-     * Memeriksa apakah perangkat mendukung autentikasi biometrik
-     * @return Boolean - true jika biometrik tersedia dan dapat digunakan
+     * Memeriksa apakah autentikasi biometrik tersedia dan dapat digunakan
+     * @return true jika biometrik dapat digunakan
      */
-    fun isBiometricAvailable(): Boolean {
-        val biometricManager = BiometricManager.from(context)
-        return when (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)) {
+    fun canAuthenticate(): Boolean {
+        val biometricManager = BiometricManager.from(activity)
+
+        return when (biometricManager.canAuthenticate(BIOMETRIC_STRONG)) {
             BiometricManager.BIOMETRIC_SUCCESS -> true
+            BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> false
+            BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> false
+            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> false
             else -> false
         }
     }
 
     /**
-     * Menampilkan dialog autentikasi biometrik
-     * @param activity FragmentActivity yang dibutuhkan untuk menampilkan prompt
-     * @param onSuccess Fungsi callback yang dipanggil ketika autentikasi berhasil
-     * @param onError Fungsi callback yang dipanggil ketika terjadi error
+     * Memeriksa jika perangkat tidak memiliki sidik jari terdaftar
+     * @return true jika tidak ada sidik jari terdaftar
      */
-    fun showBiometricPrompt(
-        activity: FragmentActivity,
-        onSuccess: () -> Unit,
-        onError: (String) -> Unit
-    ) {
-        val executor = ContextCompat.getMainExecutor(context)
-
-        val callback = object : BiometricPrompt.AuthenticationCallback() {
-            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                super.onAuthenticationSucceeded(result)
-                onSuccess()
-            }
-
-            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                super.onAuthenticationError(errorCode, errString)
-                onError(errString.toString())
-            }
-        }
-
-        val biometricPrompt = BiometricPrompt(activity, executor, callback)
-        val promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Login to TeamUp")
-            .setSubtitle("Use your fingerprint to quickly sign in")
-            .setNegativeButtonText("Cancel")
-            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-            .build()
-
-        biometricPrompt.authenticate(promptInfo)
+    fun hasNoFingerprintsEnrolled(): Boolean {
+        val biometricManager = BiometricManager.from(activity)
+        return biometricManager.canAuthenticate(BIOMETRIC_STRONG) ==
+                BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED
     }
 
     /**
-     * Fungsi untuk handling ketika icon fingerprint di klik
-     * @param activity FragmentActivity context
-     * @param onLoginSuccess Callback ketika login berhasil
+     * Memeriksa jika perangkat tidak memiliki sensor biometrik
+     * @return true jika tidak ada sensor biometrik
      */
-    fun handleFingerprintLogin(
-        activity: FragmentActivity?,
-        onLoginSuccess: () -> Unit
-    ) {
-        if (activity == null) return
-
-        if (isBiometricAvailable()) {
-            showBiometricPrompt(
-                activity = activity,
-                onSuccess = {
-                    onLoginSuccess()
-                },
-                onError = { errorMsg ->
-                    // Bisa tambahkan handling error di sini jika perlu
-                }
-            )
-        }
+    fun hasNoBiometricSensor(): Boolean {
+        val biometricManager = BiometricManager.from(activity)
+        return biometricManager.canAuthenticate(BIOMETRIC_STRONG) ==
+                BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE
     }
 }
