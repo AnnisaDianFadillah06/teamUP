@@ -91,7 +91,7 @@ fun RegisterScreen(navController: NavController) {
             )
             Spacer(modifier = Modifier.width(5.dp))
             TextButton(onClick = {
-                navController.navigate(Routes.Login.routes) {
+                navController.navigate(Routes.LoginV5.routes) {
                     popUpTo(Routes.Register.routes) {
                         inclusive = true
                     }
