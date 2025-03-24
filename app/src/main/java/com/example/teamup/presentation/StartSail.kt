@@ -1,4 +1,4 @@
-package com.example.teamup
+package com.example.teamup.presentation
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
@@ -24,12 +24,18 @@ fun StartSail(
 
     Scaffold { paddingValues ->
         val padding = paddingValues
-        NavHost(navController = navController, startDestination = Routes.Login.routes) {
+        NavHost(
+            navController = navController,
+            startDestination = Routes.FingerprintLogin.routes // Ubah startDestination ke FingerprintLogin
+        ) {
             composable(Routes.Login.routes) {
                 LoginScreen(navController = navController)
             }
             composable(Routes.Register.routes) {
                 RegisterScreen(navController = navController)
+            }
+            composable(route = Routes.FingerprintLogin.routes) {
+                FingerprintLoginScreen(navController = navController)
             }
             composable(Routes.Dashboard.routes) {
                 DashboardScreen()
