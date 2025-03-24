@@ -82,4 +82,7 @@ dependencies {
 
     // Firebase Storage (jika diperlukan)
     implementation ("com.google.firebase:firebase-storage-ktx")
+
+    // Implementasi Fingerprint
+    implementation ("androidx.biometric:biometric:1.2.0-alpha05")
 }
