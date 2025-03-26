@@ -178,7 +178,7 @@ fun AddCompetitionScreen(
                         datePicker.show()
                     }) {
                         Icon(
-                            painter = painterResource(id = R.drawable.cart_shopping),
+                            painter = painterResource(id = R.drawable.calendar),
                             contentDescription = "Pilih Tanggal"
                         )
                     }
