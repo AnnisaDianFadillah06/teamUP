@@ -15,17 +15,20 @@ import com.example.teamup.data.model.CompetitionModel
 import com.example.teamup.route.NavigationItem
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
-
+import androidx.navigation.NavHostController
+import com.example.teamup.route.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompetitionScreen(
+    navController: NavHostController,
     onAddCompetitionClick: () -> Unit = {}
-) {
+)
+ {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Competition") },
+                title = { Text("Kompetisi") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
@@ -57,7 +60,9 @@ fun CompetitionScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = onAddCompetitionClick,
+                onClick = {
+                    navController.navigate(Routes.AddCompetition.routes)
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Add Competition")
@@ -65,6 +70,7 @@ fun CompetitionScreen(
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

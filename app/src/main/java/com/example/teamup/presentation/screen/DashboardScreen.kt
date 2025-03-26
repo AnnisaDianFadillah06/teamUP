@@ -38,10 +38,16 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
                 ProfileScreen(navController = navController)
             }
             composable(Routes.Competition.routes) {
-                CompetitionScreen()
+                CompetitionScreen(navController = navController)
             }
             composable(Routes.AddCompetition.routes) {
-                AddCompetitionScreen()
+                AddCompetitionScreen(
+                    onCreateCompetition = { competition ->
+                        // TODO: Simpan data kompetisi
+                        navController.popBackStack() // Kembali ke CompetitionScreen setelah membuat kompetisi
+                    },
+                    onBackClick = { navController.popBackStack() }
+                )
             }
             composable(Routes.Wishlist.routes) {
                 WishlistScreen(navController = navController, paddingValues = paddingValues)
