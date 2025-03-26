@@ -1,4 +1,4 @@
-package com.example.teamup
+package com.example.teamup.presentation
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
@@ -34,6 +34,10 @@ fun StartSail(
             composable(Routes.Dashboard.routes) {
                 DashboardScreen()
             }
+            composable(Routes.AddCompetition.routes) {
+                AddCompetitionScreen()
+            }
+
         }
     }
 }

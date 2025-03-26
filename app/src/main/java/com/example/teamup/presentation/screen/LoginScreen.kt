@@ -149,7 +149,7 @@ fun WelcomeText() {
 @Composable
 fun Tabby(authType: MutableState<String>) {
     var currentActive by remember {
-        mutableStateOf(0)
+        mutableIntStateOf(0)
     }
 
     fun setCurrentActive(index: Int) {

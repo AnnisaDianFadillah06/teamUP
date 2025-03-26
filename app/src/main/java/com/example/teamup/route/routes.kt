@@ -1,16 +1,22 @@
 package com.example.teamup.route
 
 sealed class Routes(val routes: String) {
-    object Login : Routes("login")
-    object Register : Routes("register")
-    object Dashboard : Routes("dashboard")
-    object Home : Routes("home")
-    object Search : Routes("search")
-    object Profile : Routes("profile")
-    object Wishlist : Routes("wishlist")
-    object Cart : Routes("cart")
-    object MyCourse : Routes("my_courses")
-    object Detail : Routes("detail/{id}") {
+    data object TeamList : Routes("team_list")
+    data object AddTeam : Routes("add_team")
+    data object Login : Routes("login")
+    object LoginV5 : Routes("login_v5")
+    data object Register : Routes("register")
+    data object FingerprintLogin : Routes("fingerprint_login")
+    data object Dashboard : Routes("dashboard")
+    data object Home : Routes("home")
+    data object Search : Routes("search")
+    data object Profile : Routes("profile")
+    data object Wishlist : Routes("wishlist")
+    data object Competition : Routes("competition")
+    data object AddCompetition : Routes("add_competition")
+    data object Cart : Routes("cart")
+    data object MyCourse : Routes("my_courses")
+    data object Detail : Routes("detail/{id}") {
         fun createRoute(id: Int) = "detail/$id"
     }
 }

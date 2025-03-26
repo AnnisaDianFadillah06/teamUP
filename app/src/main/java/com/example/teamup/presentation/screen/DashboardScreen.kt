@@ -37,6 +37,12 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
             composable(Routes.Profile.routes) {
                 ProfileScreen(navController = navController)
             }
+            composable(Routes.Competition.routes) {
+                CompetitionScreen()
+            }
+            composable(Routes.AddCompetition.routes) {
+                AddCompetitionScreen()
+            }
             composable(Routes.Wishlist.routes) {
                 WishlistScreen(navController = navController, paddingValues = paddingValues)
             }

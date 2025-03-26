@@ -25,6 +25,7 @@ fun BottomNavigationBar(navController: NavController) {
         NavigationItem.Home,
         NavigationItem.Sail,
         NavigationItem.Wishlist,
+        NavigationItem.Competition,
         NavigationItem.Profile,
     )
     val navBackStackEntry by navController.currentBackStackEntryAsState()
