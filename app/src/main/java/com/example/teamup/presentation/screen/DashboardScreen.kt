@@ -15,7 +15,6 @@ import com.example.teamup.presentation.components.*
 import com.example.teamup.route.Routes
 import com.example.teamup.ui.components.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(navController: NavHostController = rememberNavController()) {
 
@@ -42,7 +41,7 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
             }
             composable(Routes.AddCompetition.routes) {
                 AddCompetitionScreen(
-                    onCreateCompetition = { competition ->
+                    onCreateCompetition = {
                         // TODO: Simpan data kompetisi
                         navController.popBackStack() // Kembali ke CompetitionScreen setelah membuat kompetisi
                     },

@@ -12,4 +12,12 @@ class CompetitionViewModel : ViewModel() {
     fun addCompetition(competition: CompetitionModel) {
         _competitions.value = _competitions.value + competition
     }
+
+    fun removeCompetition(competition: CompetitionModel) {
+        _competitions.value = _competitions.value.filter { it != competition }
+    }
+
+    fun clearCompetitions() {
+        _competitions.value = emptyList()
+    }
 }

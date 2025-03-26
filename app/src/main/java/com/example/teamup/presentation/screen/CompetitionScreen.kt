@@ -1,5 +1,9 @@
 package com.example.teamup.presentation.screen
 
+import android.app.DatePickerDialog
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -7,23 +11,27 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
 import com.example.teamup.R
 import com.example.teamup.data.model.CompetitionModel
-import com.example.teamup.route.NavigationItem
+import com.example.teamup.route.Routes
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.navigation.NavHostController
-import com.example.teamup.route.Routes
+import com.example.teamup.data.viewmodels.CompetitionViewModel
+import java.text.SimpleDateFormat
+import java.util.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompetitionScreen(
-    navController: NavHostController,
-    onAddCompetitionClick: () -> Unit = {}
-)
+    navController: NavHostController)
  {
     Scaffold(
         topBar = {
@@ -75,13 +83,41 @@ fun CompetitionScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddCompetitionScreen(
-    onCreateCompetition: (CompetitionModel) -> Unit = {},
-    onBackClick: () -> Unit = {}
+    viewModel: CompetitionViewModel = viewModel(),
+    onCreateCompetition: () -> Unit,
+    onBackClick: () -> Unit
 ) {
     var namaLomba by remember { mutableStateOf("") }
     var cabangLomba by remember { mutableStateOf("") }
     var tanggalPelaksanaan by remember { mutableStateOf("") }
     var deskripsiLomba by remember { mutableStateOf("") }
+    var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
+
+    val context = LocalContext.current
+    val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+
+    // File picker launcher
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        selectedFileUri = uri
+    }
+
+    // Date picker setup
+    val datePicker = DatePickerDialog(
+        context,
+        { _, year, month, dayOfMonth ->
+            val selectedDate = Calendar.getInstance().apply {
+                set(Calendar.YEAR, year)
+                set(Calendar.MONTH, month)
+                set(Calendar.DAY_OF_MONTH, dayOfMonth)
+            }.time
+            tanggalPelaksanaan = dateFormatter.format(selectedDate)
+        },
+        Calendar.getInstance().get(Calendar.YEAR),
+        Calendar.getInstance().get(Calendar.MONTH),
+        Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
+    )
 
     Scaffold(
         topBar = {
@@ -91,7 +127,7 @@ fun AddCompetitionScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             painter = painterResource(id = R.drawable.arrow_back),
-                            contentDescription = "Back"
+                            contentDescription = "Kembali"
                         )
                     }
                 },
@@ -110,11 +146,6 @@ fun AddCompetitionScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "Mulai membuat lomba yang kompetitif dengan mudah dan cepat. Lakukan langkah nyata dan dapatkan gelar!",
-                style = MaterialTheme.typography.bodyMedium
-            )
-
             OutlinedTextField(
                 value = namaLomba,
                 onValueChange = { namaLomba = it },
@@ -135,17 +166,20 @@ fun AddCompetitionScreen(
                 )
             )
 
-            // Date Picker for Tanggal Pelaksanaan
+            // Date Picker with Icon
             OutlinedTextField(
                 value = tanggalPelaksanaan,
                 onValueChange = { tanggalPelaksanaan = it },
                 label = { Text("Tanggal Pelaksanaan") },
                 modifier = Modifier.fillMaxWidth(),
+                readOnly = true,
                 trailingIcon = {
-                    IconButton(onClick = { /* TODO: Show Date Picker */ }) {
+                    IconButton(onClick = {
+                        datePicker.show()
+                    }) {
                         Icon(
-                            painter = painterResource(id = R.drawable.arrow_back),
-                            contentDescription = "Select Date"
+                            painter = painterResource(id = R.drawable.cart_shopping),
+                            contentDescription = "Pilih Tanggal"
                         )
                     }
                 }
@@ -164,18 +198,22 @@ fun AddCompetitionScreen(
                 )
             )
 
-            // File Upload Section
+            // File Upload Section with Dynamic File Name
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Upload File Pendukung", modifier = Modifier.weight(1f))
-                Button(onClick = { /* TODO: Implement File Upload */ }) {
+                Text(
+                    text = selectedFileUri?.let { "File: ${it.lastPathSegment}" }
+                        ?: "Upload File Pendukung",
+                    modifier = Modifier.weight(1f)
+                )
+                Button(onClick = {
+                    filePickerLauncher.launch("*/*")
+                }) {
                     Text("Upload")
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             Button(
                 onClick = {
@@ -185,9 +223,13 @@ fun AddCompetitionScreen(
                         tanggalPelaksanaan,
                         deskripsiLomba
                     )
-                    onCreateCompetition(competitionData)
+                    viewModel.addCompetition(competitionData)
+                    onCreateCompetition()
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = namaLomba.isNotBlank() &&
+                        cabangLomba.isNotBlank() &&
+                        tanggalPelaksanaan.isNotBlank()
             ) {
                 Text("Buat Kompetisi")
             }
