@@ -6,91 +6,38 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import androidx.navigation.NavController
 import com.example.teamup.R
 import com.example.teamup.data.model.CompetitionModel
-import com.example.teamup.route.Routes
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 import com.example.teamup.data.viewmodels.CompetitionViewModel
-import java.text.SimpleDateFormat
-import java.util.*
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
 import com.example.teamup.di.Injection
-
-
-
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.ktx.storage
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompetitionScreen(
-    navController: NavHostController)
- {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Kompetisi") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_baseline_cancel_24),
-                contentDescription = "No Competition",
-                modifier = Modifier.size(200.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "No competition available yet",
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    navController.navigate(Routes.AddCompetition.routes)
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Add Competition")
-            }
-        }
-    }
-}
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AddCompetitionScreen(
-    navController: NavController,
+    navController: NavHostController? = null, // Made nullable since it's not used
     viewModel: CompetitionViewModel = viewModel(
         factory = CompetitionViewModelFactory(
             Injection.provideCompetitionRepository()
@@ -98,100 +45,338 @@ fun AddCompetitionScreen(
     )
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showAddForm by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(if (showAddForm) "Buat Kompetisi Baru" else "Kompetisi") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                navigationIcon = {
+                    if (showAddForm) {
+                        IconButton(onClick = { showAddForm = false }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            if (!showAddForm) {
+                FloatingActionButton(onClick = { showAddForm = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Competition")
+                }
+            }
+        }
+    ) { paddingValues ->
+        if (showAddForm) {
+            AddCompetitionForm(
+                viewModel = viewModel,
+                onSuccess = { showAddForm = false },
+                modifier = Modifier.padding(paddingValues)
+            )
+        } else {
+            CompetitionListContent(
+                uiState = uiState,
+                onAddClick = { showAddForm = true },
+                modifier = Modifier.padding(paddingValues)
+            )
+        }
+    }
+}
+
+@Composable
+fun CompetitionListContent(
+    uiState: CompetitionViewModel.CompetitionUiState,
+    onAddClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
+        if (uiState.isLoading && uiState.competitions.isEmpty()) {
+            CircularProgressIndicator(
+                modifier = Modifier.align(Alignment.Center)
+            )
+        } else if (uiState.competitions.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_baseline_cancel_24),
+                    contentDescription = "No Competition",
+                    modifier = Modifier.size(200.dp)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Belum ada kompetisi tersedia",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = onAddClick,
+                    modifier = Modifier.fillMaxWidth(0.8f)
+                ) {
+                    Text("Buat Kompetisi")
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(uiState.competitions) { competition ->
+                    // Use fully qualified name to avoid conflict with CompetitionListScreen.kt
+                    com.example.teamup.presentation.screen.CompetitionCardScreen(competition = competition)
+                }
+            }
+        }
+
+        uiState.errorMessage?.let { error ->
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun CompetitionCardScreen(competition: CompetitionModel) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth()
+        ) {
+            Text(
+                text = competition.namaLomba,
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = competition.deskripsiLomba,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Cabang: ${competition.cabangLomba}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+
+                Text(
+                    text = "Tanggal: ${competition.tanggalPelaksanaan}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Jumlah Tim: ${competition.jumlahTim}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+
+                // Format the timestamp
+                val dateFormat = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault())
+                val formattedDate = try {
+                    dateFormat.format(competition.createdAt.toDate())
+                } catch (e: Exception) {
+                    "Unknown date"
+                }
+
+                Text(
+                    text = formattedDate,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            // Display image if available
+            if (competition.imageUrl.isNotBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                // You can use an Image composable with Coil or Glide here
+                Text(
+                    text = "Ada gambar tersedia",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AddCompetitionForm(
+    viewModel: CompetitionViewModel,
+    onSuccess: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val uiState by viewModel.uiState.collectAsState()
     var namaLomba by remember { mutableStateOf("") }
     var cabangLomba by remember { mutableStateOf("") }
     var tanggalPelaksanaan by remember { mutableStateOf("") }
     var deskripsiLomba by remember { mutableStateOf("") }
     var jumlahTim by remember { mutableStateOf("0") }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val context = LocalContext.current
+    val calendar = Calendar.getInstance()
+
+    val datePickerDialog = DatePickerDialog(
+        context,
+        { _, year, month, dayOfMonth ->
+            calendar.set(year, month, dayOfMonth)
+            val format = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+            tanggalPelaksanaan = format.format(calendar.time)
+        },
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH),
+        calendar.get(Calendar.DAY_OF_MONTH)
+    )
+
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        selectedImageUri = uri
+    }
 
     // Effect untuk navigasi setelah sukses
     LaunchedEffect(key1 = uiState.isSuccess) {
         if (uiState.isSuccess) {
-            navController.navigate(Routes.CompetitionList.routes) {
-                popUpTo(Routes.AddCompetition.routes) { inclusive = true }
-            }
             viewModel.resetSuccess()
+            onSuccess()
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Buat Kompetisi Baru") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        OutlinedTextField(
+            value = namaLomba,
+            onValueChange = { namaLomba = it },
+            label = { Text("Nama Lomba") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = cabangLomba,
+            onValueChange = { cabangLomba = it },
+            label = { Text("Cabang Lomba") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        // Date picker field
+        OutlinedTextField(
+            value = tanggalPelaksanaan,
+            onValueChange = { tanggalPelaksanaan = it },
+            label = { Text("Tanggal Pelaksanaan") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            readOnly = true,
+            trailingIcon = {
+                IconButton(onClick = { datePickerDialog.show() }) {
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = "Select Date"
+                    )
                 }
+            }
+        )
+
+        OutlinedTextField(
+            value = deskripsiLomba,
+            onValueChange = { deskripsiLomba = it },
+            label = { Text("Deskripsi Lomba") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 3,
+            maxLines = 5
+        )
+
+        OutlinedTextField(
+            value = jumlahTim,
+            onValueChange = {
+                // Only allow numeric input
+                if (it.isEmpty() || it.all { char -> char.isDigit() }) {
+                    jumlahTim = it
+                }
+            },
+            label = { Text("Jumlah Tim") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
+
+        // Image picker
+        Button(
+            onClick = { imagePicker.launch("image/*") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (selectedImageUri != null) "Ganti Gambar" else "Pilih Gambar")
+        }
+
+        selectedImageUri?.let { uri ->
+            Text(
+                text = "Gambar dipilih: ${uri.lastPathSegment ?: "Unknown"}",
+                style = MaterialTheme.typography.bodySmall
             )
         }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .padding(16.dp)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            OutlinedTextField(
-                value = namaLomba,
-                onValueChange = { namaLomba = it },
-                label = { Text("Nama Lomba") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
 
-            OutlinedTextField(
-                value = cabangLomba,
-                onValueChange = { cabangLomba = it },
-                label = { Text("Cabang Lomba") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            OutlinedTextField(
-                value = tanggalPelaksanaan,
-                onValueChange = { tanggalPelaksanaan = it },
-                label = { Text("Tanggal Pelaksanaan (DD/MM/YYYY)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            OutlinedTextField(
-                value = deskripsiLomba,
-                onValueChange = { deskripsiLomba = it },
-                label = { Text("Deskripsi Lomba") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3,
-                maxLines = 5
-            )
-
-            OutlinedTextField(
-                value = jumlahTim,
-                onValueChange = {
-                    // Only allow numeric input
-                    if (it.isEmpty() || it.all { char -> char.isDigit() }) {
-                        jumlahTim = it
-                    }
-                },
-                label = { Text("Jumlah Tim") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
-
-            // Placeholder for file upload
-            Text(
-                text = "Catatan: Fitur unggah berkas pendukung akan tersedia pada versi berikutnya.",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-
-            Button(
-                onClick = {
+        Button(
+            onClick = {
+                if (selectedImageUri != null) {
+                    // Upload image first then add competition
+                    uploadImageAndAddCompetition(
+                        selectedImageUri!!,
+                        namaLomba,
+                        cabangLomba,
+                        tanggalPelaksanaan,
+                        deskripsiLomba,
+                        jumlahTim.toIntOrNull() ?: 0,
+                        viewModel
+                    )
+                } else {
+                    // Add competition without image
                     viewModel.addCompetition(
                         namaLomba = namaLomba,
                         cabangLomba = cabangLomba,
@@ -199,27 +384,61 @@ fun AddCompetitionScreen(
                         deskripsiLomba = deskripsiLomba,
                         jumlahTim = jumlahTim.toIntOrNull() ?: 0
                     )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = namaLomba.isNotBlank() && cabangLomba.isNotBlank() &&
-                        tanggalPelaksanaan.isNotBlank() && !uiState.isLoading
-            ) {
-                Text("Buat Kompetisi")
-            }
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = namaLomba.isNotBlank() && cabangLomba.isNotBlank() &&
+                    tanggalPelaksanaan.isNotBlank() && !uiState.isLoading
+        ) {
+            Text("Buat Kompetisi")
+        }
 
-            if (uiState.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
-            }
+        if (uiState.isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+        }
 
-            uiState.errorMessage?.let { error ->
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(top = 8.dp)
+        uiState.errorMessage?.let { error ->
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+    }
+}
+
+private fun uploadImageAndAddCompetition(
+    imageUri: Uri,
+    namaLomba: String,
+    cabangLomba: String,
+    tanggalPelaksanaan: String,
+    deskripsiLomba: String,
+    jumlahTim: Int,
+    viewModel: CompetitionViewModel
+) {
+    val storageRef = Firebase.storage.reference
+    val imageRef = storageRef.child("competitions/${UUID.randomUUID()}.jpg")
+
+    imageRef.putFile(imageUri)
+        .continueWithTask { task ->
+            if (!task.isSuccessful) {
+                task.exception?.let { throw it }
+            }
+            imageRef.downloadUrl
+        }
+        .addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val downloadUrl = task.result.toString()
+                viewModel.addCompetition(
+                    namaLomba = namaLomba,
+                    cabangLomba = cabangLomba,
+                    tanggalPelaksanaan = tanggalPelaksanaan,
+                    deskripsiLomba = deskripsiLomba,
+                    imageUrl = downloadUrl,
+                    jumlahTim = jumlahTim
                 )
             }
         }
-    }
 }
