@@ -1,5 +1,6 @@
 package com.example.teamup.data.viewmodels
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.*
 
 class CompetitionViewModel(private val repository: CompetitionRepository) : ViewModel() {
 
@@ -64,8 +66,8 @@ class CompetitionViewModel(private val repository: CompetitionRepository) : View
 
                 val competitionId = repository.addCompetition(competition)
                 if (competitionId != null) {
+                    loadCompetitions() // Refresh the list first
                     _uiState.update { it.copy(isSuccess = true, isLoading = false) }
-                    loadCompetitions() // Refresh the list
                 } else {
                     _uiState.update {
                         it.copy(
@@ -97,10 +99,13 @@ class CompetitionViewModel(private val repository: CompetitionRepository) : View
     )
 }
 
-class CompetitionViewModelFactory(private val repository: CompetitionRepository) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
+// Example of what your factory might look like
+class CompetitionViewModelFactory(
+    private val repository: CompetitionRepository
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(CompetitionViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
             return CompetitionViewModel(repository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

@@ -14,9 +14,10 @@ import androidx.navigation.navArgument
 import com.example.teamup.presentation.components.*
 import com.example.teamup.route.Routes
 import com.example.teamup.ui.components.*
+import com.example.teamup.data.viewmodels.CompetitionViewModel
 
 @Composable
-fun DashboardScreen(navController: NavHostController = rememberNavController()) {
+fun DashboardScreen(navController: NavHostController = rememberNavController(),  competitionViewModel: CompetitionViewModel) {
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -40,7 +41,10 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
                 CompetitionScreen(navController = navController)
             }
             composable(Routes.AddCompetition.routes) {
-                AddCompetitionScreen(navController)
+                AddCompetitionForm(
+                    viewModel = competitionViewModel,
+                    onSuccess = { navController.popBackStack() } // Navigasi balik setelah sukses
+                )
             }
             composable(Routes.CompetitionList.routes) {
                 CompetitionListScreen(navController)

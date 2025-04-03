@@ -3,6 +3,7 @@ package com.example.teamup
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -12,20 +13,26 @@ import androidx.compose.material3.Surface
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.teamup.common.theme.ESailTheme
 import com.example.teamup.presentation.StartSail
-import com.google.firebase.FirebaseApp
-import android.app.Application
+import com.example.teamup.data.viewmodels.CompetitionViewModel
+import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
+import com.example.teamup.di.Injection
 
 class MainActivity : ComponentActivity() {
+    private val competitionViewModel: CompetitionViewModel by viewModels {
+        CompetitionViewModelFactory(Injection.provideCompetitionRepository())
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         installSplashScreen()
+
         setContent {
             ESailTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    StartSail()
+                    StartSail(competitionViewModel = competitionViewModel)
                 }
             }
         }

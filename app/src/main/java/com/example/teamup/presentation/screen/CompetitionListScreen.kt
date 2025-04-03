@@ -72,7 +72,7 @@ fun CompetitionListScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(uiState.competitions) { competition ->
-                        CompetitionCard(competition = competition)
+                        CompetitionCardList(competition = competition)
                     }
                 }
             }
@@ -92,7 +92,7 @@ fun CompetitionListScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CompetitionCard(competition: CompetitionModel) {
+fun CompetitionCardList(competition: CompetitionModel) {
     Card(
         modifier = Modifier
             .fillMaxWidth()

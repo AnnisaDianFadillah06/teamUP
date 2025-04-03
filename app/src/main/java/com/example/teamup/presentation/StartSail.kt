@@ -13,12 +13,17 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.teamup.presentation.screen.*
 import com.example.teamup.route.Routes
+import com.example.teamup.data.viewmodels.CompetitionViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
+import com.example.teamup.di.Injection
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StartSail(
     modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    competitionViewModel: CompetitionViewModel
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
 
@@ -32,10 +37,13 @@ fun StartSail(
                 RegisterScreen(navController = navController)
             }
             composable(Routes.Dashboard.routes) {
-                DashboardScreen()
+                DashboardScreen(competitionViewModel = competitionViewModel)
             }
             composable(Routes.AddCompetition.routes) {
-                AddCompetitionScreen(navController)
+                AddCompetitionForm(
+                    viewModel = competitionViewModel,
+                    onSuccess = { navController.popBackStack() } // Navigasi balik setelah sukses
+                )
             }
             composable(Routes.CompetitionList.routes) {
                 CompetitionListScreen(navController)
@@ -53,5 +61,10 @@ fun StartSail(
 @Preview
 @Composable
 fun StartSailPreview() {
-    StartSail()
+    val fakeViewModel = viewModel<CompetitionViewModel>(
+        factory = CompetitionViewModelFactory(
+            Injection.provideCompetitionRepository()
+        )
+    )
+    StartSail(competitionViewModel = fakeViewModel)
 }
