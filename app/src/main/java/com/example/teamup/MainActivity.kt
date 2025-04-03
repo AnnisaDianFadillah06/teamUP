@@ -12,6 +12,8 @@ import androidx.compose.material3.Surface
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.teamup.common.theme.ESailTheme
 import com.example.teamup.presentation.StartSail
+import com.google.firebase.FirebaseApp
+import android.app.Application
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
