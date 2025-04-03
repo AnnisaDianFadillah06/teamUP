@@ -40,13 +40,10 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
                 CompetitionScreen(navController = navController)
             }
             composable(Routes.AddCompetition.routes) {
-                AddCompetitionScreen(
-                    onCreateCompetition = {
-                        // TODO: Simpan data kompetisi
-                        navController.popBackStack() // Kembali ke CompetitionScreen setelah membuat kompetisi
-                    },
-                    onBackClick = { navController.popBackStack() }
-                )
+                AddCompetitionScreen(navController)
+            }
+            composable(Routes.CompetitionList.routes) {
+                CompetitionListScreen(navController)
             }
             composable(Routes.Wishlist.routes) {
                 WishlistScreen(navController = navController, paddingValues = paddingValues)
@@ -57,13 +54,17 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
             composable(Routes.MyCourse.routes) {
                 MyCoursesScreen(navController = navController, paddingValues = paddingValues)
             }
-            composable(
-                Routes.Detail.routes,
-                arguments = listOf(navArgument("id") { type = NavType.IntType })
-            ) {
-                val id = it.arguments?.getInt("id") ?: 0
-                DetailScreen(navController = navController, id = id)
+            composable(Routes.Detail.routes) { backStackEntry ->
+                val courseId = backStackEntry.arguments?.getString("courseId")?.toInt() ?: 0
+                DetailScreen(navController, courseId)
             }
+//            composable(
+//                Routes.Detail.routes,
+//                arguments = listOf(navArgument("id") { type = NavType.IntType })
+//            ) {
+//                val id = it.arguments?.getInt("id") ?: 0
+//                DetailScreen(navController = navController, id = id)
+//            }
         }
     }
 }

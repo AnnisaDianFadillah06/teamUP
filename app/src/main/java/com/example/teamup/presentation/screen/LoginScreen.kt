@@ -93,6 +93,24 @@ fun LoginScreen(navController: NavController) {
             }
         })
 
+        // Add this to your LoginScreen where the other buttons are
+        Spacer(modifier = Modifier.height(5.dp))
+        PrimaryButton(text = "Buat Kompetisi", onClick = {
+            navController.navigate(Routes.AddCompetition.routes) {
+                popUpTo(Routes.AddCompetition.routes) {
+                    inclusive = true
+                }
+            }
+        })
+        Spacer(modifier = Modifier.height(5.dp))
+        PrimaryButton(text = "Daftar Kompetisi", onClick = {
+            navController.navigate(Routes.CompetitionList.routes) {
+                popUpTo(Routes.CompetitionList.routes) {
+                    inclusive = true
+                }
+            }
+        })
+
         Spacer(modifier = Modifier.height(20.dp))
 
         AuthSocial()
