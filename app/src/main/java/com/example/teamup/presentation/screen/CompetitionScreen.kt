@@ -1,7 +1,9 @@
 package com.example.teamup.presentation.screen
 
 import android.app.DatePickerDialog
+import android.content.Context
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -45,6 +47,9 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -54,6 +59,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,6 +74,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.teamup.R
@@ -83,10 +90,20 @@ import com.example.teamup.presentation.components.BottomNavigationBar
 import com.example.teamup.route.NavigationItem
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import java.util.UUID
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.CircularProgressIndicator
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -418,6 +435,10 @@ fun AddCompetitionForm(
     var selectedFileName by remember { mutableStateOf("") }
     var isUploading by remember { mutableStateOf(false) }
 
+    // State for Alert Dialog
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
 
@@ -448,9 +469,10 @@ fun AddCompetitionForm(
             val contentResolver = context.contentResolver
             contentResolver.query(it, null, null, null, null)?.use { cursor ->
                 if (cursor.moveToFirst()) {
-                    val displayNameIndex = cursor.getColumnIndex("_display_name")
-                    if (displayNameIndex != -1) {
-                        selectedFileName = cursor.getString(displayNameIndex)
+                    // Find the display name column index
+                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex >= 0) {
+                        selectedFileName = cursor.getString(nameIndex)
                     }
                 }
             }
@@ -465,258 +487,279 @@ fun AddCompetitionForm(
         }
     }
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            OutlinedTextField(
-                value = namaLomba,
-                onValueChange = { namaLomba = it },
-                label = { Text("Nama Lomba") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
+    // Effect untuk menampilkan error message di Alert Dialog
+    LaunchedEffect(key1 = uiState.errorMessage) {
+        uiState.errorMessage?.let { error ->
+            errorMessage = error
+            showErrorDialog = true
+            // Reset error message after displaying
+            viewModel.clearError()
         }
+    }
 
-        item {
-            OutlinedTextField(
-                value = cabangLomba,
-                onValueChange = { cabangLomba = it },
-                label = { Text("Cabang Lomba") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-        }
-
-        item {
-            // Date picker field
-            OutlinedTextField(
-                value = tanggalPelaksanaan,
-                onValueChange = { tanggalPelaksanaan = it },
-                label = { Text("Tanggal Pelaksanaan") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                readOnly = true,
-                trailingIcon = {
-                    IconButton(onClick = { datePickerDialog.show() }) {
-                        Icon(
-                            imageVector = Icons.Default.DateRange,
-                            contentDescription = "Select Date"
-                        )
-                    }
-                }
-            )
-        }
-
-        item {
-            OutlinedTextField(
-                value = deskripsiLomba,
-                onValueChange = { deskripsiLomba = it },
-                label = { Text("Deskripsi Lomba") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3,
-                maxLines = 5
-            )
-        }
-
-        item {
-            OutlinedTextField(
-                value = jumlahTim,
-                onValueChange = {
-                    // Only allow numeric input
-                    if (it.isEmpty() || it.all { char -> char.isDigit() }) {
-                        jumlahTim = it
-                    }
-                },
-                label = { Text("Jumlah Tim") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
-        }
-
-        item {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            Text(
-                text = "Media dan Dokumen",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-        }
-
-        item {
-            // Image upload section
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "Foto Lomba",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp)
-                        .border(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.outline,
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { imagePicker.launch("image/*") },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (selectedImageUri != null) {
-                        Image(
-                            painter = rememberAsyncImagePainter(
-                                ImageRequest.Builder(context)
-                                    .data(data = selectedImageUri)
-                                    .error(R.drawable.ic_baseline_cancel_24)
-                                    .build()
-                            ),
-                            contentDescription = "Selected Image",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Image,
-                                contentDescription = "Upload Image",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(36.dp)
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Klik untuk upload gambar",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
+    // Error Dialog
+    if (showErrorDialog) {
+        AlertDialog(
+            onDismissRequest = { showErrorDialog = false },
+            title = { Text("Pemberitahuan") },
+            text = { Text(errorMessage) },
+            confirmButton = {
+                TextButton(onClick = { showErrorDialog = false }) {
+                    Text("OK")
                 }
             }
-        }
+        )
+    }
 
-        item {
-            // File upload section
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "Dokumen Lomba",
-                    style = MaterialTheme.typography.bodyMedium
+    Scaffold(
+        modifier = modifier.fillMaxSize()
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                OutlinedTextField(
+                    value = namaLomba,
+                    onValueChange = { namaLomba = it },
+                    label = { Text("Nama Lomba") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
                 )
+            }
 
-                Spacer(modifier = Modifier.height(8.dp))
+            item {
+                OutlinedTextField(
+                    value = cabangLomba,
+                    onValueChange = { cabangLomba = it },
+                    label = { Text("Cabang Lomba") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp)
-                        .border(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.outline,
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { filePicker.launch("application/*") },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (selectedFileUri != null) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+            item {
+                // Date picker field
+                OutlinedTextField(
+                    value = tanggalPelaksanaan,
+                    onValueChange = { tanggalPelaksanaan = it },
+                    label = { Text("Tanggal Pelaksanaan") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    readOnly = true,
+                    trailingIcon = {
+                        IconButton(onClick = { datePickerDialog.show() }) {
                             Icon(
-                                imageVector = Icons.Default.FilePresent,
-                                contentDescription = "File",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = selectedFileName.ifEmpty { "File terpilih" },
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    } else {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.FilePresent,
-                                contentDescription = "Upload File",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Klik untuk upload dokumen",
-                                style = MaterialTheme.typography.bodyMedium
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = "Select Date"
                             )
                         }
                     }
-                }
+                )
             }
-        }
 
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = {
-                    isUploading = true
-                    uploadCompetitionWithMedia(
-                        imageUri = selectedImageUri,
-                        fileUri = selectedFileUri,
-                        namaLomba = namaLomba,
-                        cabangLomba = cabangLomba,
-                        tanggalPelaksanaan = tanggalPelaksanaan,
-                        deskripsiLomba = deskripsiLomba,
-                        jumlahTim = jumlahTim.toIntOrNull() ?: 0,
-                        viewModel = viewModel,
-                        onComplete = { isUploading = false }
+            item {
+                OutlinedTextField(
+                    value = deskripsiLomba,
+                    onValueChange = { deskripsiLomba = it },
+                    label = { Text("Deskripsi Lomba") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 5
+                )
+            }
+
+            item {
+                OutlinedTextField(
+                    value = jumlahTim,
+                    onValueChange = {
+                        // Only allow numeric input
+                        if (it.isEmpty() || it.all { char -> char.isDigit() }) {
+                            jumlahTim = it
+                        }
+                    },
+                    label = { Text("Jumlah Tim") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+            }
+
+            item {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Text(
+                    text = "Media dan Dokumen",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
+            item {
+                // Image upload section
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Foto Lomba",
+                        style = MaterialTheme.typography.bodyMedium
                     )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = namaLomba.isNotBlank() && cabangLomba.isNotBlank() &&
-                        tanggalPelaksanaan.isNotBlank() && !uiState.isLoading && !isUploading
-            ) {
-                Text("Buat Kompetisi")
-            }
-        }
 
-        item {
-            if (uiState.isLoading || isUploading) {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp)
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outline,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { imagePicker.launch("image/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selectedImageUri != null) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(selectedImageUri)
+                                    .error(R.drawable.ic_baseline_cancel_24)
+                                    .build(),
+                                contentDescription = "Selected Image",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Image,
+                                    contentDescription = "Upload Image",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Klik untuk upload gambar",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
-            uiState.errorMessage?.let { error ->
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+            item {
+                // File upload section
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Dokumen Lomba",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp)
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outline,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { filePicker.launch("application/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selectedFileUri != null) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FilePresent,
+                                    contentDescription = "File",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = selectedFileName.ifEmpty { "File terpilih" },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        } else {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FilePresent,
+                                    contentDescription = "Upload File",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Klik untuk upload dokumen",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        isUploading = true
+                        uploadCompetitionWithMedia(
+                            context = context,
+                            imageUri = selectedImageUri,
+                            fileUri = selectedFileUri,
+                            namaLomba = namaLomba,
+                            cabangLomba = cabangLomba,
+                            tanggalPelaksanaan = tanggalPelaksanaan,
+                            deskripsiLomba = deskripsiLomba,
+                            jumlahTim = jumlahTim.toIntOrNull() ?: 0,
+                            viewModel = viewModel,
+                            onComplete = { isUploading = false }
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = namaLomba.isNotBlank() && cabangLomba.isNotBlank() &&
+                            tanggalPelaksanaan.isNotBlank() && !uiState.isLoading && !isUploading
+                ) {
+                    Text("Buat Kompetisi")
+                }
+            }
+
+            item {
+                if (uiState.isLoading || isUploading) {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
             }
         }
     }
 }
 
 private fun uploadCompetitionWithMedia(
+    context: Context,
     imageUri: Uri?,
     fileUri: Uri?,
     namaLomba: String,
@@ -737,7 +780,6 @@ private fun uploadCompetitionWithMedia(
     fun checkAndAddCompetition() {
         val shouldAddWithImage = imageUri != null
         val shouldAddWithFile = fileUri != null
-
         // If both required files are uploaded or not needed, add the competition
         if ((shouldAddWithImage && imageUploaded || !shouldAddWithImage) &&
             (shouldAddWithFile && fileUploaded || !shouldAddWithFile)) {
@@ -756,50 +798,84 @@ private fun uploadCompetitionWithMedia(
 
     // Upload image if available
     if (imageUri != null) {
-        val imageRef = storageRef.child("competitions/images/${UUID.randomUUID()}.jpg")
-        imageRef.putFile(imageUri)
-            .continueWithTask { task ->
+        try {
+            // Coba membaca file untuk memastikan aksesnya benar
+            val inputStream = context.contentResolver.openInputStream(imageUri)
+            inputStream?.close()
+
+            val imageRef = storageRef.child("competitions/images/${UUID.randomUUID()}.jpg")
+            val uploadTask = imageRef.putFile(imageUri)
+
+            uploadTask.addOnFailureListener { exception ->
+                viewModel.setError("Gagal mengupload gambar: ${exception.message}")
+                onComplete()
+            }.continueWithTask { task ->
                 if (!task.isSuccessful) {
                     task.exception?.let { throw it }
                 }
                 imageRef.downloadUrl
-            }
-            .addOnCompleteListener { task ->
+            }.addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     imageUrl = task.result.toString()
                     imageUploaded = true
                     checkAndAddCompetition()
                 } else {
+                    viewModel.setError("Gagal mendapatkan URL gambar: ${task.exception?.message}")
                     onComplete()
-                    // Handle error through ViewModel
-                    viewModel.setError("Gagal mengupload gambar: ${task.exception?.message}")
                 }
             }
+        } catch (e: Exception) {
+            viewModel.setError("Error akses file gambar: ${e.message}")
+            onComplete()
+        }
     } else {
         imageUploaded = true
     }
 
     // Upload file if available
     if (fileUri != null) {
-        val fileRef = storageRef.child("competitions/files/${UUID.randomUUID()}_${fileUri.lastPathSegment}")
-        fileRef.putFile(fileUri)
-            .continueWithTask { task ->
+        try {
+            // Coba membaca file untuk memastikan aksesnya benar
+            val inputStream = context.contentResolver.openInputStream(fileUri)
+            inputStream?.close()
+
+            // Dapatkan nama file yang valid
+            var fileName = "document"
+            context.contentResolver.query(fileUri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    // Find the display name column index
+                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex >= 0) {
+                        fileName = cursor.getString(nameIndex)
+                    }
+                }
+            }
+
+            val fileRef = storageRef.child("competitions/files/${UUID.randomUUID()}_$fileName")
+            val uploadTask = fileRef.putFile(fileUri)
+
+            uploadTask.addOnFailureListener { exception ->
+                viewModel.setError("Gagal mengupload file: ${exception.message}")
+                onComplete()
+            }.continueWithTask { task ->
                 if (!task.isSuccessful) {
                     task.exception?.let { throw it }
                 }
                 fileRef.downloadUrl
-            }
-            .addOnCompleteListener { task ->
+            }.addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     fileUrl = task.result.toString()
                     fileUploaded = true
                     checkAndAddCompetition()
                 } else {
+                    viewModel.setError("Gagal mendapatkan URL file: ${task.exception?.message}")
                     onComplete()
-                    // Handle error through ViewModel
-                    viewModel.setError("Gagal mengupload file: ${task.exception?.message}")
                 }
             }
+        } catch (e: Exception) {
+            viewModel.setError("Error akses dokumen: ${e.message}")
+            onComplete()
+        }
     } else {
         fileUploaded = true
     }
