@@ -4,6 +4,7 @@ import android.app.DatePickerDialog
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -91,6 +92,7 @@ import com.example.teamup.presentation.components.BottomNavigationBar
 import com.example.teamup.route.NavigationItem
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
+import com.google.firebase.storage.ktx.storageMetadata
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
