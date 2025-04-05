@@ -36,21 +36,6 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
             composable(Routes.Competition.routes) {
                 CompetitionScreen(navController = navController)
             }
-//            composable(Routes.AddCompetition.routes) {
-//                AddCompetitionScreen(
-//                    navController = navController,
-//                    viewModel = competitionViewModel
-//                )
-//            }
-            composable(Routes.AddCompetition.routes) {
-                AddCompetitionForm(
-                    viewModel = competitionViewModel,
-                    onSuccess = { navController.popBackStack() } // Navigasi balik setelah sukses
-                )
-            }
-            composable(Routes.CompetitionList.routes) {
-                CompetitionListScreen(navController)
-            }
             composable(Routes.Wishlist.routes) {
                 WishlistScreen(navController = navController, paddingValues = paddingValues)
             }
@@ -64,6 +49,21 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
                 val courseId = backStackEntry.arguments?.getString("courseId")?.toInt() ?: 0
                 DetailScreen(navController, courseId)
             }
+//            composable(Routes.AddCompetition.routes) {
+//                AddCompetitionScreen(
+//                    navController = navController,
+//                    viewModel = competitionViewModel
+//                )
+//            }
+//            composable(Routes.AddCompetition.routes) {
+//                AddCompetitionForm(
+//                    viewModel = competitionViewModel,
+//                    onSuccess = { navController.popBackStack() } // Navigasi balik setelah sukses
+//                )
+//            }
+//            composable(Routes.CompetitionList.routes) {
+//                CompetitionListScreen(navController)
+//            }
 //            composable(
 //                Routes.Detail.routes,
 //                arguments = listOf(navArgument("id") { type = NavType.IntType })
