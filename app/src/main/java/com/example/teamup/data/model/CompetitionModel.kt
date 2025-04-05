@@ -9,8 +9,8 @@ data class CompetitionModel(
     val cabangLomba: String = "",
     val tanggalPelaksanaan: String = "",
     val deskripsiLomba: String = "",
+    val jumlahTim: Int = 0, // Jumlah tim yang ikut lomba
     val imageUrl: String = "", // URL untuk gambar pendukung
     val fileUrl: String = "", // URL untuk file pendukung
-    val jumlahTim: Int = 0, // Jumlah tim yang ikut lomba
     val createdAt: Timestamp = Timestamp.now()
 )
