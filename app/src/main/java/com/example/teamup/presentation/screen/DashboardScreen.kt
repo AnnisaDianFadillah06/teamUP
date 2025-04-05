@@ -1,20 +1,16 @@
 package com.example.teamup.presentation.screen
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
-import com.example.teamup.presentation.components.*
-import com.example.teamup.route.Routes
-import com.example.teamup.ui.components.*
 import com.example.teamup.data.viewmodels.CompetitionViewModel
+import com.example.teamup.presentation.components.BottomNavigationBar
+import com.example.teamup.route.Routes
 
 @Composable
 fun DashboardScreen(navController: NavHostController = rememberNavController(),  competitionViewModel: CompetitionViewModel) {
@@ -40,6 +36,12 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
             composable(Routes.Competition.routes) {
                 CompetitionScreen(navController = navController)
             }
+//            composable(Routes.AddCompetition.routes) {
+//                AddCompetitionScreen(
+//                    navController = navController,
+//                    viewModel = competitionViewModel
+//                )
+//            }
             composable(Routes.AddCompetition.routes) {
                 AddCompetitionForm(
                     viewModel = competitionViewModel,
