@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
@@ -32,6 +33,9 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -52,8 +56,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.teamup.R
+import com.example.teamup.common.theme.DodgerBlue
+import com.example.teamup.common.theme.DodgerBlueShade
+import com.example.teamup.common.theme.IceBlue
+import com.example.teamup.common.theme.White
 import com.example.teamup.data.model.CompetitionModel
 import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
@@ -66,18 +76,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import java.util.UUID
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.ui.unit.dp
-import androidx.navigation.NavOptionsBuilder
-import com.example.teamup.common.theme.*
-import androidx.navigation.NavController
-import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -237,7 +235,7 @@ fun CompetitionListContent(
                 verticalArrangement = Arrangement.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.ic_baseline_cancel_24),
+                    painter = painterResource(id = R.drawable.task2),
                     contentDescription = "No Competition",
                     modifier = Modifier.size(200.dp)
                 )
