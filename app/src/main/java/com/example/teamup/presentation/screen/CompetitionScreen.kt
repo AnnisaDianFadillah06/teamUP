@@ -2,6 +2,7 @@ package com.example.teamup.presentation.screen
 
 import android.app.DatePickerDialog
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -58,17 +59,30 @@ import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
 import com.example.teamup.di.Injection
 import com.example.teamup.presentation.components.BottomNavigationBar
+import com.example.teamup.route.NavigationItem
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import java.util.UUID
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavOptionsBuilder
+import com.example.teamup.common.theme.*
+import androidx.navigation.NavController
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompetitionScreen(
-    navController: NavHostController, // Make it required
+    navController: NavHostController,
     viewModel: CompetitionViewModel = viewModel(
         factory = CompetitionViewModelFactory(
             Injection.provideCompetitionRepository()
@@ -77,6 +91,11 @@ fun CompetitionScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddForm by remember { mutableStateOf(false) }
+
+    // Handle hardware back button
+    BackHandler(enabled = showAddForm) {
+        showAddForm = false
+    }
 
     Scaffold(
         topBar = {
@@ -100,14 +119,25 @@ fun CompetitionScreen(
             )
         },
         floatingActionButton = {
-            // Always show the FAB
-            FloatingActionButton(onClick = { showAddForm = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Competition")
+            // Only show FAB when not in add form mode
+            if (!showAddForm) {
+                FloatingActionButton(onClick = { showAddForm = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Competition")
+                }
             }
         },
         bottomBar = {
-            // Always show the BottomNavigationBar
-            BottomNavigationBar(navController = navController)
+            // Custom Bottom Navigation that handles Competition tab click specially when in form view
+            if (showAddForm) {
+                // Custom BottomNavigationBar for when we're in the form
+                CustomBottomNavigationBar(
+                    navController = navController,
+                    onCompetitionClick = { showAddForm = false }
+                )
+            } else {
+                // Regular BottomNavigationBar for the main screen
+                BottomNavigationBar(navController = navController)
+            }
         }
     ) { paddingValues ->
         if (showAddForm) {
@@ -125,6 +155,65 @@ fun CompetitionScreen(
         }
     }
 }
+
+@Composable
+fun CustomBottomNavigationBar(
+    navController: NavController,
+    onCompetitionClick: () -> Unit
+) {
+    val items = listOf(
+        NavigationItem.Home,
+        NavigationItem.Sail,
+        NavigationItem.Wishlist,
+        NavigationItem.Competition,
+        NavigationItem.Profile,
+    )
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    NavigationBar(containerColor = White, contentColor = DodgerBlue) {
+        items.forEach { item ->
+            NavigationBarItem(
+                selected = currentRoute == item.route,
+                onClick = {
+                    if (item == NavigationItem.Competition) {
+                        // When in form and competition is clicked, just go back to competition screen
+                        onCompetitionClick()
+                    } else {
+                        // For other tabs, navigate normally
+                        navController.navigate(item.route) {
+                            navController.graph.startDestinationRoute?.let { route ->
+                                popUpTo(route) {
+                                    saveState = true
+                                }
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                },
+                icon = {
+                    Icon(
+                        modifier = Modifier
+                            .width(18.dp)
+                            .height(20.dp),
+                        painter = painterResource(id = item.icon),
+                        contentDescription = item.title
+                    )
+                },
+                label = null,
+                alwaysShowLabel = false,
+                colors = NavigationBarItemDefaults.colors(
+                    indicatorColor = DodgerBlueShade,
+                    selectedIconColor = White,
+                    unselectedIconColor = IceBlue
+                )
+            )
+        }
+    }
+}
+
+// Rest of the code remains the same
 
 @Composable
 fun CompetitionListContent(
