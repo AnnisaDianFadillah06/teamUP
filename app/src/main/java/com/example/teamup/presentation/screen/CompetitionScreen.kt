@@ -25,14 +25,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FilePresent
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,19 +50,17 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,20 +91,10 @@ import com.example.teamup.presentation.components.BottomNavigationBar
 import com.example.teamup.route.NavigationItem
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import java.util.UUID
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.CircularProgressIndicator
-
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -439,6 +430,9 @@ fun AddCompetitionForm(
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
+    // State for loading progress
+    var uploadProgress by remember { mutableFloatStateOf(0f) }
+
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
 
@@ -454,27 +448,50 @@ fun AddCompetitionForm(
         calendar.get(Calendar.DAY_OF_MONTH)
     )
 
+    // Create image picker launcher
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        selectedImageUri = uri
+        uri?.let {
+            try {
+                // Verify we can read the image
+                context.contentResolver.openInputStream(it)?.use { stream ->
+                    // Successfully opened the stream, which means we have permission
+                    selectedImageUri = it
+                }
+            } catch (e: Exception) {
+                // Handle permission error
+                errorMessage = "Tidak dapat mengakses gambar: ${e.message}"
+                showErrorDialog = true
+            }
+        }
     }
 
+    // Create file picker launcher
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        selectedFileUri = uri
         uri?.let {
-            // Extract file name from URI
-            val contentResolver = context.contentResolver
-            contentResolver.query(it, null, null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    // Find the display name column index
-                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    if (nameIndex >= 0) {
-                        selectedFileName = cursor.getString(nameIndex)
+            try {
+                // Verify we can read the file
+                context.contentResolver.openInputStream(it)?.use { stream ->
+                    // Successfully opened the stream, which means we have permission
+                    selectedFileUri = it
+
+                    // Extract file name
+                    context.contentResolver.query(it, null, null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                            if (nameIndex >= 0) {
+                                selectedFileName = cursor.getString(nameIndex)
+                            }
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                // Handle permission error
+                errorMessage = "Tidak dapat mengakses file: ${e.message}"
+                showErrorDialog = true
             }
         }
     }
@@ -622,15 +639,35 @@ fun AddCompetitionForm(
                         contentAlignment = Alignment.Center
                     ) {
                         if (selectedImageUri != null) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(selectedImageUri)
-                                    .error(R.drawable.ic_baseline_cancel_24)
-                                    .build(),
-                                contentDescription = "Selected Image",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
+                            // The image preview with an option to change
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(selectedImageUri)
+                                        .error(R.drawable.ic_baseline_cancel_24)
+                                        .build(),
+                                    contentDescription = "Selected Image",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+
+                                // Add a button to remove/change the image
+                                IconButton(
+                                    onClick = { selectedImageUri = null },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .background(
+                                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                                            shape = CircleShape
+                                        )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Remove Image",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
                         } else {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -678,26 +715,41 @@ fun AddCompetitionForm(
                         contentAlignment = Alignment.Center
                     ) {
                         if (selectedFileUri != null) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.FilePresent,
-                                    contentDescription = "File",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = selectedFileName.ifEmpty { "File terpilih" },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f)
-                                )
+                            // File selected layout with remove option
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.FilePresent,
+                                        contentDescription = "File",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = selectedFileName.ifEmpty { "File terpilih" },
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+
+                                    // Add a button to remove the file
+                                    IconButton(onClick = {
+                                        selectedFileUri = null
+                                        selectedFileName = ""
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Remove File",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
                             }
                         } else {
                             Column(
@@ -726,6 +778,7 @@ fun AddCompetitionForm(
                 Button(
                     onClick = {
                         isUploading = true
+                        uploadProgress = 0f
                         uploadCompetitionWithMedia(
                             context = context,
                             imageUri = selectedImageUri,
@@ -749,8 +802,16 @@ fun AddCompetitionForm(
 
             item {
                 if (uiState.isLoading || isUploading) {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Mengupload...",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                     }
                 }
             }
@@ -775,11 +836,19 @@ private fun uploadCompetitionWithMedia(
     var fileUrl = ""
     var imageUploaded = false
     var fileUploaded = false
+    var uploadErrors = 0
 
     // Function to check if both uploads are complete and add competition
     fun checkAndAddCompetition() {
+        // If there are upload errors, don't add the competition
+        if (uploadErrors > 0) {
+            onComplete()
+            return
+        }
+
         val shouldAddWithImage = imageUri != null
         val shouldAddWithFile = fileUri != null
+
         // If both required files are uploaded or not needed, add the competition
         if ((shouldAddWithImage && imageUploaded || !shouldAddWithImage) &&
             (shouldAddWithFile && fileUploaded || !shouldAddWithFile)) {
@@ -796,90 +865,6 @@ private fun uploadCompetitionWithMedia(
         }
     }
 
-    // Upload image if available
-    if (imageUri != null) {
-        try {
-            // Coba membaca file untuk memastikan aksesnya benar
-            val inputStream = context.contentResolver.openInputStream(imageUri)
-            inputStream?.close()
-
-            val imageRef = storageRef.child("competitions/images/${UUID.randomUUID()}.jpg")
-            val uploadTask = imageRef.putFile(imageUri)
-
-            uploadTask.addOnFailureListener { exception ->
-                viewModel.setError("Gagal mengupload gambar: ${exception.message}")
-                onComplete()
-            }.continueWithTask { task ->
-                if (!task.isSuccessful) {
-                    task.exception?.let { throw it }
-                }
-                imageRef.downloadUrl
-            }.addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    imageUrl = task.result.toString()
-                    imageUploaded = true
-                    checkAndAddCompetition()
-                } else {
-                    viewModel.setError("Gagal mendapatkan URL gambar: ${task.exception?.message}")
-                    onComplete()
-                }
-            }
-        } catch (e: Exception) {
-            viewModel.setError("Error akses file gambar: ${e.message}")
-            onComplete()
-        }
-    } else {
-        imageUploaded = true
-    }
-
-    // Upload file if available
-    if (fileUri != null) {
-        try {
-            // Coba membaca file untuk memastikan aksesnya benar
-            val inputStream = context.contentResolver.openInputStream(fileUri)
-            inputStream?.close()
-
-            // Dapatkan nama file yang valid
-            var fileName = "document"
-            context.contentResolver.query(fileUri, null, null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    // Find the display name column index
-                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    if (nameIndex >= 0) {
-                        fileName = cursor.getString(nameIndex)
-                    }
-                }
-            }
-
-            val fileRef = storageRef.child("competitions/files/${UUID.randomUUID()}_$fileName")
-            val uploadTask = fileRef.putFile(fileUri)
-
-            uploadTask.addOnFailureListener { exception ->
-                viewModel.setError("Gagal mengupload file: ${exception.message}")
-                onComplete()
-            }.continueWithTask { task ->
-                if (!task.isSuccessful) {
-                    task.exception?.let { throw it }
-                }
-                fileRef.downloadUrl
-            }.addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    fileUrl = task.result.toString()
-                    fileUploaded = true
-                    checkAndAddCompetition()
-                } else {
-                    viewModel.setError("Gagal mendapatkan URL file: ${task.exception?.message}")
-                    onComplete()
-                }
-            }
-        } catch (e: Exception) {
-            viewModel.setError("Error akses dokumen: ${e.message}")
-            onComplete()
-        }
-    } else {
-        fileUploaded = true
-    }
-
     // If no files to upload, add competition directly
     if (imageUri == null && fileUri == null) {
         viewModel.addCompetition(
@@ -890,5 +875,107 @@ private fun uploadCompetitionWithMedia(
             jumlahTim = jumlahTim
         )
         onComplete()
+        return
+    }
+
+    // Upload image if available
+    if (imageUri != null) {
+        try {
+            // Get content resolver to verify access
+            val contentResolver = context.contentResolver
+            val mimeType = contentResolver.getType(imageUri)
+
+            if (mimeType?.startsWith("image/") == true) {
+                // Create a temporary file to handle potential content URI issues
+                val inputStream = contentResolver.openInputStream(imageUri)
+                inputStream?.use { input ->
+                    val imageRef = storageRef.child("competitions/images/${UUID.randomUUID()}.jpg")
+
+                    // Start the upload task
+                    imageRef.putStream(input)
+                        .addOnFailureListener { exception ->
+                            uploadErrors++
+                            viewModel.setError("Gagal mengupload gambar: ${exception.message}")
+                            onComplete()
+                        }
+                        .addOnSuccessListener {
+                            // Get download URL after successful upload
+                            imageRef.downloadUrl.addOnSuccessListener { uri ->
+                                imageUrl = uri.toString()
+                                imageUploaded = true
+                                checkAndAddCompetition()
+                            }.addOnFailureListener { exception ->
+                                uploadErrors++
+                                viewModel.setError("Gagal mendapatkan URL gambar: ${exception.message}")
+                                onComplete()
+                            }
+                        }
+                }
+            } else {
+                uploadErrors++
+                viewModel.setError("Format file gambar tidak didukung")
+                onComplete()
+            }
+        } catch (e: Exception) {
+            uploadErrors++
+            viewModel.setError("Error akses file gambar: ${e.message}")
+            onComplete()
+        }
+    } else {
+        imageUploaded = true
+    }
+
+    // Upload file if available
+    if (fileUri != null) {
+        try {
+            // Get content resolver
+            val contentResolver = context.contentResolver
+
+            // Get file name and extension
+            var fileName = "document"
+            contentResolver.query(fileUri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex >= 0) {
+                        fileName = cursor.getString(nameIndex)
+                    }
+                }
+            }
+
+            // Handle the upload with input stream
+            contentResolver.openInputStream(fileUri)?.use { inputStream ->
+                val fileRef = storageRef.child("competitions/files/${UUID.randomUUID()}_$fileName")
+
+                // Start upload task
+                fileRef.putStream(inputStream)
+                    .addOnFailureListener { exception ->
+                        uploadErrors++
+                        viewModel.setError("Gagal mengupload file: ${exception.message}")
+                        onComplete()
+                    }
+                    .addOnSuccessListener {
+                        // Get download URL after successful upload
+                        fileRef.downloadUrl.addOnSuccessListener { uri ->
+                            fileUrl = uri.toString()
+                            fileUploaded = true
+                            checkAndAddCompetition()
+                        }.addOnFailureListener { exception ->
+                            uploadErrors++
+                            viewModel.setError("Gagal mendapatkan URL file: ${exception.message}")
+                            onComplete()
+                        }
+                    }
+            } ?: run {
+                uploadErrors++
+                viewModel.setError("Tidak dapat mengakses file")
+                onComplete()
+            }
+        } catch (e: Exception) {
+            uploadErrors++
+            viewModel.setError("Error akses dokumen: ${e.message}")
+            onComplete()
+        }
+    } else {
+        fileUploaded = true
     }
 }
