@@ -1,8 +1,14 @@
 package com.example.teamup.di
 
-import com.example.teamup.data.repositories.*
+import com.example.teamup.data.repositories.CartRepository
+import com.example.teamup.data.repositories.CompetitionRepository
+import com.example.teamup.data.repositories.ContentRepository
+import com.example.teamup.data.repositories.CoursesRepository
+import com.example.teamup.data.repositories.DetailRepository
+import com.example.teamup.data.repositories.MyCoursesRepository
+import com.example.teamup.data.repositories.WishlistRepository
 import com.example.teamup.data.sources.remote.FirebaseCompetitionDataSource
-//import com.example.teamup.data.sources.remote.FirebaseTeamDataSource
+
 
 object Injection {
     fun provideCourseRepository(): CoursesRepository {
@@ -38,11 +44,11 @@ object Injection {
 //    }
 
     // Competition related injections
-    fun provideFirebaseCompetitionDataSource(): FirebaseCompetitionDataSource {
+    private fun provideFirebaseCompetitionDataSource(): FirebaseCompetitionDataSource {
         return FirebaseCompetitionDataSource()
     }
 
     fun provideCompetitionRepository(): CompetitionRepository {
-        return CompetitionRepository.getInstance(provideFirebaseCompetitionDataSource())
+        return CompetitionRepository.getInstance()
     }
 }

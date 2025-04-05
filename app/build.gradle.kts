@@ -68,7 +68,7 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("io.coil-kt:coil-compose:2.4.0")
     implementation(libs.androidx.navigation.compose)
     implementation ("com.google.accompanist:accompanist-flowlayout:0.27.1")
     implementation ("androidx.compose.material:material-icons-extended:1.3.1")
@@ -81,5 +81,5 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.12.0"))
     implementation("com.google.firebase:firebase-firestore")
     implementation ("com.google.firebase:firebase-storage-ktx:20.2.1")
-    implementation("io.coil-kt:coil-compose:2.2.2")
+    implementation ("com.google.android.material:material:1.9.0") // atau versi terbaru
 }

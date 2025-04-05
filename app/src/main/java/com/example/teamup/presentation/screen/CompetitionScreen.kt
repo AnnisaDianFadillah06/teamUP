@@ -6,6 +6,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,16 +23,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.FilePresent
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +57,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -59,6 +68,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import com.example.teamup.R
 import com.example.teamup.common.theme.DodgerBlue
 import com.example.teamup.common.theme.DodgerBlueShade
@@ -211,8 +222,6 @@ fun CustomBottomNavigationBar(
     }
 }
 
-// Rest of the code remains the same
-
 @Composable
 fun CompetitionListContent(
     uiState: CompetitionViewModel.CompetitionUiState,
@@ -263,8 +272,7 @@ fun CompetitionListContent(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(uiState.competitions) { competition ->
-                    // Use fully qualified name to avoid conflict with CompetitionListScreen.kt
-                    com.example.teamup.presentation.screen.CompetitionCardScreen(competition = competition)
+                    CompetitionCardScreen(competition = competition)
                 }
             }
         }
@@ -352,11 +360,42 @@ fun CompetitionCardScreen(competition: CompetitionModel) {
             // Display image if available
             if (competition.imageUrl.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                // You can use an Image composable with Coil or Glide here
-                Text(
-                    text = "Ada gambar tersedia",
-                    style = MaterialTheme.typography.bodySmall
+                Image(
+                    painter = rememberAsyncImagePainter(
+                        ImageRequest.Builder(LocalContext.current)
+                            .data(data = competition.imageUrl)
+                            .error(R.drawable.ic_baseline_cancel_24)
+                            .build()
+                    ),
+                    contentDescription = "Competition Image",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
                 )
+            }
+
+            // Display file info if available
+            if (competition.fileUrl.isNotBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FilePresent,
+                        contentDescription = "File Attached",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "File terlampir",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         }
     }
@@ -375,6 +414,9 @@ fun AddCompetitionForm(
     var deskripsiLomba by remember { mutableStateOf("") }
     var jumlahTim by remember { mutableStateOf("0") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedFileName by remember { mutableStateOf("") }
+    var isUploading by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
@@ -397,6 +439,24 @@ fun AddCompetitionForm(
         selectedImageUri = uri
     }
 
+    val filePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        selectedFileUri = uri
+        uri?.let {
+            // Extract file name from URI
+            val contentResolver = context.contentResolver
+            contentResolver.query(it, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val displayNameIndex = cursor.getColumnIndex("_display_name")
+                    if (displayNameIndex != -1) {
+                        selectedFileName = cursor.getString(displayNameIndex)
+                    }
+                }
+            }
+        }
+    }
+
     // Effect untuk navigasi setelah sukses
     LaunchedEffect(key1 = uiState.isSuccess) {
         if (uiState.isSuccess) {
@@ -405,161 +465,354 @@ fun AddCompetitionForm(
         }
     }
 
-    Column(
+    LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        OutlinedTextField(
-            value = namaLomba,
-            onValueChange = { namaLomba = it },
-            label = { Text("Nama Lomba") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        OutlinedTextField(
-            value = cabangLomba,
-            onValueChange = { cabangLomba = it },
-            label = { Text("Cabang Lomba") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        // Date picker field
-        OutlinedTextField(
-            value = tanggalPelaksanaan,
-            onValueChange = { tanggalPelaksanaan = it },
-            label = { Text("Tanggal Pelaksanaan") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            readOnly = true,
-            trailingIcon = {
-                IconButton(onClick = { datePickerDialog.show() }) {
-                    Icon(
-                        imageVector = Icons.Default.DateRange,
-                        contentDescription = "Select Date"
-                    )
-                }
-            }
-        )
-
-        OutlinedTextField(
-            value = deskripsiLomba,
-            onValueChange = { deskripsiLomba = it },
-            label = { Text("Deskripsi Lomba") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 3,
-            maxLines = 5
-        )
-
-        OutlinedTextField(
-            value = jumlahTim,
-            onValueChange = {
-                // Only allow numeric input
-                if (it.isEmpty() || it.all { char -> char.isDigit() }) {
-                    jumlahTim = it
-                }
-            },
-            label = { Text("Jumlah Tim") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-
-        // Image picker
-        Button(
-            onClick = { imagePicker.launch("image/*") },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(if (selectedImageUri != null) "Ganti Gambar" else "Pilih Gambar")
-        }
-
-        selectedImageUri?.let { uri ->
-            Text(
-                text = "Gambar dipilih: ${uri.lastPathSegment ?: "Unknown"}",
-                style = MaterialTheme.typography.bodySmall
+        item {
+            OutlinedTextField(
+                value = namaLomba,
+                onValueChange = { namaLomba = it },
+                label = { Text("Nama Lomba") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
             )
         }
 
-        Button(
-            onClick = {
-                if (selectedImageUri != null) {
-                    // Upload image first then add competition
-                    uploadImageAndAddCompetition(
-                        selectedImageUri!!,
-                        namaLomba,
-                        cabangLomba,
-                        tanggalPelaksanaan,
-                        deskripsiLomba,
-                        jumlahTim.toIntOrNull() ?: 0,
-                        viewModel
-                    )
-                } else {
-                    // Add competition without image
-                    viewModel.addCompetition(
+        item {
+            OutlinedTextField(
+                value = cabangLomba,
+                onValueChange = { cabangLomba = it },
+                label = { Text("Cabang Lomba") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+        }
+
+        item {
+            // Date picker field
+            OutlinedTextField(
+                value = tanggalPelaksanaan,
+                onValueChange = { tanggalPelaksanaan = it },
+                label = { Text("Tanggal Pelaksanaan") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                readOnly = true,
+                trailingIcon = {
+                    IconButton(onClick = { datePickerDialog.show() }) {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = "Select Date"
+                        )
+                    }
+                }
+            )
+        }
+
+        item {
+            OutlinedTextField(
+                value = deskripsiLomba,
+                onValueChange = { deskripsiLomba = it },
+                label = { Text("Deskripsi Lomba") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+                maxLines = 5
+            )
+        }
+
+        item {
+            OutlinedTextField(
+                value = jumlahTim,
+                onValueChange = {
+                    // Only allow numeric input
+                    if (it.isEmpty() || it.all { char -> char.isDigit() }) {
+                        jumlahTim = it
+                    }
+                },
+                label = { Text("Jumlah Tim") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+        }
+
+        item {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            Text(
+                text = "Media dan Dokumen",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+
+        item {
+            // Image upload section
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Foto Lomba",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outline,
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { imagePicker.launch("image/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (selectedImageUri != null) {
+                        Image(
+                            painter = rememberAsyncImagePainter(
+                                ImageRequest.Builder(context)
+                                    .data(data = selectedImageUri)
+                                    .error(R.drawable.ic_baseline_cancel_24)
+                                    .build()
+                            ),
+                            contentDescription = "Selected Image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Image,
+                                contentDescription = "Upload Image",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Klik untuk upload gambar",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            // File upload section
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Dokumen Lomba",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(80.dp)
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outline,
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { filePicker.launch("application/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (selectedFileUri != null) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FilePresent,
+                                contentDescription = "File",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = selectedFileName.ifEmpty { "File terpilih" },
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    } else {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FilePresent,
+                                contentDescription = "Upload File",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Klik untuk upload dokumen",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    isUploading = true
+                    uploadCompetitionWithMedia(
+                        imageUri = selectedImageUri,
+                        fileUri = selectedFileUri,
                         namaLomba = namaLomba,
                         cabangLomba = cabangLomba,
                         tanggalPelaksanaan = tanggalPelaksanaan,
                         deskripsiLomba = deskripsiLomba,
-                        jumlahTim = jumlahTim.toIntOrNull() ?: 0
+                        jumlahTim = jumlahTim.toIntOrNull() ?: 0,
+                        viewModel = viewModel,
+                        onComplete = { isUploading = false }
                     )
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = namaLomba.isNotBlank() && cabangLomba.isNotBlank() &&
+                        tanggalPelaksanaan.isNotBlank() && !uiState.isLoading && !isUploading
+            ) {
+                Text("Buat Kompetisi")
+            }
+        }
+
+        item {
+            if (uiState.isLoading || isUploading) {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = namaLomba.isNotBlank() && cabangLomba.isNotBlank() &&
-                    tanggalPelaksanaan.isNotBlank() && !uiState.isLoading
-        ) {
-            Text("Buat Kompetisi")
-        }
+            }
 
-        if (uiState.isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-        }
-
-        uiState.errorMessage?.let { error ->
-            Text(
-                text = error,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 8.dp)
-            )
+            uiState.errorMessage?.let { error ->
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
         }
     }
 }
 
-private fun uploadImageAndAddCompetition(
-    imageUri: Uri,
+private fun uploadCompetitionWithMedia(
+    imageUri: Uri?,
+    fileUri: Uri?,
     namaLomba: String,
     cabangLomba: String,
     tanggalPelaksanaan: String,
     deskripsiLomba: String,
     jumlahTim: Int,
-    viewModel: CompetitionViewModel
+    viewModel: CompetitionViewModel,
+    onComplete: () -> Unit
 ) {
     val storageRef = Firebase.storage.reference
-    val imageRef = storageRef.child("competitions/${UUID.randomUUID()}.jpg")
+    var imageUrl = ""
+    var fileUrl = ""
+    var imageUploaded = false
+    var fileUploaded = false
 
-    imageRef.putFile(imageUri)
-        .continueWithTask { task ->
-            if (!task.isSuccessful) {
-                task.exception?.let { throw it }
-            }
-            imageRef.downloadUrl
+    // Function to check if both uploads are complete and add competition
+    fun checkAndAddCompetition() {
+        val shouldAddWithImage = imageUri != null
+        val shouldAddWithFile = fileUri != null
+
+        // If both required files are uploaded or not needed, add the competition
+        if ((shouldAddWithImage && imageUploaded || !shouldAddWithImage) &&
+            (shouldAddWithFile && fileUploaded || !shouldAddWithFile)) {
+            viewModel.addCompetition(
+                namaLomba = namaLomba,
+                cabangLomba = cabangLomba,
+                tanggalPelaksanaan = tanggalPelaksanaan,
+                deskripsiLomba = deskripsiLomba,
+                imageUrl = imageUrl,
+                fileUrl = fileUrl,
+                jumlahTim = jumlahTim
+            )
+            onComplete()
         }
-        .addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                val downloadUrl = task.result.toString()
-                viewModel.addCompetition(
-                    namaLomba = namaLomba,
-                    cabangLomba = cabangLomba,
-                    tanggalPelaksanaan = tanggalPelaksanaan,
-                    deskripsiLomba = deskripsiLomba,
-                    imageUrl = downloadUrl,
-                    jumlahTim = jumlahTim
-                )
+    }
+
+    // Upload image if available
+    if (imageUri != null) {
+        val imageRef = storageRef.child("competitions/images/${UUID.randomUUID()}.jpg")
+        imageRef.putFile(imageUri)
+            .continueWithTask { task ->
+                if (!task.isSuccessful) {
+                    task.exception?.let { throw it }
+                }
+                imageRef.downloadUrl
             }
-        }
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    imageUrl = task.result.toString()
+                    imageUploaded = true
+                    checkAndAddCompetition()
+                } else {
+                    onComplete()
+                    // Handle error through ViewModel
+                    viewModel.setError("Gagal mengupload gambar: ${task.exception?.message}")
+                }
+            }
+    } else {
+        imageUploaded = true
+    }
+
+    // Upload file if available
+    if (fileUri != null) {
+        val fileRef = storageRef.child("competitions/files/${UUID.randomUUID()}_${fileUri.lastPathSegment}")
+        fileRef.putFile(fileUri)
+            .continueWithTask { task ->
+                if (!task.isSuccessful) {
+                    task.exception?.let { throw it }
+                }
+                fileRef.downloadUrl
+            }
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    fileUrl = task.result.toString()
+                    fileUploaded = true
+                    checkAndAddCompetition()
+                } else {
+                    onComplete()
+                    // Handle error through ViewModel
+                    viewModel.setError("Gagal mengupload file: ${task.exception?.message}")
+                }
+            }
+    } else {
+        fileUploaded = true
+    }
+
+    // If no files to upload, add competition directly
+    if (imageUri == null && fileUri == null) {
+        viewModel.addCompetition(
+            namaLomba = namaLomba,
+            cabangLomba = cabangLomba,
+            tanggalPelaksanaan = tanggalPelaksanaan,
+            deskripsiLomba = deskripsiLomba,
+            jumlahTim = jumlahTim
+        )
+        onComplete()
+    }
 }
