@@ -20,6 +20,6 @@ sealed class Routes(val routes: String) {
     }
 
     // Tambahkan rute untuk kompetisi
-    data object AddCompetition : Routes("add_competition")
-    data object CompetitionList : Routes("competition_list")
+//    data object AddCompetition : Routes("add_competition")
+//    data object CompetitionList : Routes("competition_list")
 }
