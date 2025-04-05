@@ -112,6 +112,13 @@ class CompetitionViewModel(
         _snackbarMessage.value = null
     }
 
+    // Tambahkan fungsi ini di CompetitionViewModel.kt
+    fun clearError() {
+        _uiState.update { currentState ->
+            currentState.copy(errorMessage = null)
+        }
+    }
+
     data class CompetitionUiState(
         val competitions: List<CompetitionModel> = emptyList(),
         val isLoading: Boolean = false,
