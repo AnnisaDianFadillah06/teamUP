@@ -1,9 +1,9 @@
 package com.example.teamup.presentation.screen
 
-import androidx.compose.foundation.layout.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -11,9 +11,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.teamup.presentation.components.*
+import com.example.teamup.presentation.components.BottomNavigationBar
 import com.example.teamup.route.Routes
-import com.example.teamup.ui.components.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,7 +37,7 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
                 ProfileScreen(navController = navController)
             }
             composable(Routes.Competition.routes) {
-                ProfileScreen(navController = navController)
+                WishlistScreen(navController = navController, paddingValues = paddingValues)
             }
             composable(Routes.Wishlist.routes) {
                 WishlistScreen(navController = navController, paddingValues = paddingValues)
