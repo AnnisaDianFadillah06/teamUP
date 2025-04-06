@@ -12,8 +12,10 @@ import androidx.compose.material3.Surface
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.teamup.common.theme.ESailTheme
 import com.example.teamup.presentation.StartSail
+import androidx.fragment.app.FragmentActivity // Import FragmentActivity
 
-class MainActivity : ComponentActivity() {
+// Change to extend FragmentActivity instead of ComponentActivity
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         installSplashScreen()

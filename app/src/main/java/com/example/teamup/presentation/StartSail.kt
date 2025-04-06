@@ -11,7 +11,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.teamup.presentation.screen.*
+import com.example.teamup.presentation.screen.AddTeamScreen
+import com.example.teamup.presentation.screen.DashboardScreen
+import com.example.teamup.presentation.screen.FingerprintLoginScreen
+import com.example.teamup.presentation.screen.LoginScreen
+import com.example.teamup.presentation.screen.LoginScreenV5
+import com.example.teamup.presentation.screen.RegisterScreen
+import com.example.teamup.presentation.screen.TeamListScreen
 import com.example.teamup.route.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,9 +40,9 @@ fun StartSail(
             composable(Routes.Register.routes) {
                 RegisterScreen(navController = navController)
             }
-//            composable(route = Routes.FingerprintLogin.routes) {
-//                FingerprintLoginScreen(navController = navController)
-//            }
+            composable(route = Routes.FingerprintLogin.routes) {
+                FingerprintLoginScreen(navController = navController)
+            }
             composable(route = Routes.LoginV5.routes) {
                 LoginScreenV5(navController = navController)
             }

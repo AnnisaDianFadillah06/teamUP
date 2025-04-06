@@ -32,7 +32,6 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -42,7 +41,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -51,12 +49,11 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavController
 import com.example.teamup.R
 import com.example.teamup.common.theme.DodgerBlue
 import com.example.teamup.common.theme.SoftGray2
+import com.example.teamup.common.utils.BiometricAuthUtil
 import com.example.teamup.route.Routes
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -69,6 +66,10 @@ fun LoginScreenV5(navController: NavController) {
     val auth = FirebaseAuth.getInstance()
     val db = FirebaseFirestore.getInstance()
     val sharedPrefs = context.getSharedPreferences("teamup_prefs", Context.MODE_PRIVATE)
+
+    // Check if biometric login is available using the utility class
+    val isBiometricAvailable = remember { BiometricAuthUtil.isBiometricAvailable(context) }
+    val hasSavedCredentials = remember { BiometricAuthUtil.hasSavedCredentials(context) }
 
     // Loading state
     var isLoading by remember { mutableStateOf(false) }
@@ -86,9 +87,6 @@ fun LoginScreenV5(navController: NavController) {
     // State untuk menyimpan email/phone dan password
     var emailOrPhone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-
-    // State untuk dialog fingerprint
-    var showFingerprintDialog by remember { mutableStateOf(false) }
 
     // Fungsi untuk proses login dengan Firebase
     fun performLogin() {
@@ -138,79 +136,20 @@ fun LoginScreenV5(navController: NavController) {
         }
     }
 
-    // Fungsi untuk membuka dialog fingerprint
-    fun openFingerprintDialog() {
-        if (fragmentActivity == null) {
-            Toast.makeText(context, "This feature requires a FragmentActivity context", Toast.LENGTH_SHORT).show()
+    // Function to handle fingerprint login - updated to use BiometricAuthUtil
+    fun handleFingerprintLogin() {
+        if (!isBiometricAvailable) {
+            Toast.makeText(context, "Biometric authentication is not available on this device", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // Check if we have stored credentials
-        val savedEmail = sharedPrefs.getString("saved_email", null)
-
-        if (savedEmail == null) {
+        if (!hasSavedCredentials) {
             Toast.makeText(context, "Please login with email and check 'Remember me' first", Toast.LENGTH_LONG).show()
             return
         }
 
-        showFingerprintDialog = true
-    }
-
-    // Observasi lifecycle untuk memastikan dialog tidak muncul saat aplikasi di background
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_PAUSE) {
-                showFingerprintDialog = false
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
-    // Dialog Fingerprint Authentication
-    if (showFingerprintDialog && fragmentActivity != null) {
-        val savedEmail = sharedPrefs.getString("saved_email", null)
-
-        if (savedEmail != null) {
-            FingerprintAuthDialog(
-                onAuthSuccess = {
-                    showFingerprintDialog = false
-                    Toast.makeText(context, "Authentication successful", Toast.LENGTH_SHORT).show()
-
-                    // Use saved email to login
-                    val savedPassword = sharedPrefs.getString("saved_password", "")
-                    if (savedPassword != null) {
-                        isLoading = true
-                        auth.signInWithEmailAndPassword(savedEmail, savedPassword)
-                            .addOnCompleteListener { task ->
-                                isLoading = false
-                                if (task.isSuccessful) {
-                                    navController.navigate(Routes.Dashboard.routes) {
-                                        popUpTo(Routes.Login.routes) {
-                                            inclusive = true
-                                        }
-                                    }
-                                } else {
-                                    Toast.makeText(context, "Firebase login failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                    }
-                },
-                onAuthFailed = {
-                    Toast.makeText(context, "Authentication failed", Toast.LENGTH_SHORT).show()
-                },
-                onAuthError = { errorMessage ->
-                    Toast.makeText(context, "Authentication error: $errorMessage", Toast.LENGTH_SHORT).show()
-                },
-                onDismiss = {
-                    showFingerprintDialog = false
-                }
-            )
-        }
+        // Use the enhanced BiometricAuthUtil for quick login
+        BiometricAuthUtil.launchQuickLogin(context, navController)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -446,16 +385,16 @@ fun LoginScreenV5(navController: NavController) {
                     )
                 }
 
-                // Fingerprint Button
+                // Fingerprint Button - Now using our enhanced utility function
                 IconButton(
-                    onClick = { openFingerprintDialog() },
+                    onClick = { handleFingerprintLogin() },
                     modifier = Modifier
                         .size(48.dp)
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.fingerprint),
                         contentDescription = "Login with Fingerprint",
-                        tint = Color.Unspecified,
+                        tint = if (isBiometricAvailable && hasSavedCredentials) Color.Unspecified else Color.Gray,
                         modifier = Modifier.size(24.dp)
                     )
                 }
