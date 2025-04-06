@@ -1,7 +1,5 @@
 package com.example.teamup.data.viewmodels
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -100,17 +98,17 @@ class CompetitionViewModel(
         }
     }
 
-    // Add this for Snackbar message handling
-    private val _snackbarMessage = MutableLiveData<String?>()
-    val snackbarMessage: LiveData<String?> = _snackbarMessage
-
-    fun showSnackbarMessage(message: String) {
-        _snackbarMessage.value = message
-    }
-
-    fun snackbarShown() {
-        _snackbarMessage.value = null
-    }
+//    // Add this for Snackbar message handling
+//    private val _snackbarMessage = MutableLiveData<String?>()
+//    val snackbarMessage: LiveData<String?> = _snackbarMessage
+//
+//    fun showSnackbarMessage(message: String) {
+//        _snackbarMessage.value = message
+//    }
+//
+//    fun snackbarShown() {
+//        _snackbarMessage.value = null
+//    }
 
     // Tambahkan fungsi ini di CompetitionViewModel.kt
     fun clearError() {

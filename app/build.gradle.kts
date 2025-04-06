@@ -82,4 +82,5 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
     implementation ("com.google.firebase:firebase-storage-ktx:20.3.0")
     implementation ("com.google.android.material:material:1.9.0") // atau versi terbaru
+    implementation ("androidx.compose.material3:material3:1.2.1") // atau versi terbaru
 }
