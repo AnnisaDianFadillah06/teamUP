@@ -1,5 +1,11 @@
 package com.example.teamup.presentation.screen
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,8 +13,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Camera
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,17 +27,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.teamup.R
 import com.example.teamup.common.theme.*
 import com.example.teamup.data.model.TeamMemberModel
-import com.example.teamup.route.Routes
 import kotlinx.coroutines.launch
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +56,7 @@ fun DetailTeamScreen(
     var showBottomSheet by remember { mutableStateOf(false) }
     val bottomSheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
 
     Scaffold(
         topBar = {
@@ -77,10 +84,10 @@ fun DetailTeamScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.padding(16.dp)
                 ) {
-                    // Team Avatar (clickable to open bottom sheet)
+
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
-                            .data(R.drawable.captain_icon)
+                            .data(imageUri ?: R.drawable.captain_icon)
                             .crossfade(true)
                             .build(),
                         contentDescription = "Team Avatar",
@@ -88,7 +95,9 @@ fun DetailTeamScreen(
                         modifier = Modifier
                             .size(80.dp)
                             .clip(CircleShape)
-                            .clickable { showBottomSheet = true }
+                            .clickable {
+                                showBottomSheet = true
+                            }
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -293,7 +302,10 @@ fun DetailTeamScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 BottomSheetOption(
-                    navController = navController
+                    onImageSelected = { selectedUri ->
+                        imageUri = selectedUri
+                    },
+                    dismissBottomSheet = { showBottomSheet = false }
                 )
             }
         }
@@ -353,66 +365,58 @@ fun TeamMemberItem(member: TeamMemberModel) {
 
 @Composable
 fun BottomSheetOption(
-    navController: NavController,
+    onImageSelected: (Uri) -> Unit, // ganti navigate dengan callback
+    dismissBottomSheet: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-    ) {
+    val context = LocalContext.current
+    val launcherCamera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+        bitmap?.let {
+            val uri = saveBitmapToCacheAndGetUri(context, it)
+            onImageSelected(uri)
+            dismissBottomSheet()
+        }
+    }
 
-        Spacer(modifier = Modifier.height(12.dp))
+    val launcherGallery = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            onImageSelected(it)
+            dismissBottomSheet()
+        }
+    }
 
+    Column(Modifier.fillMaxWidth().padding(16.dp)) {
         OutlinedCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable {
-                    navController.navigate(Routes.JoinTeam.routes) {
-                        popUpTo(Routes.JoinTeam.routes) {
-                            inclusive = true
-                        }
-                    }
-                },
-            shape = RoundedCornerShape(8.dp)
+            modifier = Modifier.fillMaxWidth().clickable {
+                launcherCamera.launch()
+            }
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(imageVector = Icons.Default.Search, contentDescription = "Search", tint = DodgerBlue)
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(text = "Ambil Gambar", style = MaterialTheme.typography.bodyMedium)
+            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Camera, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Ambil Gambar")
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable {
-                    navController.navigate(Routes.FormAddTeam.routes) {
-                        popUpTo(Routes.FormAddTeam.routes) {
-                            inclusive = true
-                        }
-                    }
-                },
-            shape = RoundedCornerShape(8.dp)
+            modifier = Modifier.fillMaxWidth().clickable {
+                launcherGallery.launch("image/*")
+            }
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Add", tint = DodgerBlue)
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(text = "Ambil dari Galeri", style = MaterialTheme.typography.bodyMedium)
+            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Image, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Ambil dari Galeri")
             }
         }
-
-        Spacer(modifier = Modifier.height(20.dp))
     }
+}
+
+fun saveBitmapToCacheAndGetUri(context: Context, bitmap: Bitmap): Uri {
+    val file = File(context.cacheDir, "camera_image_${System.currentTimeMillis()}.jpg")
+    file.outputStream().use {
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, it)
+    }
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 }
