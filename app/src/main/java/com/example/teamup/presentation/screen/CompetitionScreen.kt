@@ -4,7 +4,6 @@ import android.app.DatePickerDialog
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
-import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,19 +27,23 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FilePresent
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -53,13 +56,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -69,7 +72,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -77,7 +79,6 @@ import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import coil.compose.AsyncImage
-import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.teamup.R
 import com.example.teamup.common.theme.DodgerBlue
@@ -92,7 +93,6 @@ import com.example.teamup.presentation.components.BottomNavigationBar
 import com.example.teamup.route.NavigationItem
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
-import com.google.firebase.storage.ktx.storageMetadata
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -232,57 +232,179 @@ fun CustomBottomNavigationBar(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompetitionListContent(
     uiState: CompetitionViewModel.CompetitionUiState,
     onAddClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Search and filter states
+    var searchQuery by remember { mutableStateOf("") }
+    var showStatusMenu by remember { mutableStateOf(false) }
+    var showCabangMenu by remember { mutableStateOf(false) }
+    var selectedStatus by remember { mutableStateOf("Semua Status") }
+    var selectedCabang by remember { mutableStateOf("Semua Cabang Lomba") }
+
+    // Logic for filtering competitions
+    val filteredCompetitions = uiState.competitions.filter { competition ->
+        val matchesSearch = competition.namaLomba.contains(searchQuery, ignoreCase = true) ||
+                competition.deskripsiLomba.contains(searchQuery, ignoreCase = true)
+        val matchesStatus = selectedStatus == "Semua Status" ||
+                (selectedStatus == "Published" && competition.status == "Published") ||
+                (selectedStatus == "Draft" && competition.status == "Draft") ||
+                (selectedStatus == "Cancelled" && competition.status == "Cancelled")
+        val matchesCabang = selectedCabang == "Semua Cabang Lomba" ||
+                competition.cabangLomba == selectedCabang
+
+        matchesSearch && matchesStatus && matchesCabang
+    }
+
     Box(
         modifier = modifier.fillMaxSize()
     ) {
-        if (uiState.isLoading && uiState.competitions.isEmpty()) {
-            CircularProgressIndicator(
-                modifier = Modifier.align(Alignment.Center)
-            )
-        } else if (uiState.competitions.isEmpty()) {
-            Column(
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Search bar - Styled to match the Figma design
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                placeholder = { Text("Cari kompetisi di sini") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                singleLine = true,
+                shape = RoundedCornerShape(8.dp),
+                colors = TextFieldDefaults.outlinedTextFieldColors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                )
+            )
+
+            // Filter chips in a row - Styled to match the Figma design
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.task2),
-                    contentDescription = "No Competition",
-                    modifier = Modifier.size(200.dp)
-                )
+                // Status filter chip
+                Box {
+                    FilterChip(
+                        selected = false,
+                        onClick = { showStatusMenu = !showStatusMenu },
+                        label = { Text(selectedStatus) },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = "Status Filter"
+                            )
+                        }
+                    )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    DropdownMenu(
+                        expanded = showStatusMenu,
+                        onDismissRequest = { showStatusMenu = false }
+                    ) {
+                        listOf("Semua Status", "Published", "Draft", "Cancelled").forEach { status ->
+                            DropdownMenuItem(
+                                text = { Text(status) },
+                                onClick = {
+                                    selectedStatus = status
+                                    showStatusMenu = false
+                                }
+                            )
+                        }
+                    }
+                }
 
-                Text(
-                    text = "Belum ada kompetisi tersedia",
-                    style = MaterialTheme.typography.titleMedium
-                )
+                // Cabang lomba filter chip
+                Box {
+                    FilterChip(
+                        selected = false,
+                        onClick = { showCabangMenu = !showCabangMenu },
+                        label = { Text(selectedCabang) },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = "Cabang Filter"
+                            )
+                        }
+                    )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    DropdownMenu(
+                        expanded = showCabangMenu,
+                        onDismissRequest = { showCabangMenu = false }
+                    ) {
+                        // Get unique cabang lomba values plus "Semua Cabang Lomba"
+                        val cabangOptions = listOf("Semua Cabang Lomba") +
+                                uiState.competitions.map { it.cabangLomba }.distinct().sorted()
 
-                Button(
-                    onClick = onAddClick,
-                    modifier = Modifier.fillMaxWidth(0.8f)
-                ) {
-                    Text("Buat Kompetisi")
+                        cabangOptions.forEach { cabang ->
+                            DropdownMenuItem(
+                                text = { Text(cabang) },
+                                onClick = {
+                                    selectedCabang = cabang
+                                    showCabangMenu = false
+                                }
+                            )
+                        }
+                    }
                 }
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(uiState.competitions) { competition ->
-                    CompetitionCardScreen(competition = competition)
+
+            if (uiState.isLoading && uiState.competitions.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (filteredCompetitions.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.task2),
+                        contentDescription = "No Competition",
+                        modifier = Modifier.size(200.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = if (searchQuery.isNotEmpty() || selectedStatus != "Semua Status" || selectedCabang != "Semua Cabang Lomba")
+                            "Tidak ada kompetisi yang sesuai dengan filter"
+                        else
+                            "Belum ada kompetisi tersedia",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = onAddClick,
+                        modifier = Modifier.fillMaxWidth(0.8f)
+                    ) {
+                        Text("Buat Kompetisi")
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(filteredCompetitions) { competition ->
+                        CompetitionCardScreen(competition = competition)
+                    }
                 }
             }
         }
@@ -329,15 +451,18 @@ fun CompetitionCardScreen(competition: CompetitionModel) {
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Cabang: ${competition.cabangLomba}",
-                    style = MaterialTheme.typography.bodySmall
+                // Location/date info with icon (iya harusnya tapi diganti karena field ga sesuai harusnya tanggal pelaksanaan
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = "Tanggal Pelaksanaan",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
                 )
-
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "Tanggal: ${competition.tanggalPelaksanaan}",
+                    text = competition.tanggalPelaksanaan,
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -349,7 +474,7 @@ fun CompetitionCardScreen(competition: CompetitionModel) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Jumlah Tim: ${competition.jumlahTim}",
+                    text = "Cabang: ${competition.cabangLomba}",
                     style = MaterialTheme.typography.bodySmall
                 )
 
@@ -367,16 +492,36 @@ fun CompetitionCardScreen(competition: CompetitionModel) {
                 )
             }
 
+            // Display status indicator if available
+            competition.status?.let { status ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    val statusColor = when(status) {
+                        "Published" -> MaterialTheme.colorScheme.primary
+                        "Draft" -> MaterialTheme.colorScheme.tertiary
+                        "Cancelled" -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.outline
+                    }
+
+                    Text(
+                        text = "• $status",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = statusColor
+                    )
+                }
+            }
+
             // Display image if available
             if (competition.imageUrl.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Image(
-                    painter = rememberAsyncImagePainter(
-                        ImageRequest.Builder(LocalContext.current)
-                            .data(data = competition.imageUrl)
-                            .error(R.drawable.ic_baseline_cancel_24)
-                            .build()
-                    ),
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(data = competition.imageUrl)
+                        .error(R.drawable.ic_baseline_cancel_24)
+                        .build(),
                     contentDescription = "Competition Image",
                     modifier = Modifier
                         .fillMaxWidth()
@@ -422,7 +567,8 @@ fun AddCompetitionForm(
     var cabangLomba by remember { mutableStateOf("") }
     var tanggalPelaksanaan by remember { mutableStateOf("") }
     var deskripsiLomba by remember { mutableStateOf("") }
-    var jumlahTim by remember { mutableStateOf("0") }
+    // Removed UI for jumlahTim but still keeping the variable for Firestore
+    val jumlahTim = 0 // Default value that will be sent to Firestore
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
     var selectedFileName by remember { mutableStateOf("") }
@@ -431,9 +577,6 @@ fun AddCompetitionForm(
     // State for Alert Dialog
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
-
-    // State for loading progress
-    var uploadProgress by remember { mutableFloatStateOf(0f) }
 
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
@@ -588,22 +731,6 @@ fun AddCompetitionForm(
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3,
                     maxLines = 5
-                )
-            }
-
-            item {
-                OutlinedTextField(
-                    value = jumlahTim,
-                    onValueChange = {
-                        // Only allow numeric input
-                        if (it.isEmpty() || it.all { char -> char.isDigit() }) {
-                            jumlahTim = it
-                        }
-                    },
-                    label = { Text("Jumlah Tim") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
             }
 
@@ -780,7 +907,6 @@ fun AddCompetitionForm(
                 Button(
                     onClick = {
                         isUploading = true
-                        uploadProgress = 0f
                         uploadCompetitionWithMedia(
                             context = context,
                             imageUri = selectedImageUri,
@@ -789,7 +915,7 @@ fun AddCompetitionForm(
                             cabangLomba = cabangLomba,
                             tanggalPelaksanaan = tanggalPelaksanaan,
                             deskripsiLomba = deskripsiLomba,
-                            jumlahTim = jumlahTim.toIntOrNull() ?: 0,
+                            jumlahTim = jumlahTim, // Pass the default value to Firestore ,
                             viewModel = viewModel,
                             onComplete = { isUploading = false }
                         )
@@ -829,7 +955,8 @@ private fun uploadCompetitionWithMedia(
     cabangLomba: String,
     tanggalPelaksanaan: String,
     deskripsiLomba: String,
-    jumlahTim: Int,
+    jumlahTim: Int, // We still accept this parameter but it's fixed at 0
+//    status: String = "Published",
     viewModel: CompetitionViewModel,
     onComplete: () -> Unit
 ) {
@@ -861,7 +988,7 @@ private fun uploadCompetitionWithMedia(
                 deskripsiLomba = deskripsiLomba,
                 imageUrl = imageUrl,
                 fileUrl = fileUrl,
-                jumlahTim = jumlahTim
+                jumlahTim = jumlahTim // Pass the jumlahTim to Firestore (fixed at 0)
             )
             onComplete()
         }
@@ -874,7 +1001,7 @@ private fun uploadCompetitionWithMedia(
             cabangLomba = cabangLomba,
             tanggalPelaksanaan = tanggalPelaksanaan,
             deskripsiLomba = deskripsiLomba,
-            jumlahTim = jumlahTim
+            jumlahTim = jumlahTim // Pass the jumlahTim to Firestore (fixed at 0)
         )
         onComplete()
         return
