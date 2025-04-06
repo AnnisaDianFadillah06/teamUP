@@ -15,7 +15,7 @@ import androidx.navigation.navArgument
 import com.example.teamup.data.viewmodels.JoinTeamViewModel
 import com.example.teamup.di.ViewModelJoinFactory
 import com.example.teamup.presentation.components.*
-import com.example.teamup.presentation.screens.JoinTeamScreen
+import com.example.teamup.presentation.screen.JoinTeamScreen
 import com.example.teamup.route.Routes
 import com.example.teamup.ui.components.*
 
@@ -70,6 +70,25 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
                 JoinTeamScreen(
                     navController = navController,
                     viewModel = joinTeamViewModel
+                )
+            }
+            composable(
+                route = Routes.TeamDetailGrup.routes,
+                arguments = listOf(
+                    navArgument("teamId") { type = NavType.StringType },
+                    navArgument("isJoined") { type = NavType.BoolType },
+                    navArgument("isFull") { type = NavType.BoolType }
+                )
+            ) { backStackEntry ->
+                val teamId = backStackEntry.arguments?.getString("teamId") ?: ""
+                val isJoined = backStackEntry.arguments?.getBoolean("isJoined") ?: false
+                val isFull = backStackEntry.arguments?.getBoolean("isFull") ?: false
+
+                DetailTeamScreen(
+                    navController = navController,
+                    teamId = teamId,
+                    isJoined = isJoined,
+                    isFull = isFull
                 )
             }
         }
