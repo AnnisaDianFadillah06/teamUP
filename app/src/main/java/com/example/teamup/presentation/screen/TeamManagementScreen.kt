@@ -39,9 +39,9 @@ fun TeamManagementScreen(
 ) {
     val teamMembers = remember {
         listOf(
-            TeamMemberModel(id = "1", userId = "1234", teamId = "team_1", name = "Arfath", profileImage = R.drawable.captain_icon, role = "Admin"),
-            TeamMemberModel(id = "2", userId = "5678", teamId = "team_1", name = "TeamUP", profileImage = R.drawable.captain_icon, role = "Member"),
-            TeamMemberModel(id = "3", userId = "9012", teamId = "team_1", name = "Vivian", profileImage = R.drawable.captain_icon, role = "Member")
+            TeamMemberModel(id = "1", userId = "1234", teamId = "team_1", name = "Nama Tim1", profileImage = R.drawable.captain_icon, role = "Admin", email = "annisadian01@gmail.com"),
+            TeamMemberModel(id = "2", userId = "5678", teamId = "team_1", name = "Nama Tim2", profileImage = R.drawable.captain_icon, role = "Member", email = "annisadian01@gmail.com"),
+            TeamMemberModel(id = "3", userId = "9012", teamId = "team_1", name = "Nama Tim3", profileImage = R.drawable.captain_icon, role = "Member", email = "annisadian01@gmail.com")
         )
     }
 
@@ -160,7 +160,7 @@ fun TeamManagementScreen(
 }
 
 @Composable
-fun TeamMemberItem(member: TeamMemberModel) {
+fun TeamManagementMemberItem(member: TeamMemberModel) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically

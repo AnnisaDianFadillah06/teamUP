@@ -20,4 +20,8 @@ sealed class Routes(val routes: String) {
     object Detail : Routes("detail/{id}") {
         fun createRoute(id: Int) = "detail/$id"
     }
+    object TeamDetailGrup : Routes("team_detail/{teamId}/{isJoined}/{isFull}") {
+        fun createRoute(teamId: String, isJoined: Boolean, isFull: Boolean) =
+            "team_detail/$teamId/$isJoined/$isFull"
+    }
 }
