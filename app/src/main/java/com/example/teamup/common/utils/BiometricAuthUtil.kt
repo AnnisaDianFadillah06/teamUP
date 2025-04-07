@@ -70,6 +70,15 @@ object BiometricAuthUtil {
                 FirebaseAuth.getInstance().signInWithEmailAndPassword(savedEmail, savedPassword)
                     .addOnSuccessListener {
                         Toast.makeText(activity, "Login successful", Toast.LENGTH_SHORT).show()
+
+                        // Mark user as logged in
+                        SessionManager.setLoggedIn(activity, true)
+
+                        // Navigate to Dashboard & clear back stack
+                        navController.navigate(Routes.Dashboard.routes) {
+                            popUpTo(Routes.LoginV5.routes) { inclusive = true }
+                        }
+
                         onSuccess()
                     }
                     .addOnFailureListener {

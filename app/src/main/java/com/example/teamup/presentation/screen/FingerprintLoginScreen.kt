@@ -42,6 +42,7 @@ import androidx.navigation.NavController
 import com.example.teamup.R
 import com.example.teamup.common.theme.DodgerBlue
 import com.example.teamup.common.utils.BiometricAuthUtil
+import com.example.teamup.common.utils.SessionManager
 import com.example.teamup.route.Routes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -86,13 +87,16 @@ fun FingerprintLoginScreen(navController: NavController) {
                 activity = fragmentActivity,
                 navController = navController,
                 onSuccess = {
+                    // Mark user as logged in
+                    SessionManager.setLoggedIn(context, true)
+
                     authSuccess = true
                     showResult = true
                     coroutineScope.launch {
                         delay(1000)
-                        // Navigate to dashboard
+                        // Navigate to dashboard with clear backstack
                         navController.navigate(Routes.Dashboard.routes) {
-                            popUpTo(Routes.Login.routes) {
+                            popUpTo(Routes.LoginV5.routes) {
                                 inclusive = true
                             }
                         }
@@ -128,6 +132,9 @@ fun FingerprintLoginScreen(navController: NavController) {
                         isActivated = true
                     }
 
+                    // Mark user as logged in in SessionManager
+                    SessionManager.setLoggedIn(context, true)
+
                     authSuccess = true
                     showResult = true
                     coroutineScope.launch {
@@ -135,7 +142,7 @@ fun FingerprintLoginScreen(navController: NavController) {
                         // Navigate to dashboard if not already activating
                         if (isActivated) {
                             navController.navigate(Routes.Dashboard.routes) {
-                                popUpTo(Routes.Login.routes) {
+                                popUpTo(Routes.LoginV5.routes) {
                                     inclusive = true
                                 }
                             }
