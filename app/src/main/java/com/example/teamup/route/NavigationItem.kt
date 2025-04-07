@@ -8,4 +8,5 @@ sealed class NavigationItem(var route: String, var icon: Int, var title: String)
     object Wishlist : NavigationItem(Routes.Wishlist.routes, R.drawable.seedling_icon, "Wishlist")
     object Profile : NavigationItem(Routes.Profile.routes, R.drawable.captain_icon, "Profile")
     object TeamManagement : NavigationItem(Routes.TeamManagement.routes, R.drawable.captain_icon, "Team Management")
+    data object Competition : NavigationItem(Routes.Competition.routes, R.drawable.trophy, "Competition")
 }
