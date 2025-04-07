@@ -9,11 +9,14 @@ object SessionManager {
 
     /**
      * Check if user is already logged in
+     * We check both Firebase Auth and our manual flag
      */
     fun isLoggedIn(context: Context): Boolean {
         val currentUser = FirebaseAuth.getInstance().currentUser
         val sharedPrefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        return currentUser != null || sharedPrefs.getBoolean(KEY_IS_LOGGED_IN, false)
+
+        // Only consider logged in if BOTH Firebase has a user AND our flag is true
+        return currentUser != null && sharedPrefs.getBoolean(KEY_IS_LOGGED_IN, false)
     }
 
     /**
@@ -26,10 +29,18 @@ object SessionManager {
 
     /**
      * Clear login session (for logout)
+     * This completely clears all authentication data
      */
     fun clearSession(context: Context) {
+        // 1. Clear shared preferences completely
         val sharedPrefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        sharedPrefs.edit().remove(KEY_IS_LOGGED_IN).apply()
+        sharedPrefs.edit().clear().apply()
+
+        // 2. Also clear biometric-related prefs
+        val prefs = context.getSharedPreferences("teamup_prefs", Context.MODE_PRIVATE)
+        prefs.edit().clear().apply()
+
+        // 3. Sign out from Firebase Auth
         FirebaseAuth.getInstance().signOut()
     }
 }
