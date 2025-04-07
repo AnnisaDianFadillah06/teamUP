@@ -15,10 +15,15 @@ import com.example.teamup.common.utils.SessionManager
 import com.example.teamup.presentation.screen.AddTeamScreen
 import com.example.teamup.presentation.screen.DashboardScreen
 import com.example.teamup.presentation.screen.FingerprintLoginScreen
+import com.example.teamup.presentation.screen.ForgotPasswordScreen
 import com.example.teamup.presentation.screen.LoginScreen
 import com.example.teamup.presentation.screen.LoginScreenV5
+import com.example.teamup.presentation.screen.ProfileScreen
 import com.example.teamup.presentation.screen.RegisterScreen
+import com.example.teamup.presentation.screen.RegisterSuccessScreen
+import com.example.teamup.presentation.screen.ResetPasswordScreen
 import com.example.teamup.presentation.screen.TeamListScreen
+import com.example.teamup.presentation.screen.VerificationScreen
 import com.example.teamup.route.Routes
 
 @Composable
@@ -43,7 +48,6 @@ fun StartSail(
             startDestination = startDestination,
             modifier = Modifier.padding(paddingValues) // ✅ Gunakan paddingValues di sini
         ) {
-            // Authentication
             composable(Routes.Login.routes) {
                 LoginScreen(navController = navController)
             }
@@ -67,11 +71,27 @@ fun StartSail(
             composable(Routes.AddTeam.routes) {
                 AddTeamScreen(navController = navController)
             }
+            composable(Routes.Verification.routes) {
+                VerificationScreen(navController = navController)
+            }
+            composable(Routes.RegisterSuccess.routes) {
+                RegisterSuccessScreen(navController = navController)
+            }
+            composable(Routes.ForgotPassword.routes) {
+                ForgotPasswordScreen(navController = navController)
+            }
+            composable(Routes.ResetPassword.routes) {
+                ResetPasswordScreen(navController = navController)
+            }
+            composable(Routes.Profile.routes) {
+                ProfileScreen(navController = navController)
+            }
+            // Tambahkan destination lain sesuai kebutuhan
         }
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 fun StartSailPreview() {
     StartSail()

@@ -12,6 +12,7 @@
     <string name="sign_up">Sign Up</string>
     <string name="sign_in">Sign In</string>
     <string name="user_name">User Name</string>
+    <string name="fullName">Full Name</string>
     <string name="in_dev">Feature in development</string>
     <string name="cart">Cart</string>
     <string name="price_detail">Price Detail</string>
