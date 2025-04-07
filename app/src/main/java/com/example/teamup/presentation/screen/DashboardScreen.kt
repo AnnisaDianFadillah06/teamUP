@@ -24,7 +24,7 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
     val currentRoute = navBackStackEntry?.destination?.route
 
     Scaffold(bottomBar = {
-        if (currentRoute != Routes.Detail.routes && currentRoute != Routes.FormAddTeam.routes && currentRoute != Routes.Cart.routes && currentRoute != Routes.Search.routes) {
+        if (currentRoute != Routes.Detail.routes && currentRoute != Routes.ChatGroup.routes && currentRoute != Routes.FormAddTeam.routes && currentRoute != Routes.Cart.routes && currentRoute != Routes.Search.routes) {
             BottomNavigationBar(navController)
         }
     }) { paddingValues ->
@@ -89,6 +89,21 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
                     teamId = teamId,
                     isJoined = isJoined,
                     isFull = isFull
+                )
+            }
+            composable(
+                Routes.ChatGroup.routes,
+                arguments = listOf(
+                    navArgument("teamId") { type = NavType.StringType },
+                    navArgument("teamName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val teamId = backStackEntry.arguments?.getString("teamId") ?: ""
+                val teamName = backStackEntry.arguments?.getString("teamName") ?: ""
+                ChatGroupScreen(
+                    navController = navController,
+                    teamId = teamId,
+                    teamName = teamName
                 )
             }
         }

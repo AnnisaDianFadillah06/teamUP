@@ -143,7 +143,14 @@ fun DetailTeamScreen(
                         Column(modifier = Modifier.fillMaxWidth()) {
                             // First button: Message Group
                             Button(
-                                onClick = { navController.navigate(Routes.Invite.routes) },
+                                onClick = {
+                                    navController.navigate(
+                                        Routes.ChatGroup.createRoute(
+                                            teamId = teamId,
+                                            teamName = "Al Fath" // You might want to make this dynamic based on actual team data
+                                        )
+                                    )
+                                },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(48.dp),
