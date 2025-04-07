@@ -18,8 +18,10 @@ sealed class Routes(val routes: String) {
     data object Detail : Routes("detail/{id}") {
         fun createRoute(id: Int) = "detail/$id"
     }
-
-    // Team routes
-    data object TeamList : Routes("team_list")
-    data object AddTeam : Routes("add_team")
+    object TeamList : Routes("team_list")
+    object AddTeam : Routes("add_team")
+    object Verification : Routes("verification")
+    object RegisterSuccess : Routes("register_success")
+    object ForgotPassword : Routes("forgot_password")
+    object ResetPassword : Routes("reset_password")
 }

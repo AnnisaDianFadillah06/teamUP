@@ -80,7 +80,7 @@ fun CartScreen(
                                         top = paddingValues.calculateTopPadding() + 5.dp,
                                         start = 16.dp,
                                         end = 16.dp,
-                                        bottom = paddingValues.calculateBottomPadding()
+                                        bottom = paddingValues.calculateBottomPadding() + 90.dp // tambahkan spacer juga di sini
                                     ),
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
@@ -92,7 +92,6 @@ fun CartScreen(
                                     )
                                 }
                             }
-                            Spacer(modifier = Modifier.height(90.dp))
                         }
                     }
                     is UiState.Error -> {

@@ -316,7 +316,11 @@ fun LoginScreenV5(navController: NavController) {
                     )
                 }
 
-                TextButton(onClick = { /* Handle forgot password */ }) {
+                TextButton(onClick = {
+                    navController.navigate(Routes.ForgotPassword.routes) {
+                        popUpTo(Routes.LoginV5.routes) { inclusive = false }
+                    }
+                }) {
                     Text(
                         text = "Forgot Password?",
                         style = MaterialTheme.typography.bodySmall.copy(
