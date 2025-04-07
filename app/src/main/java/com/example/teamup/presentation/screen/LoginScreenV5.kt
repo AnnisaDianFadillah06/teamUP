@@ -54,6 +54,7 @@ import com.example.teamup.R
 import com.example.teamup.common.theme.DodgerBlue
 import com.example.teamup.common.theme.SoftGray2
 import com.example.teamup.common.utils.BiometricAuthUtil
+import com.example.teamup.common.utils.SessionManager
 import com.example.teamup.route.Routes
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -118,9 +119,12 @@ fun LoginScreenV5(navController: NavController) {
                             editor.apply()
                         }
 
+                        // Set user as logged in in SessionManager
+                        SessionManager.setLoggedIn(context, true)
+
                         // Navigasi ke dashboard
                         navController.navigate(Routes.Dashboard.routes) {
-                            popUpTo(Routes.Login.routes) {
+                            popUpTo(Routes.LoginV5.routes) {
                                 inclusive = true
                             }
                         }
@@ -149,7 +153,21 @@ fun LoginScreenV5(navController: NavController) {
         }
 
         // Use the enhanced BiometricAuthUtil for quick login
-        BiometricAuthUtil.launchQuickLogin(context, navController)
+        fragmentActivity?.let {
+            BiometricAuthUtil.performQuickLogin(
+                activity = it,
+                navController = navController,
+                onSuccess = {
+                    // Set user as logged in in SessionManager
+                    SessionManager.setLoggedIn(context, true)
+                },
+                onError = { message ->
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                }
+            )
+        } ?: run {
+            Toast.makeText(context, "This feature requires a FragmentActivity context", Toast.LENGTH_SHORT).show()
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
