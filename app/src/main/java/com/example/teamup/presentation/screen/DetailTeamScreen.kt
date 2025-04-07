@@ -35,6 +35,7 @@ import coil.request.ImageRequest
 import com.example.teamup.R
 import com.example.teamup.common.theme.*
 import com.example.teamup.data.model.TeamMemberModel
+import com.example.teamup.route.Routes
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -142,7 +143,7 @@ fun DetailTeamScreen(
                         Column(modifier = Modifier.fillMaxWidth()) {
                             // First button: Message Group
                             Button(
-                                onClick = { /* TODO: Handle open group chat */ },
+                                onClick = { navController.navigate(Routes.Invite.routes) },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(48.dp),
@@ -164,7 +165,7 @@ fun DetailTeamScreen(
 
                             // Second button: Invite or Full Team
                             Button(
-                                onClick = { /* TODO: Handle invite members */ },
+                                onClick = { navController.navigate(Routes.Invite.routes) },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(48.dp),
