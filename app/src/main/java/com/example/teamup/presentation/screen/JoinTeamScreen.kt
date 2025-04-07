@@ -1,4 +1,4 @@
-package com.example.teamup.presentation.screens
+package com.example.teamup.presentation.screen
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -146,9 +146,7 @@ fun JoinTeamScreen(
             items(popularTeams) { team ->
                 TeamCard(
                     team = team,
-                    onClick = {
-                        navController.navigate(Routes.TeamDetail.routes.replace("{teamId}", team.id))
-                    }
+                    navController = navController // Add NavController parameter
                 )
             }
         }
@@ -203,12 +201,21 @@ fun CategoryCard(
 @Composable
 fun TeamCard(
     team: TeamModel,
-    onClick: () -> Unit
+    navController: NavController // Add NavController parameter
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable {
+                // Navigate directly from the card
+                navController.navigate(
+                    Routes.TeamDetailGrup.createRoute(
+                        teamId = team.id,
+                        isJoined = team.isJoined,
+                        isFull = team.isFull
+                    )
+                )
+            },
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -247,6 +254,51 @@ fun TeamCard(
                         color = Color.Gray
                     )
                 )
+
+                // Display member count
+                Text(
+                    text = "${team.memberCount}/${team.maxMembers} anggota",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = Color.Gray
+                    )
+                )
+            }
+
+            // Status indicators
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                if (team.isJoined) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFFE3F2FD))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "Joined",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color.Black,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                } else if (team.isFull) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFFEEEEEE))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "Full",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                }
             }
         }
     }
