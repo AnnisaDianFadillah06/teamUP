@@ -24,4 +24,5 @@ sealed class Routes(val routes: String) {
         fun createRoute(teamId: String, isJoined: Boolean, isFull: Boolean) =
             "team_detail/$teamId/$isJoined/$isFull"
     }
+    object Invite : Routes("invite_member")
 }

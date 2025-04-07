@@ -1,6 +1,5 @@
 package com.example.teamup.presentation.screen
 
-import androidx.compose.foundation.layout.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
@@ -15,9 +14,7 @@ import androidx.navigation.navArgument
 import com.example.teamup.data.viewmodels.JoinTeamViewModel
 import com.example.teamup.di.ViewModelJoinFactory
 import com.example.teamup.presentation.components.*
-import com.example.teamup.presentation.screen.JoinTeamScreen
 import com.example.teamup.route.Routes
-import com.example.teamup.ui.components.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +59,9 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
             }
             composable(Routes.FormAddTeam.routes) {
                 FormCreateTeamScreen(navController = navController)
+            }
+            composable(Routes.Invite.routes) {
+                InviteMemberScreen(navController = navController)
             }
             composable(Routes.JoinTeam.routes) {
                 val viewModelFactory = ViewModelJoinFactory.getInstance()
