@@ -147,10 +147,7 @@ fun LoginScreenV5(navController: NavController) {
             return
         }
 
-        if (!hasSavedCredentials) {
-            Toast.makeText(context, "Please login with email and check 'Remember me' first", Toast.LENGTH_LONG).show()
-            return
-        }
+        // Hapus pengecekan hasSavedCredentials untuk memungkinkan quick login langsung
 
         // Use the enhanced BiometricAuthUtil for quick login
         fragmentActivity?.let {

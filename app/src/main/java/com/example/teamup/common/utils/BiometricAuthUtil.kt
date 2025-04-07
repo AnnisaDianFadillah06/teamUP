@@ -46,11 +46,8 @@ object BiometricAuthUtil {
             return
         }
 
-        if (!hasSavedCredentials(activity)) {
-            onError("No saved credentials found. Please login with email first and check 'Remember me'")
-            return
-        }
-
+        // Hilangkan pemeriksaan saved credentials untuk memungkinkan quick login langsung
+        // Setup prompt
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Quick Login")
             .setSubtitle("Login to TeamUp using your fingerprint")
@@ -61,30 +58,49 @@ object BiometricAuthUtil {
         val callback = object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                 super.onAuthenticationSucceeded(result)
-                // Get saved credentials
+
+                // Cek apakah ada saved credentials
                 val sharedPrefs = activity.getSharedPreferences("teamup_prefs", Context.MODE_PRIVATE)
-                val savedEmail = sharedPrefs.getString("saved_email", null)!!
-                val savedPassword = sharedPrefs.getString("saved_password", null)!!
+                val savedEmail = sharedPrefs.getString("saved_email", null)
+                val savedPassword = sharedPrefs.getString("saved_password", null)
 
-                // Login with Firebase
-                FirebaseAuth.getInstance().signInWithEmailAndPassword(savedEmail, savedPassword)
-                    .addOnSuccessListener {
-                        Toast.makeText(activity, "Login successful", Toast.LENGTH_SHORT).show()
+                if (savedEmail != null && savedPassword != null) {
+                    // Login dengan Firebase jika ada saved credentials
+                    FirebaseAuth.getInstance().signInWithEmailAndPassword(savedEmail, savedPassword)
+                        .addOnSuccessListener {
+                            Toast.makeText(activity, "Login successful", Toast.LENGTH_SHORT).show()
 
-                        // Mark user as logged in
-                        SessionManager.setLoggedIn(activity, true)
+                            // Mark user as logged in
+                            SessionManager.setLoggedIn(activity, true)
 
-                        // Navigate to Dashboard & clear back stack
-                        navController.navigate(Routes.Dashboard.routes) {
-                            popUpTo(Routes.LoginV5.routes) { inclusive = true }
+                            // Navigate to Dashboard & clear back stack
+                            navController.navigate(Routes.Dashboard.routes) {
+                                popUpTo(Routes.LoginV5.routes) { inclusive = true }
+                            }
+
+                            onSuccess()
                         }
+                        .addOnFailureListener {
+                            Toast.makeText(activity, "Login failed: ${it.message}", Toast.LENGTH_SHORT).show()
+                            onError("Firebase login failed: ${it.message}")
+                        }
+                } else {
+                    // Jika tidak ada saved credentials, anggap berhasil otentikasi tapi perlu set credentials
+                    // Mark user as "authenticated with biometric only"
+                    val editor = sharedPrefs.edit()
+                    editor.putBoolean("biometric_authenticated", true)
+                    editor.apply()
 
-                        onSuccess()
+                    Toast.makeText(activity, "Biometric authentication successful", Toast.LENGTH_SHORT).show()
+
+                    // Navigasi ke dashboard tanpa perlu kredensial
+                    // Kita bisa menambahkan logika tambahan jika dibutuhkan
+                    navController.navigate(Routes.Dashboard.routes) {
+                        popUpTo(Routes.LoginV5.routes) { inclusive = true }
                     }
-                    .addOnFailureListener {
-                        Toast.makeText(activity, "Login failed: ${it.message}", Toast.LENGTH_SHORT).show()
-                        onError("Firebase login failed: ${it.message}")
-                    }
+
+                    onSuccess()
+                }
             }
 
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
@@ -129,10 +145,7 @@ object BiometricAuthUtil {
             return
         }
 
-        if (!hasSavedCredentials(context)) {
-            Toast.makeText(context, "Please login with email first and check 'Remember me'", Toast.LENGTH_LONG).show()
-            return
-        }
+        // Hapus pengecekan hasSavedCredentials untuk memungkinkan quick login langsung
 
         // Flag to indicate intent to do quick login
         val sharedPrefs = context.getSharedPreferences("teamup_prefs", Context.MODE_PRIVATE)
