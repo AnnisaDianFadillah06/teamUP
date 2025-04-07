@@ -31,4 +31,15 @@ sealed class Routes(val routes: String) {
     object RegisterSuccess : Routes("register_success")
     object ForgotPassword : Routes("forgot_password")
     object ResetPassword : Routes("reset_password")
+    object TeamDetailGrup : Routes("team_detail/{teamId}/{isJoined}/{isFull}") {
+        fun createRoute(teamId: String, isJoined: Boolean, isFull: Boolean) =
+            "team_detail/$teamId/$isJoined/$isFull"
+    }
+    object Invite : Routes("invite_member")
+    object ChatGroup : Routes("chat_group/{teamId}/{teamName}") {
+        fun createRoute(teamId: String, teamName: String) =
+            "chat_group/$teamId/$teamName"
+    }
 }
+
+

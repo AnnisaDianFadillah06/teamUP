@@ -60,33 +60,36 @@ class CompetitionRepository {
             TeamModel(
                 id = "team1",
                 name = "Al-Fath",
-                category = "KMIPN",
-                avatarResId = R.drawable.captain_icon
+                category = "KMIPN - Cipta Inovasi",
+                avatarResId = R.drawable.captain_icon,
+                isJoined = true,
+                isFull = false,
+                description = "KMIPN - Cipta Inovasi",
+                memberCount = 2,
+                maxMembers = 5
             ),
             TeamModel(
                 id = "team2",
-                name = "Al-Fath",
-                category = "KMIPN",
-                avatarResId = R.drawable.captain_icon
+                name = "Garuda",
+                category = "KMIPN - Smart City",
+                avatarResId = R.drawable.captain_icon,
+                isJoined = false,
+                isFull = false,
+                description = "KMIPN - Smart City",
+                memberCount = 3,
+                maxMembers = 5
             ),
             TeamModel(
                 id = "team3",
-                name = "Al-Fath",
-                category = "KMIPN",
-                avatarResId = R.drawable.captain_icon
+                name = "Brawijaya",
+                category = "Gemastik - IoT",
+                avatarResId = R.drawable.captain_icon,
+                isJoined = false,
+                isFull = true,
+                description = "Gemastik - IoT",
+                memberCount = 5,
+                maxMembers = 5
             ),
-            TeamModel(
-                id = "team4",
-                name = "Al-Fath",
-                category = "KMIPN",
-                avatarResId = R.drawable.captain_icon
-            ),
-            TeamModel(
-                id = "team5",
-                name = "Al-Fath",
-                category = "KMIPN",
-                avatarResId = R.drawable.captain_icon
-            )
         )
         emit(teams)
     }
