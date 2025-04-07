@@ -39,6 +39,7 @@ android {
         jvmTarget = "1.8"
     }
     buildFeatures {
+        viewBinding = true
         compose = true
     }
     composeOptions {
@@ -52,7 +53,6 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -61,6 +61,8 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.auth)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -73,14 +75,25 @@ dependencies {
     implementation ("com.google.accompanist:accompanist-flowlayout:0.27.1")
     implementation ("androidx.compose.material:material-icons-extended:1.3.1")
     implementation ("androidx.core:core-splashscreen:1.0.0")
+
     // Coroutines for Firebase
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.1")
-    // Firebase Firestore KTX (Kotlin Extensions)
-    implementation("com.google.firebase:firebase-firestore-ktx:25.1.2")
-    // Basic Firebase
-    implementation(platform("com.google.firebase:firebase-bom:33.12.0"))
-    implementation("com.google.firebase:firebase-firestore")
-    implementation ("com.google.firebase:firebase-storage-ktx:20.3.0")
     implementation ("com.google.android.material:material:1.9.0") // atau versi terbaru
     implementation ("androidx.compose.material3:material3:1.2.1") // atau versi terbaru
+    // Firebase Firestore
+    implementation ("com.google.firebase:firebase-firestore-ktx")
+
+    // Firebase Authentication (jika diperlukan)
+    implementation ("com.google.firebase:firebase-auth-ktx")
+    implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
+    implementation ("com.google.firebase:firebase-auth")
+    implementation ("com.google.firebase:firebase-firestore")
+    //app check untuk keperluan verifikasi
+    implementation ("com.google.firebase:firebase-appcheck-debug:17.0.0")
+
+    // Firebase Storage (jika diperlukan)
+    implementation ("com.google.firebase:firebase-storage-ktx")
+    
+    // Implementasi Fingerprint
+    implementation ("androidx.biometric:biometric:1.2.0-alpha05")
 }

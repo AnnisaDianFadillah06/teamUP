@@ -4,26 +4,34 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.example.teamup.common.utils.BackPressHandler
 import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.presentation.components.BottomNavigationBar
 import com.example.teamup.route.Routes
 
 @Composable
 fun DashboardScreen(navController: NavHostController = rememberNavController(),  competitionViewModel: CompetitionViewModel) {
-
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // Tambahkan BackPressHandler
+    BackPressHandler(navController)
+
     Scaffold(bottomBar = {
-        if (currentRoute != Routes.Detail.routes && currentRoute != Routes.Cart.routes && currentRoute != Routes.Search.routes) {
+        if (currentRoute != Routes.Detail.routes && currentRoute != Routes.ChatGroup.routes && currentRoute != Routes.FormAddTeam.routes && currentRoute != Routes.Cart.routes && currentRoute != Routes.Search.routes) {
             BottomNavigationBar(navController)
         }
     }) { paddingValues ->
-        NavHost(navController = navController, startDestination = Routes.Home.routes) {
+        NavHost(
+            navController = navController,
+            startDestination = Routes.Home.routes
+        ) {
             composable(Routes.Home.routes) {
                 HomeScreen(navController = navController, paddingValues = paddingValues)
             }
@@ -71,6 +79,58 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
 //                val id = it.arguments?.getInt("id") ?: 0
 //                DetailScreen(navController = navController, id = id)
 //            }
+            composable(Routes.TeamManagement.routes) {
+                TeamManagementScreen(navController = navController)
+            }
+            composable(Routes.FormAddTeam.routes) {
+                FormCreateTeamScreen(navController = navController)
+            }
+            composable(Routes.Invite.routes) {
+                InviteMemberScreen(navController = navController)
+            }
+//            composable(Routes.JoinTeam.routes) {
+//                val viewModelFactory = ViewModelJoinFactory.getInstance()
+//                val joinTeamViewModel: JoinTeamViewModel = viewModel(factory = viewModelFactory)
+//
+//                JoinTeamScreen(
+//                    navController = navController,
+//                    viewModel = joinTeamViewModel
+//                )
+//            }
+            composable(
+                route = Routes.TeamDetailGrup.routes,
+                arguments = listOf(
+                    navArgument("teamId") { type = NavType.StringType },
+                    navArgument("isJoined") { type = NavType.BoolType },
+                    navArgument("isFull") { type = NavType.BoolType }
+                )
+            ) { backStackEntry ->
+                val teamId = backStackEntry.arguments?.getString("teamId") ?: ""
+                val isJoined = backStackEntry.arguments?.getBoolean("isJoined") ?: false
+                val isFull = backStackEntry.arguments?.getBoolean("isFull") ?: false
+
+                DetailTeamScreen(
+                    navController = navController,
+                    teamId = teamId,
+                    isJoined = isJoined,
+                    isFull = isFull
+                )
+            }
+            composable(
+                Routes.ChatGroup.routes,
+                arguments = listOf(
+                    navArgument("teamId") { type = NavType.StringType },
+                    navArgument("teamName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val teamId = backStackEntry.arguments?.getString("teamId") ?: ""
+                val teamName = backStackEntry.arguments?.getString("teamName") ?: ""
+                ChatGroupScreen(
+                    navController = navController,
+                    teamId = teamId,
+                    teamName = teamName
+                )
+            }
         }
     }
 }
