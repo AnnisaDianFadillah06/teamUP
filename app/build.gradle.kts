@@ -39,6 +39,7 @@ android {
         jvmTarget = "1.8"
     }
     buildFeatures {
+        viewBinding = true
         compose = true
     }
     composeOptions {
@@ -62,6 +63,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.firebase.firestore)
+    implementation(libs.firebase.auth)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -77,8 +79,11 @@ dependencies {
     // Firebase Firestore
     implementation ("com.google.firebase:firebase-firestore-ktx")
 
-    // Firebase Authentication (jika diperlukan)
-    implementation ("com.google.firebase:firebase-auth-ktx")
+    implementation ("com.google.firebase:firebase-auth:23.2.0")
+    //app check untuk keperluan verifikasi
+    implementation ("com.google.firebase:firebase-appcheck-debug:17.0.0")
+
+
 
     // Firebase Storage (jika diperlukan)
     implementation ("com.google.firebase:firebase-storage-ktx")

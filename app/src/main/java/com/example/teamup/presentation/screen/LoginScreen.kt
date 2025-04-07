@@ -23,14 +23,15 @@ import com.example.teamup.presentation.components.PasswordTextField
 import com.example.teamup.presentation.components.PrimaryButton
 import com.example.teamup.route.Routes
 import com.example.teamup.ui.components.PrimaryTextField
-import kotlin.reflect.KFunction1
 
 @Composable
 fun LoginScreen(navController: NavController) {
     val scrollState = rememberScrollState()
-    val authType = remember {
-        mutableStateOf("email")
-    }
+    val authType = remember { mutableStateOf("email") }
+    // Tambahkan state untuk input email/phone dan password
+    var emailOrPhone by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+
     Column(
         modifier = Modifier
             .verticalScroll(scrollState)
@@ -42,38 +43,40 @@ fun LoginScreen(navController: NavController) {
 
         Spacer(modifier = Modifier.height(40.dp))
         Text(
-            text = if (authType.value == "email") stringResource(id = R.string.email) else stringResource(
-                id = R.string.phone_number
-            ),
+            text = if (authType.value == "email")
+                stringResource(id = R.string.email_address)
+            else
+                stringResource(id = R.string.phone_number),
             style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp)
         )
         Spacer(modifier = Modifier.height(3.dp))
         PrimaryTextField(
-            placeholder = if (authType.value == "email") stringResource(
-                id = R.string.password, stringResource(
-                    id = R.string.email_address
-                )
-            ) else stringResource(
-                id = R.string.password, stringResource(
-                    id = R.string.phone_number
-                )
-            ),
+            value = emailOrPhone,
+            onValueChange = { emailOrPhone = it },
+            placeholder = if (authType.value == "email")
+                stringResource(id = R.string.email_address)
+            else
+                stringResource(id = R.string.phone_number),
             keyboardType = if (authType.value == "email") KeyboardType.Email else KeyboardType.Phone
         )
-
         Spacer(modifier = Modifier.height(15.dp))
         Text(
             text = stringResource(id = R.string.password),
             style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp)
         )
         Spacer(modifier = Modifier.height(3.dp))
-        PasswordTextField(placeholder = stringResource(id = R.string.password))
-
+        PasswordTextField(
+            value = password,
+            onValueChange = { password = it },
+            placeholder = stringResource(id = R.string.password)
+        )
         Spacer(modifier = Modifier.height(5.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(
-                onClick = {},
-            ) {
+            TextButton(onClick = {
+                navController.navigate(Routes.ForgotPassword.routes) {
+                    popUpTo(Routes.Login.routes) { inclusive = false }
+                }
+            }) {
                 Text(
                     text = stringResource(id = R.string.forgot_password),
                     style = MaterialTheme.typography.bodySmall.copy(
@@ -83,38 +86,15 @@ fun LoginScreen(navController: NavController) {
                 )
             }
         }
-
         Spacer(modifier = Modifier.height(5.dp))
-        PrimaryButton(text = stringResource(id = R.string.login), onClick = {
+        PrimaryButton(text = stringResource(id = R.string.login)) {
+            // Implementasi login Anda di sini
             navController.navigate(Routes.Dashboard.routes) {
-                popUpTo(Routes.Login.routes) {
-                    inclusive = true
-                }
+                popUpTo(Routes.Login.routes) { inclusive = true }
             }
-        })
-
-        Spacer(modifier = Modifier.height(5.dp))
-        PrimaryButton(text = "Add", onClick = {
-            navController.navigate(Routes.AddTeam.routes) {
-                popUpTo(Routes.AddTeam.routes) {
-                    inclusive = true
-                }
-            }
-        })
-
-        Spacer(modifier = Modifier.height(5.dp))
-        PrimaryButton(text = "List", onClick = {
-            navController.navigate(Routes.TeamList.routes) {
-                popUpTo(Routes.TeamList.routes) {
-                    inclusive = true
-                }
-            }
-        })
-
+        }
         Spacer(modifier = Modifier.height(20.dp))
-
         AuthSocial()
-
         Spacer(modifier = Modifier.height(10.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -128,9 +108,7 @@ fun LoginScreen(navController: NavController) {
             Spacer(modifier = Modifier.width(5.dp))
             TextButton(onClick = {
                 navController.navigate(Routes.Register.routes) {
-                    popUpTo(Routes.Login.routes) {
-                        inclusive = true
-                    }
+                    popUpTo(Routes.Login.routes) { inclusive = true }
                 }
             }) {
                 Text(
@@ -158,7 +136,7 @@ fun WelcomeText() {
         )
         Spacer(modifier = Modifier.height(7.dp))
         Text(
-            text = "We happy to see you again, To use your account, your should login first",
+            text = "We happy to see you again, To use your account, you should login first",
             style = MaterialTheme.typography.bodySmall.copy(color = SoftGray2)
         )
     }
@@ -166,22 +144,17 @@ fun WelcomeText() {
 
 @Composable
 fun Tabby(authType: MutableState<String>) {
-    var currentActive by remember {
-        mutableStateOf(0)
-    }
+    var currentActive by remember { mutableStateOf(0) }
 
-    fun setCurrentActive(index: Int) {
+    // Ubah tipe fungsi menjadi lambda (Int) -> Unit
+    val setCurrentActive: (Int) -> Unit = { index ->
         currentActive = index
-
-        if (index == 1) {
-            authType.value = "phone"
-        } else {
-            authType.value = "email"
-        }
+        authType.value = if (index == 1) "phone" else "email"
     }
+
     Card(
-        modifier = Modifier
-            .fillMaxWidth(), shape = RoundedCornerShape(12.dp)
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp)
     ) {
         Row(
             modifier = Modifier
@@ -193,19 +166,21 @@ fun Tabby(authType: MutableState<String>) {
             TabbyCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f), label = stringResource(id = R.string.email_address),
+                    .weight(1f),
+                label = stringResource(id = R.string.email_address),
                 isActive = currentActive == 0,
                 index = 0,
-                setCurrentActive = ::setCurrentActive
+                setCurrentActive = setCurrentActive
             )
             Spacer(modifier = Modifier.width(5.dp))
             TabbyCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f), label = stringResource(id = R.string.phone_number),
+                    .weight(1f),
+                label = stringResource(id = R.string.phone_number),
                 isActive = currentActive == 1,
                 index = 1,
-                setCurrentActive = ::setCurrentActive
+                setCurrentActive = setCurrentActive
             )
         }
     }
@@ -217,14 +192,14 @@ fun TabbyCard(
     label: String,
     isActive: Boolean = false,
     index: Int,
-    setCurrentActive: KFunction1<Int, Unit>
+    setCurrentActive: (Int) -> Unit  // Mengganti tipe parameter dari KFunction1<Int, Unit> menjadi (Int) -> Unit
 ) {
     Button(
         modifier = modifier,
         onClick = { setCurrentActive(index) },
         shape = Shapes.medium,
         colors = ButtonDefaults.buttonColors(containerColor = if (isActive) White else Transparant),
-        elevation = ButtonDefaults.buttonElevation(0.dp),
+        elevation = ButtonDefaults.buttonElevation(0.dp)
     ) {
         Text(
             text = label,

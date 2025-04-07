@@ -23,8 +23,11 @@ fun StartSail(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
 
     Scaffold { paddingValues ->
-        val padding = paddingValues
-        NavHost(navController = navController, startDestination = Routes.Login.routes) {
+        NavHost(
+            navController = navController,
+            startDestination = Routes.Login.routes,
+            modifier = modifier
+        ) {
             composable(Routes.Login.routes) {
                 LoginScreen(navController = navController)
             }
@@ -40,11 +43,27 @@ fun StartSail(
             composable(Routes.AddTeam.routes) {
                 AddTeamScreen(navController = navController)
             }
+            composable(Routes.Verification.routes) {
+                VerificationScreen(navController = navController)
+            }
+            composable(Routes.RegisterSuccess.routes) {
+                RegisterSuccessScreen(navController = navController)
+            }
+            composable(Routes.ForgotPassword.routes) {
+                ForgotPasswordScreen(navController = navController)
+            }
+            composable(Routes.ResetPassword.routes) {
+                ResetPasswordScreen(navController = navController)
+            }
+            composable(Routes.Profile.routes) {
+                ProfileScreen(navController = navController)
+            }
+            // Tambahkan destination lain sesuai kebutuhan
         }
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 fun StartSailPreview() {
     StartSail()
