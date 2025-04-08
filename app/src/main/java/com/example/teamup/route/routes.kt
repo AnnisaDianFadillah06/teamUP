@@ -40,6 +40,7 @@ sealed class Routes(val routes: String) {
         fun createRoute(teamId: String, teamName: String) =
             "chat_group/$teamId/$teamName"
     }
+    object InviteSelect : Routes("invite_select")
 }
 
 
