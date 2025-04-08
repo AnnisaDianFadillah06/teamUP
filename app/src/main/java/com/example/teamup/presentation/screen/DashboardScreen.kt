@@ -23,7 +23,6 @@ import com.example.teamup.route.Routes
 
 @Composable
 fun DashboardScreen(
-    parentNavController: NavHostController? = null,
     lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
     viewModelStoreOwner: ViewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
         "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
@@ -40,7 +39,7 @@ fun DashboardScreen(
     BackPressHandler(navController)
 
     Scaffold(bottomBar = {
-        if (currentRoute != Routes.Detail.routes && currentRoute != Routes.ChatGroup.routes && currentRoute != Routes.FormAddTeam.routes && currentRoute != Routes.Cart.routes && currentRoute != Routes.Search.routes) {
+        if (currentRoute != Routes.Invite.routes && currentRoute != Routes.InviteSelect.routes && currentRoute != Routes.Detail.routes && currentRoute != Routes.ChatGroup.routes && currentRoute != Routes.FormAddTeam.routes && currentRoute != Routes.Cart.routes && currentRoute != Routes.Search.routes) {
             BottomNavigationBar(navController)
         }
     }) { paddingValues ->
@@ -84,6 +83,9 @@ fun DashboardScreen(
             }
             composable(Routes.Invite.routes) {
                 InviteMemberScreen(navController = navController)
+            }
+            composable(Routes.InviteSelect.routes) {
+                InviteSelectMemberScreen(navController = navController)
             }
             composable(Routes.JoinTeam.routes) {
                 val viewModelFactory = ViewModelJoinFactory.getInstance()

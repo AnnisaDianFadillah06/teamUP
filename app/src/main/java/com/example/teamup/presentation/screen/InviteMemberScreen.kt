@@ -80,7 +80,7 @@ fun InviteMemberScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {/* ke screen select invite */ },
+                onClick = { navController.navigate(Routes.InviteSelect.routes) },
                 containerColor = DodgerBlue,
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp),
