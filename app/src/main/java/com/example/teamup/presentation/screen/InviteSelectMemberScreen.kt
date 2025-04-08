@@ -186,7 +186,8 @@ fun InviteSelectMemberScreen(
             // Draft Button
             Button(
                 onClick = {
-                    // navController.navigate(Routes.DraftInvitation.routes)
+                    val selectedIds = viewModel.getSelectedMembers().joinToString(",") { it.id }
+                    navController.navigate("draft_invitation/$selectedIds")
                 },
                 modifier = Modifier
                     .fillMaxWidth()
