@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-
 class CompetitionViewModel(
     private val repository: CompetitionRepository
 ) : ViewModel() {
@@ -48,24 +47,27 @@ class CompetitionViewModel(
 
     fun addCompetition(
         namaLomba: String,
-        cabangLomba: String,
+        cabangLombaList: List<String>, // Changed to accept list
         tanggalPelaksanaan: String,
         deskripsiLomba: String,
         imageUrl: String = "",
-        fileUrl: String = "",  // Parameter baru untuk URL file
-        jumlahTim: Int
+        fileUrl: String = "",
+        jumlahTim: Int = 0,
+        status: String = "Published"
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
                 val competition = CompetitionModel(
                     namaLomba = namaLomba,
-                    cabangLomba = cabangLomba,
+                    cabangLomba = cabangLombaList.firstOrNull() ?: "", // Keep first for backward compatibility
+                    cabangLombaList = cabangLombaList,
                     tanggalPelaksanaan = tanggalPelaksanaan,
                     deskripsiLomba = deskripsiLomba,
                     imageUrl = imageUrl,
-                    fileUrl = fileUrl,  // Mengisi properti baru
-                    jumlahTim = jumlahTim
+                    fileUrl = fileUrl,
+                    jumlahTim = jumlahTim,
+                    status = status
                 )
                 repository.addCompetition(competition)
                 _uiState.update {
@@ -85,7 +87,7 @@ class CompetitionViewModel(
         }
     }
 
-    // Fungsi ini untuk mengatur pesan error manual
+    // Existing functions
     fun setError(errorMessage: String) {
         _uiState.update {
             it.copy(errorMessage = errorMessage)
@@ -98,19 +100,6 @@ class CompetitionViewModel(
         }
     }
 
-//    // Add this for Snackbar message handling
-//    private val _snackbarMessage = MutableLiveData<String?>()
-//    val snackbarMessage: LiveData<String?> = _snackbarMessage
-//
-//    fun showSnackbarMessage(message: String) {
-//        _snackbarMessage.value = message
-//    }
-//
-//    fun snackbarShown() {
-//        _snackbarMessage.value = null
-//    }
-
-    // Tambahkan fungsi ini di CompetitionViewModel.kt
     fun clearError() {
         _uiState.update { currentState ->
             currentState.copy(errorMessage = null)

@@ -63,6 +63,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -564,15 +565,16 @@ fun AddCompetitionForm(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var namaLomba by remember { mutableStateOf("") }
-    var cabangLomba by remember { mutableStateOf("") }
     var tanggalPelaksanaan by remember { mutableStateOf("") }
     var deskripsiLomba by remember { mutableStateOf("") }
-    // Removed UI for jumlahTim but still keeping the variable for Firestore
-    val jumlahTim = 0 // Default value that will be sent to Firestore
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
     var selectedFileName by remember { mutableStateOf("") }
     var isUploading by remember { mutableStateOf(false) }
+    var selectedStatus by remember { mutableStateOf("Published") }
+
+    // Cabang Lomba list with explicit type
+    val cabangLombaList = remember { mutableStateListOf<String>("") }
 
     // State for Alert Dialog
     var showErrorDialog by remember { mutableStateOf(false) }
@@ -693,14 +695,64 @@ fun AddCompetitionForm(
                 )
             }
 
+            // Cabang Lomba section with proper list handling
             item {
-                OutlinedTextField(
-                    value = cabangLomba,
-                    onValueChange = { cabangLomba = it },
-                    label = { Text("Cabang Lomba") },
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Cabang Lomba",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    // Display each cabang input field using a for loop instead of forEachIndexed
+                    for (index in cabangLombaList.indices) {
+                        val value = cabangLombaList[index]
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = value,
+                                onValueChange = { newValue ->
+                                    cabangLombaList[index] = newValue
+                                },
+                                label = { Text("Cabang ${index + 1}") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            // Only show delete button if there's more than one field
+                            if (cabangLombaList.size > 1) {
+                                IconButton(
+                                    onClick = { cabangLombaList.removeAt(index) }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Hapus Cabang",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Add button to add more cabang
+                    Button(
+                        onClick = { cabangLombaList.add("") },
+                        modifier = Modifier.align(Alignment.Start)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Tambah Cabang"
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Tambah Cabang")
+                    }
+                }
             }
 
             item {
@@ -732,6 +784,52 @@ fun AddCompetitionForm(
                     minLines = 3,
                     maxLines = 5
                 )
+            }
+
+            // Add Status dropdown
+            item {
+                var showStatusMenu by remember { mutableStateOf(false) }
+
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Status",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = selectedStatus,
+                            onValueChange = { },
+                            readOnly = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            trailingIcon = {
+                                IconButton(onClick = { showStatusMenu = true }) {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = "Select Status"
+                                    )
+                                }
+                            }
+                        )
+
+                        DropdownMenu(
+                            expanded = showStatusMenu,
+                            onDismissRequest = { showStatusMenu = false },
+                            modifier = Modifier.fillMaxWidth(0.9f)
+                        ) {
+                            listOf("Published", "Draft", "Cancelled").forEach { status ->
+                                DropdownMenuItem(
+                                    text = { Text(status) },
+                                    onClick = {
+                                        selectedStatus = status
+                                        showStatusMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             item {
@@ -907,22 +1005,28 @@ fun AddCompetitionForm(
                 Button(
                     onClick = {
                         isUploading = true
+                        // Filter out any empty cabang entries - fixed with toList()
+                        val filteredCabangList = cabangLombaList.toList().filter { it.isNotBlank() }
+
                         uploadCompetitionWithMedia(
                             context = context,
                             imageUri = selectedImageUri,
                             fileUri = selectedFileUri,
                             namaLomba = namaLomba,
-                            cabangLomba = cabangLomba,
+                            cabangLombaList = filteredCabangList,
                             tanggalPelaksanaan = tanggalPelaksanaan,
                             deskripsiLomba = deskripsiLomba,
-                            jumlahTim = jumlahTim, // Pass the default value to Firestore ,
+                            status = selectedStatus,
                             viewModel = viewModel,
                             onComplete = { isUploading = false }
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = namaLomba.isNotBlank() && cabangLomba.isNotBlank() &&
-                            tanggalPelaksanaan.isNotBlank() && !uiState.isLoading && !isUploading
+                    enabled = namaLomba.isNotBlank() &&
+                            cabangLombaList.any { item -> item.isNotBlank() } &&
+                            tanggalPelaksanaan.isNotBlank() &&
+                            !uiState.isLoading &&
+                            !isUploading
                 ) {
                     Text("Buat Kompetisi")
                 }
@@ -952,11 +1056,10 @@ private fun uploadCompetitionWithMedia(
     imageUri: Uri?,
     fileUri: Uri?,
     namaLomba: String,
-    cabangLomba: String,
+    cabangLombaList: List<String>, // Updated to accept list of cabang lomba
     tanggalPelaksanaan: String,
     deskripsiLomba: String,
-    jumlahTim: Int, // We still accept this parameter but it's fixed at 0
-//    status: String = "Published",
+    status: String = "Published", // Status parameter
     viewModel: CompetitionViewModel,
     onComplete: () -> Unit
 ) {
@@ -983,12 +1086,12 @@ private fun uploadCompetitionWithMedia(
             (shouldAddWithFile && fileUploaded || !shouldAddWithFile)) {
             viewModel.addCompetition(
                 namaLomba = namaLomba,
-                cabangLomba = cabangLomba,
+                cabangLombaList = cabangLombaList, // Pass list to viewModel
                 tanggalPelaksanaan = tanggalPelaksanaan,
                 deskripsiLomba = deskripsiLomba,
                 imageUrl = imageUrl,
                 fileUrl = fileUrl,
-                jumlahTim = jumlahTim // Pass the jumlahTim to Firestore (fixed at 0)
+                status = status // Pass status
             )
             onComplete()
         }
@@ -998,10 +1101,10 @@ private fun uploadCompetitionWithMedia(
     if (imageUri == null && fileUri == null) {
         viewModel.addCompetition(
             namaLomba = namaLomba,
-            cabangLomba = cabangLomba,
+            cabangLombaList = cabangLombaList, // Pass list to viewModel
             tanggalPelaksanaan = tanggalPelaksanaan,
             deskripsiLomba = deskripsiLomba,
-            jumlahTim = jumlahTim // Pass the jumlahTim to Firestore (fixed at 0)
+            status = status // Pass status
         )
         onComplete()
         return

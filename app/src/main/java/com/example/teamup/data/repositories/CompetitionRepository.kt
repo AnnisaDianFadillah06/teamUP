@@ -15,13 +15,15 @@ class CompetitionRepository {
     suspend fun addCompetition(competition: CompetitionModel) {
         val newCompetition = hashMapOf(
             "namaLomba" to competition.namaLomba,
-            "cabangLomba" to competition.cabangLomba,
+            "cabangLomba" to competition.cabangLomba, // Keep for backward compatibility
+            "cabangLombaList" to competition.cabangLombaList, // New field
             "tanggalPelaksanaan" to competition.tanggalPelaksanaan,
             "deskripsiLomba" to competition.deskripsiLomba,
             "jumlahTim" to competition.jumlahTim,
             "imageUrl" to competition.imageUrl,
-            "fileUrl" to competition.fileUrl,  // Menambahkan fileUrl ke dokumen Firestore
-            "createdAt" to competition.createdAt
+            "fileUrl" to competition.fileUrl,
+            "createdAt" to competition.createdAt,
+            "status" to competition.status
         )
         competitionsCollection.add(newCompetition).await()
     }
@@ -37,16 +39,22 @@ class CompetitionRepository {
 
                 if (snapshot != null) {
                     val competitions = snapshot.documents.map { doc ->
+                        // Extract cabangLombaList or use empty list if not found
+                        @Suppress("UNCHECKED_CAST")
+                        val cabangLombaList = doc.get("cabangLombaList") as? List<String> ?: listOf()
+
                         CompetitionModel(
                             id = doc.id,
                             namaLomba = doc.getString("namaLomba") ?: "",
                             cabangLomba = doc.getString("cabangLomba") ?: "",
+                            cabangLombaList = cabangLombaList,
                             tanggalPelaksanaan = doc.getString("tanggalPelaksanaan") ?: "",
                             deskripsiLomba = doc.getString("deskripsiLomba") ?: "",
                             jumlahTim = doc.getLong("jumlahTim")?.toInt() ?: 0,
                             imageUrl = doc.getString("imageUrl") ?: "",
-                            fileUrl = doc.getString("fileUrl") ?: "",  // Mengambil fileUrl dari dokumen
-                            createdAt = doc.getTimestamp("createdAt") ?: com.google.firebase.Timestamp.now()
+                            fileUrl = doc.getString("fileUrl") ?: "",
+                            createdAt = doc.getTimestamp("createdAt") ?: com.google.firebase.Timestamp.now(),
+                            status = doc.getString("status") ?: "Published"
                         )
                     }
                     trySend(competitions)
@@ -65,7 +73,6 @@ class CompetitionRepository {
                 instance ?: CompetitionRepository().also { instance = it }
             }
     }
-
 }
 
 //
