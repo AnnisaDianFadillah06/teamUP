@@ -3,7 +3,9 @@ package com.example.teamup.data.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.teamup.data.model.CabangLombaModel
 import com.example.teamup.data.model.CompetitionModel
+import com.example.teamup.data.repositories.CabangLombaRepository
 import com.example.teamup.data.repositories.CompetitionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,7 +14,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class CompetitionViewModel(
-    private val repository: CompetitionRepository
+    private val repository: CompetitionRepository,
+    private val cabangLombaRepository: CabangLombaRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CompetitionUiState())
@@ -47,7 +50,7 @@ class CompetitionViewModel(
 
     fun addCompetition(
         namaLomba: String,
-        cabangLombaList: List<String>, // Changed to accept list
+        cabangLombaList: List<String>, // Still accept the list but handle differently
         tanggalPelaksanaan: String,
         deskripsiLomba: String,
         imageUrl: String = "",
@@ -58,10 +61,9 @@ class CompetitionViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
+                // First, create the competition
                 val competition = CompetitionModel(
                     namaLomba = namaLomba,
-                    cabangLomba = cabangLombaList.firstOrNull() ?: "", // Keep first for backward compatibility
-                    cabangLombaList = cabangLombaList,
                     tanggalPelaksanaan = tanggalPelaksanaan,
                     deskripsiLomba = deskripsiLomba,
                     imageUrl = imageUrl,
@@ -69,7 +71,22 @@ class CompetitionViewModel(
                     jumlahTim = jumlahTim,
                     status = status
                 )
-                repository.addCompetition(competition)
+
+                // Add the competition and get its ID
+                val competitionId = repository.addCompetition(competition)
+
+                // Then, add all cabang lomba entries linked to this competition
+                val cabangEntries = cabangLombaList.filter { it.isNotBlank() }.map { cabangName ->
+                    CabangLombaModel(
+                        competitionId = competitionId,
+                        namaCabang = cabangName
+                    )
+                }
+
+                if (cabangEntries.isNotEmpty()) {
+                    cabangLombaRepository.addMultipleCabangLomba(cabangEntries)
+                }
+
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -87,7 +104,6 @@ class CompetitionViewModel(
         }
     }
 
-    // Existing functions
     fun setError(errorMessage: String) {
         _uiState.update {
             it.copy(errorMessage = errorMessage)
@@ -115,12 +131,13 @@ class CompetitionViewModel(
 }
 
 class CompetitionViewModelFactory(
-    private val repository: CompetitionRepository
+    private val repository: CompetitionRepository,
+    private val cabangLombaRepository: CabangLombaRepository
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(CompetitionViewModel::class.java)) {
-            return CompetitionViewModel(repository) as T
+            return CompetitionViewModel(repository, cabangLombaRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
