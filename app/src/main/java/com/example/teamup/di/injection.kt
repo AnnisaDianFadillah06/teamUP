@@ -1,5 +1,6 @@
 package com.example.teamup.di
 
+import com.example.teamup.data.repositories.CabangLombaRepository
 import com.example.teamup.data.repositories.CartRepository
 import com.example.teamup.data.repositories.CompetitionRepository
 import com.example.teamup.data.repositories.ContentRepository
@@ -52,6 +53,9 @@ object Injection {
 
     fun provideCompetitionRepository(): CompetitionRepository {
         return CompetitionRepository.getInstance()
+    }
+    fun provideCabangLombaRepository(): CabangLombaRepository {
+        return CabangLombaRepository.getInstance()
     }
     fun provideFirebaseTeamDataSource(): FirebaseTeamDataSource {
         return FirebaseTeamDataSource()
