@@ -6,7 +6,6 @@ import com.google.firebase.firestore.DocumentId
 data class CompetitionModel(
     @DocumentId val id: String = "", // ID dokumen otomatis dari Firestore
     val namaLomba: String = "",
-    val cabangLomba: String = "",
     val tanggalPelaksanaan: String = "",
     val deskripsiLomba: String = "",
     val jumlahTim: Int = 0, // Jumlah tim yang ikut lomba

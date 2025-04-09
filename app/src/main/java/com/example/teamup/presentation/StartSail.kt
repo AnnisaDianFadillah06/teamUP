@@ -97,7 +97,7 @@ fun StartSail(
 fun StartSailPreview() {
     val fakeViewModel = viewModel<CompetitionViewModel>(
         factory = CompetitionViewModelFactory(
-            Injection.provideCompetitionRepository()
+            Injection.provideCompetitionRepository(), Injection.provideCabangLombaRepository()
         )
     )
     StartSail(competitionViewModel = fakeViewModel)
