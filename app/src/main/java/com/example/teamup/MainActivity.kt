@@ -27,7 +27,7 @@ import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 // Change to extend FragmentActivity instead of ComponentActivity
 class MainActivity : FragmentActivity() {
     private val competitionViewModel: CompetitionViewModel by viewModels {
-        CompetitionViewModelFactory(Injection.provideCompetitionRepository())
+        CompetitionViewModelFactory(Injection.provideCompetitionRepository(), Injection.provideCabangLombaRepository())
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
