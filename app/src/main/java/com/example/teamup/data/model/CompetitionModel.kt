@@ -1,5 +1,6 @@
 package com.example.teamup.data.model
 
+import androidx.annotation.DrawableRes
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.Exclude
@@ -47,3 +48,14 @@ data class CompetitionModel(
         return dateFormat.format(date)
     }
 }
+
+data class CompetitionModelDummy(
+    val id: String,
+    val name: String,
+    @DrawableRes val iconResId: Int,
+    val teamCount: Int,
+    val namaLomba: String,
+    val cabangLomba: String,
+    val tanggalPelaksanaan: String,
+    val deskripsiLomba: String
+)

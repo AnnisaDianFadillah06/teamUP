@@ -2,14 +2,14 @@ package com.example.teamup.di
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.example.teamup.data.repositories.CompetitionRepository
+import com.example.teamup.data.repositories.CompetitionRepositoryDummy
 import com.example.teamup.data.repositories.TeamRepository
 import com.example.teamup.data.sources.remote.FirebaseTeamDataSource
 import com.example.teamup.data.viewmodels.JoinTeamViewModel
 
 class ViewModelJoinFactory(
     private val teamRepository: TeamRepository,
-    private val competitionRepository: CompetitionRepository
+    private val competitionRepository: CompetitionRepositoryDummy
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -28,7 +28,7 @@ class ViewModelJoinFactory(
             return instance ?: synchronized(this) {
                 val firebaseTeamDataSource = FirebaseTeamDataSource()
                 val teamRepository = TeamRepository.getInstance(firebaseTeamDataSource)
-                val competitionRepository = CompetitionRepository()
+                val competitionRepository = CompetitionRepositoryDummy()
 
                 instance ?: ViewModelJoinFactory(
                     teamRepository,

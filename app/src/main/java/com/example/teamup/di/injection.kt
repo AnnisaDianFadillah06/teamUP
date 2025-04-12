@@ -51,12 +51,6 @@ object Injection {
         return FirebaseCompetitionDataSource()
     }
 
-    fun provideCompetitionRepository(): CompetitionRepository {
-        return CompetitionRepository.getInstance()
-    }
-    fun provideCabangLombaRepository(): CabangLombaRepository {
-        return CabangLombaRepository.getInstance()
-    }
     fun provideFirebaseTeamDataSource(): FirebaseTeamDataSource {
         return FirebaseTeamDataSource()
     }
@@ -67,5 +61,13 @@ object Injection {
 
     fun provideFirebaseStorageHelper(): FirebaseStorageHelper {
         return FirebaseStorageHelper()
+    }
+
+    fun provideCompetitionRepository(): CompetitionRepository {
+        return CompetitionRepository.getInstance()
+    }
+
+    fun provideCabangLombaRepository(): CabangLombaRepository {
+        return CabangLombaRepository.getInstance()
     }
 }

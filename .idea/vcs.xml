@@ -2,5 +2,22 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+=======
+<<<<<<< HEAD
+    <mapping directory="" vcs="Git" />
+=======
+<<<<<<< HEAD
+    <mapping directory="" vcs="Git" />
+=======
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+>>>>>>> 6aa8a9fb3c85fe23483397e3b1baed587d79b73b
+>>>>>>> b6f90c0f5ee0cb6d78ad11284ecc711b7103c73e
+>>>>>>> 1b248cb2e32d2e039a95b77986006898f9905706
+>>>>>>> origin/feature/competition-rewards
+=======
+>>>>>>> origin/feature/competition-rewards
   </component>
 </project>
