@@ -63,6 +63,7 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
                 val courseId = backStackEntry.arguments?.getString("courseId")?.toInt() ?: 0
                 DetailScreen(navController, courseId)
             }
+
 //            composable(Routes.AddCompetition.routes) {
 //                AddCompetitionScreen(
 //                    navController = navController,

@@ -153,3 +153,4 @@ fun CompetitionScreen(
         }
     }
 }
+

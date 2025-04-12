@@ -96,9 +96,12 @@ fun EditCompetitionForm(
             mutableStateListOf<String>()
         }
     }
+
+    // Add this flag to track if cabang lomba was loaded from FireStore
+    var cabangLombaLoaded by remember { mutableStateOf(competition.cabangLomba.isNotEmpty()) }
+
     var tanggalPelaksanaan by remember { mutableStateOf(competition.tanggalPelaksanaan) }
     var deskripsiLomba by remember { mutableStateOf(competition.deskripsiLomba) }
-//    var jumlahTim by remember { mutableStateOf(competition.jumlahTim) }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
     var selectedFileName by remember { mutableStateOf("") }
@@ -120,11 +123,12 @@ fun EditCompetitionForm(
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
-    // Load cabang lomba dari viewModel jika cabangLombaList masih kosong atau jika uiState.cabangLombaList berubah
+    // Load cabang lomba dari viewModel
     LaunchedEffect(key1 = uiState.cabangLombaList) {
         // Jika cabangLombaList kosong dan ada data di uiState, load data dari uiState
         if (cabangLombaList.isEmpty() && uiState.cabangLombaList.isNotEmpty()) {
             cabangLombaList.addAll(uiState.cabangLombaList)
+            cabangLombaLoaded = true
         }
         // Jika competition.cabangLomba kosong dan belum ada request untuk mendapatkan data cabang lomba
         else if (competition.cabangLomba.isEmpty() && uiState.cabangLombaList.isEmpty()) {
@@ -258,14 +262,6 @@ fun EditCompetitionForm(
         }
     }
 
-    // Effect untuk navigasi setelah sukses
-    LaunchedEffect(key1 = uiState.isSuccess) {
-        if (uiState.isSuccess) {
-            viewModel.resetSuccess()
-            onSuccess()
-        }
-    }
-
     // Effect untuk menampilkan error message di Alert Dialog
     LaunchedEffect(key1 = uiState.errorMessage) {
         uiState.errorMessage?.let { error ->
@@ -357,8 +353,22 @@ fun EditCompetitionForm(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
+                    // Loading indicator while cabang lomba is being fetched
+                    if (!cabangLombaLoaded && cabangLombaList.isEmpty() && uiState.isLoading) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Memuat cabang lomba...")
+                        }
+                    }
                     // Display added cabang lomba items
-                    if (cabangLombaList.isNotEmpty()) {
+                    else if (cabangLombaList.isNotEmpty()) {
                         Text(
                             text = "Cabang Lomba yang ditambahkan:",
                             style = MaterialTheme.typography.bodyMedium,
@@ -403,6 +413,15 @@ fun EditCompetitionForm(
                             }
                         }
                     }
+                    // Show message when no cabang lomba are available
+                    else if (cabangLombaLoaded && cabangLombaList.isEmpty()) {
+                        Text(
+                            text = "Belum ada cabang lomba yang ditambahkan",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
                 }
             }
 
@@ -436,21 +455,6 @@ fun EditCompetitionForm(
                     maxLines = 5
                 )
             }
-
-//            // Add jumlahTim field
-//            item {
-//                OutlinedTextField(
-//                    value = jumlahTim.toString(),
-//                    onValueChange = {
-//                        val num = it.toIntOrNull() ?: 0
-//                        jumlahTim = num
-//                    },
-//                    label = { Text("Jumlah Tim") },
-//                    modifier = Modifier.fillMaxWidth(),
-//                    singleLine = true,
-//                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-//                )
-//            }
 
             // Add status selection
             item {
@@ -839,11 +843,10 @@ fun EditCompetitionForm(
                             imageUri = selectedImageUri,
                             fileUri = selectedFileUri,
                             namaLomba = namaLomba,
-                            // Kirim cabang lomba yang sudah digabung (yang lama dan yang baru)
+                            // Kirim cabang lomba yang sudah digabung
                             cabangLomba = cabangLombaList.toList(),
                             tanggalPelaksanaan = tanggalPelaksanaan,
                             deskripsiLomba = deskripsiLomba,
-//                    jumlahTim = jumlahTim,
                             currentImageUrl = if (currentImageUrl.isEmpty()) null else currentImageUrl,
                             currentFileUrl = if (currentFileUrl.isEmpty()) null else currentFileUrl,
                             visibilityStatus = selectedVisibilityStatus,
@@ -851,13 +854,17 @@ fun EditCompetitionForm(
                             tanggalTutupPendaftaran = tanggalTutupPendaftaran.takeIf { it.isNotEmpty() },
                             autoCloseEnabled = autoCloseEnabled,
                             viewModel = viewModel,
-                            keepExistingCabang = true, // Tambahkan parameter ini ke updateCompetitionWithMedia
+                            keepExistingCabang = true,
                             onComplete = { isUploading = false }
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = namaLomba.isNotBlank() && cabangLombaList.isNotEmpty() &&
-                            tanggalPelaksanaan.isNotBlank() && !uiState.isLoading && !isUploading
+                    // Changed this condition - now the button is enabled if namaLomba and tanggalPelaksanaan are filled
+                    // and if the cabangLombaList is NOT empty (but doesn't require adding new entries)
+                    enabled = namaLomba.isNotBlank() &&
+                            tanggalPelaksanaan.isNotBlank() &&
+                            !uiState.isLoading &&
+                            !isUploading
                 ) {
                     Text("Update Kompetisi")
                 }
