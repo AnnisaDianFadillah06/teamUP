@@ -4,14 +4,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.teamup.data.model.CabangLombaModel
+import com.example.teamup.data.model.CompetitionActivityStatus
 import com.example.teamup.data.model.CompetitionModel
+import com.example.teamup.data.model.CompetitionVisibilityStatus
 import com.example.teamup.data.repositories.CabangLombaRepository
 import com.example.teamup.data.repositories.CompetitionRepository
+import com.google.firebase.Timestamp
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class CompetitionViewModel(
     private val repository: CompetitionRepository,
@@ -50,17 +55,27 @@ class CompetitionViewModel(
 
     fun addCompetition(
         namaLomba: String,
-        cabangLombaList: List<String>, // Still accept the list but handle differently
+        cabangLombaList: List<String>,
         tanggalPelaksanaan: String,
         deskripsiLomba: String,
         imageUrl: String = "",
         fileUrl: String = "",
         jumlahTim: Int = 0,
-        status: String = "Published"
+        visibilityStatus: String = CompetitionVisibilityStatus.PUBLISHED.value,
+        activityStatus: String = CompetitionActivityStatus.ACTIVE.value,
+        tanggalTutupPendaftaran: String? = null,
+        autoCloseEnabled: Boolean = false
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
+                // Parse tanggalTutupPendaftaran if provided
+                val deadlineTimestamp = tanggalTutupPendaftaran?.let {
+                    val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                    val date = dateFormat.parse(it)
+                    date?.let { d -> Timestamp(d) }
+                }
+
                 // First, create the competition
                 val competition = CompetitionModel(
                     namaLomba = namaLomba,
@@ -69,7 +84,10 @@ class CompetitionViewModel(
                     imageUrl = imageUrl,
                     fileUrl = fileUrl,
                     jumlahTim = jumlahTim,
-                    status = status
+                    visibilityStatus = visibilityStatus,
+                    activityStatus = activityStatus,
+                    tanggalTutupPendaftaran = deadlineTimestamp,
+                    autoCloseEnabled = autoCloseEnabled
                 )
 
                 // Add the competition and get its ID
@@ -99,6 +117,45 @@ class CompetitionViewModel(
                         errorMessage = e.message,
                         isLoading = false
                     )
+                }
+            }
+        }
+    }
+
+    fun updateCompetitionStatus(
+        competitionId: String,
+        visibilityStatus: String? = null,
+        activityStatus: String? = null,
+        tanggalTutupPendaftaran: String? = null,
+        autoCloseEnabled: Boolean? = null
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                // Parse tanggalTutupPendaftaran if provided
+                val deadlineTimestamp = tanggalTutupPendaftaran?.let {
+                    val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                    val date = dateFormat.parse(it)
+                    date?.let { d -> Timestamp(d) }
+                }
+
+                repository.updateCompetitionStatus(
+                    competitionId = competitionId,
+                    visibilityStatus = visibilityStatus,
+                    activityStatus = activityStatus,
+                    tanggalTutupPendaftaran = deadlineTimestamp,
+                    autoCloseEnabled = autoCloseEnabled
+                )
+
+                // Refresh competitions list
+                getAllCompetitions()
+
+                _uiState.update {
+                    it.copy(isLoading = false, isSuccess = true)
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(errorMessage = e.message, isLoading = false)
                 }
             }
         }

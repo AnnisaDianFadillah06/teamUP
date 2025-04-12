@@ -1,6 +1,9 @@
 package com.example.teamup.data.repositories
 
+import com.example.teamup.data.model.CompetitionActivityStatus
 import com.example.teamup.data.model.CompetitionModel
+import com.example.teamup.data.model.CompetitionVisibilityStatus
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
@@ -21,7 +24,10 @@ class CompetitionRepository {
             "imageUrl" to competition.imageUrl,
             "fileUrl" to competition.fileUrl,
             "createdAt" to competition.createdAt,
-            "status" to competition.status
+            "visibilityStatus" to competition.visibilityStatus,
+            "activityStatus" to competition.activityStatus,
+            "tanggalTutupPendaftaran" to competition.tanggalTutupPendaftaran,
+            "autoCloseEnabled" to competition.autoCloseEnabled
         )
         val documentRef = competitionsCollection.add(newCompetition).await()
         return documentRef.id // Return the new document ID
@@ -38,7 +44,7 @@ class CompetitionRepository {
 
                 if (snapshot != null) {
                     val competitions = snapshot.documents.map { doc ->
-                        CompetitionModel(
+                        val competition = CompetitionModel(
                             id = doc.id,
                             namaLomba = doc.getString("namaLomba") ?: "",
                             tanggalPelaksanaan = doc.getString("tanggalPelaksanaan") ?: "",
@@ -47,14 +53,48 @@ class CompetitionRepository {
                             imageUrl = doc.getString("imageUrl") ?: "",
                             fileUrl = doc.getString("fileUrl") ?: "",
                             createdAt = doc.getTimestamp("createdAt") ?: com.google.firebase.Timestamp.now(),
-                            status = doc.getString("status") ?: "Published"
+                            visibilityStatus = doc.getString("visibilityStatus") ?: CompetitionVisibilityStatus.PUBLISHED.value,
+                            activityStatus = doc.getString("activityStatus") ?: CompetitionActivityStatus.ACTIVE.value,
+                            tanggalTutupPendaftaran = doc.getTimestamp("tanggalTutupPendaftaran"),
+                            autoCloseEnabled = doc.getBoolean("autoCloseEnabled") ?: false
                         )
+
+                        // Check if we need to update the status based on auto-close
+                        if (competition.shouldBeInactive() && competition.activityStatus == CompetitionActivityStatus.ACTIVE.value) {
+                            // Update the status to inactive in Firestore
+                            doc.reference.update("activityStatus", CompetitionActivityStatus.INACTIVE.value)
+
+                            // Return competition with updated status
+                            competition.copy(activityStatus = CompetitionActivityStatus.INACTIVE.value)
+                        } else {
+                            competition
+                        }
                     }
                     trySend(competitions)
                 }
             }
 
         awaitClose { subscription.remove() }
+    }
+
+    // Add method to update competition status
+    suspend fun updateCompetitionStatus(
+        competitionId: String,
+        visibilityStatus: String? = null,
+        activityStatus: String? = null,
+        tanggalTutupPendaftaran: Timestamp? = null,
+        autoCloseEnabled: Boolean? = null
+    ) {
+        val updates = mutableMapOf<String, Any?>()
+
+        visibilityStatus?.let { updates["visibilityStatus"] = it }
+        activityStatus?.let { updates["activityStatus"] = it }
+        tanggalTutupPendaftaran?.let { updates["tanggalTutupPendaftaran"] = it }
+        autoCloseEnabled?.let { updates["autoCloseEnabled"] = it }
+
+        if (updates.isNotEmpty()) {
+            competitionsCollection.document(competitionId).update(updates).await()
+        }
     }
 
     companion object {

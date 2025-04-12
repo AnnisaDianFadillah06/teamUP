@@ -1,6 +1,7 @@
 package com.example.teamup.presentation.components
 
 import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -33,7 +34,12 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -62,11 +68,14 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.teamup.R
 import com.example.teamup.common.utils.uploadCompetitionWithMedia
+import com.example.teamup.data.model.CompetitionActivityStatus
+import com.example.teamup.data.model.CompetitionVisibilityStatus
 import com.example.teamup.data.viewmodels.CompetitionViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddCompetitionForm(
     viewModel: CompetitionViewModel,
@@ -79,12 +88,21 @@ fun AddCompetitionForm(
     val cabangLombaList = remember { mutableStateListOf<String>() }
     var tanggalPelaksanaan by remember { mutableStateOf("") }
     var deskripsiLomba by remember { mutableStateOf("") }
-    // Removed UI for jumlahTim but still keeping the variable for Firestore
     val jumlahTim = 0 // Default value that will be sent to Firestore
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
     var selectedFileName by remember { mutableStateOf("") }
     var isUploading by remember { mutableStateOf(false) }
+
+    // Status fields
+    var visibilityStatusExpanded by remember { mutableStateOf(false) }
+    var activityStatusExpanded by remember { mutableStateOf(false) }
+    var selectedVisibilityStatus by remember { mutableStateOf(CompetitionVisibilityStatus.PUBLISHED.value) }
+    var selectedActivityStatus by remember { mutableStateOf(CompetitionActivityStatus.ACTIVE.value) }
+
+    // New deadline date fields
+    var tanggalTutupPendaftaran by remember { mutableStateOf("") }
+    var autoCloseEnabled by remember { mutableStateOf(false) }
 
     // State for Alert Dialog
     var showErrorDialog by remember { mutableStateOf(false) }
@@ -92,6 +110,7 @@ fun AddCompetitionForm(
 
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
+    val deadlineCalendar = Calendar.getInstance()
 
     val datePickerDialog = DatePickerDialog(
         context,
@@ -103,6 +122,33 @@ fun AddCompetitionForm(
         calendar.get(Calendar.YEAR),
         calendar.get(Calendar.MONTH),
         calendar.get(Calendar.DAY_OF_MONTH)
+    )
+
+    // Date picker for registration deadline
+    val deadlineDatePickerDialog = DatePickerDialog(
+        context,
+        { _, year, month, dayOfMonth ->
+            deadlineCalendar.set(year, month, dayOfMonth)
+
+            // After selecting date, show time picker for precise deadline
+            TimePickerDialog(
+                context,
+                { _, hourOfDay, minute ->
+                    deadlineCalendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
+                    deadlineCalendar.set(Calendar.MINUTE, minute)
+                    deadlineCalendar.set(Calendar.SECOND, 59)
+
+                    val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                    tanggalTutupPendaftaran = format.format(deadlineCalendar.time)
+                },
+                deadlineCalendar.get(Calendar.HOUR_OF_DAY),
+                deadlineCalendar.get(Calendar.MINUTE),
+                true
+            ).show()
+        },
+        deadlineCalendar.get(Calendar.YEAR),
+        deadlineCalendar.get(Calendar.MONTH),
+        deadlineCalendar.get(Calendar.DAY_OF_MONTH)
     )
 
     // Create image picker launcher
@@ -332,6 +378,144 @@ fun AddCompetitionForm(
                 )
             }
 
+            // Add status selection
+            item {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Text(
+                    text = "Status Kompetisi",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
+            // Visibility Status dropdown
+            item {
+                ExposedDropdownMenuBox(
+                    expanded = visibilityStatusExpanded,
+                    onExpandedChange = { visibilityStatusExpanded = !visibilityStatusExpanded },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = selectedVisibilityStatus,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Status Visibilitas") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = visibilityStatusExpanded)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = visibilityStatusExpanded,
+                        onDismissRequest = { visibilityStatusExpanded = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        CompetitionVisibilityStatus.values().forEach { status ->
+                            DropdownMenuItem(
+                                text = { Text(status.value) },
+                                onClick = {
+                                    selectedVisibilityStatus = status.value
+                                    visibilityStatusExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Activity Status dropdown
+            item {
+                ExposedDropdownMenuBox(
+                    expanded = activityStatusExpanded,
+                    onExpandedChange = { activityStatusExpanded = !activityStatusExpanded },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = selectedActivityStatus,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Status Aktivitas") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = activityStatusExpanded)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = activityStatusExpanded,
+                        onDismissRequest = { activityStatusExpanded = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        CompetitionActivityStatus.values().forEach { status ->
+                            DropdownMenuItem(
+                                text = { Text(status.value) },
+                                onClick = {
+                                    selectedActivityStatus = status.value
+                                    activityStatusExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Registration deadline section
+            item {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Text(
+                    text = "Batas Pendaftaran",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                // Deadline date picker field
+                OutlinedTextField(
+                    value = if (tanggalTutupPendaftaran.isNotEmpty()) {
+                        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                        val outputFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+                        val date = inputFormat.parse(tanggalTutupPendaftaran)
+                        outputFormat.format(date!!)
+                    } else "",
+                    onValueChange = { },
+                    label = { Text("Tanggal & Waktu Tutup Pendaftaran") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    readOnly = true,
+                    trailingIcon = {
+                        IconButton(onClick = { deadlineDatePickerDialog.show() }) {
+                            Icon(
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = "Select Deadline Date"
+                            )
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Auto-close checkbox
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = autoCloseEnabled,
+                        onCheckedChange = { autoCloseEnabled = it }
+                    )
+                    Text(
+                        text = "Otomatis ubah status menjadi Inactive saat melewati batas pendaftaran",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+
             item {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 Text(
@@ -505,7 +689,8 @@ fun AddCompetitionForm(
                 Button(
                     onClick = {
                         isUploading = true
-                        // Pass the list of cabang lomba to the upload function
+
+                        // Pass the list of cabang lomba and all status values to the upload function
                         uploadCompetitionWithMedia(
                             context = context,
                             imageUri = selectedImageUri,
@@ -515,6 +700,10 @@ fun AddCompetitionForm(
                             tanggalPelaksanaan = tanggalPelaksanaan,
                             deskripsiLomba = deskripsiLomba,
                             jumlahTim = jumlahTim,
+                            visibilityStatus = selectedVisibilityStatus,
+                            activityStatus = selectedActivityStatus,
+                            tanggalTutupPendaftaran = tanggalTutupPendaftaran.takeIf { it.isNotEmpty() },
+                            autoCloseEnabled = autoCloseEnabled,
                             viewModel = viewModel,
                             onComplete = { isUploading = false }
                         )

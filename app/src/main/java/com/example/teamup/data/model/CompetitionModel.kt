@@ -12,5 +12,16 @@ data class CompetitionModel(
     val imageUrl: String = "", // URL untuk gambar pendukung
     val fileUrl: String = "", // URL untuk file pendukung
     val createdAt: Timestamp = Timestamp.now(),
-    val status: String = "Published" // Default status is Published
-)
+    val visibilityStatus: String = CompetitionVisibilityStatus.PUBLISHED.value,
+    val activityStatus: String = CompetitionActivityStatus.ACTIVE.value,
+    val tanggalTutupPendaftaran: Timestamp? = null, // Tanggal batas pendaftaran
+    val autoCloseEnabled: Boolean = false // Kontrol untuk auto close berdasarkan tanggal
+) {
+    // Utility function to check if registration should be auto-closed
+    fun shouldBeInactive(): Boolean {
+        if (!autoCloseEnabled || tanggalTutupPendaftaran == null) return false
+
+        val now = Timestamp.now()
+        return now.seconds > tanggalTutupPendaftaran.seconds
+    }
+}

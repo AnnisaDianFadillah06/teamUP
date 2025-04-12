@@ -41,6 +41,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.teamup.R
+import com.example.teamup.data.model.CompetitionActivityStatus
+import com.example.teamup.data.model.CompetitionVisibilityStatus
 import com.example.teamup.data.viewmodels.CabangLombaViewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.presentation.components.CompetitionCard
@@ -54,9 +56,9 @@ fun CompetitionListContent(
     cabangLombaViewModel: CabangLombaViewModel
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var showStatusMenu by remember { mutableStateOf(false) }
+    var showFilterMenu by remember { mutableStateOf(false) }
+    var selectedFilter by remember { mutableStateOf("Semua Status") }
     var showCabangMenu by remember { mutableStateOf(false) }
-    var selectedStatus by remember { mutableStateOf("Semua Status") }
     var selectedCabang by remember { mutableStateOf("Semua Cabang Lomba") }
 
     // Fetch all cabang lomba data once when the screen loads
@@ -73,11 +75,32 @@ fun CompetitionListContent(
     // Get all unique cabang names for the dropdown
     val allUniqueCabang = cabangUiState.allCabangList.map { it.namaCabang }.distinct().sorted()
 
+    // Define our filter options
+    val filterOptions = listOf(
+        "Semua Status",
+        "Terbuka (Published & Active)",
+        "Ditutup (Published & Inactive)",
+        "Draft",
+        "Cancelled"
+    )
+
     val filteredCompetitions = uiState.competitions.filter { competition ->
         val matchesSearch = competition.namaLomba.contains(searchQuery, ignoreCase = true) ||
                 competition.deskripsiLomba.contains(searchQuery, ignoreCase = true)
 
-        val matchesStatus = selectedStatus == "Semua Status" || selectedStatus == competition.status
+        // Apply combined filter based on selected filter
+        val matchesFilter = when (selectedFilter) {
+            "Semua Kompetisi" -> true
+            "Terbuka (Aktif & Published)" ->
+                competition.visibilityStatus == CompetitionVisibilityStatus.PUBLISHED.value &&
+                        competition.activityStatus == CompetitionActivityStatus.ACTIVE.value
+            "Ditutup" ->
+                competition.visibilityStatus == CompetitionVisibilityStatus.PUBLISHED.value &&
+                        competition.activityStatus == CompetitionActivityStatus.INACTIVE.value
+            "Draft" -> competition.visibilityStatus == CompetitionVisibilityStatus.DRAFT.value
+            "Dibatalkan" -> competition.visibilityStatus == CompetitionVisibilityStatus.CANCELLED.value
+            else -> true
+        }
 
         // Check if any cabang in this competition matches the selected cabang
         val competitionCabangList = cabangByCompetitionId[competition.id] ?: emptyList()
@@ -85,7 +108,7 @@ fun CompetitionListContent(
         val matchesCabang = selectedCabang == "Semua Cabang Lomba" ||
                 cabangNames.contains(selectedCabang)
 
-        matchesSearch && matchesStatus && matchesCabang
+        matchesSearch && matchesFilter && matchesCabang
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -114,26 +137,26 @@ fun CompetitionListContent(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Status chip
+                // Status Filter chip (combined filter)
                 Box {
                     FilterChip(
                         selected = false,
-                        onClick = { showStatusMenu = !showStatusMenu },
-                        label = { Text(selectedStatus) },
+                        onClick = { showFilterMenu = !showFilterMenu },
+                        label = { Text(selectedFilter) },
                         trailingIcon = {
                             Icon(Icons.Default.ArrowDropDown, contentDescription = "Status Filter")
                         }
                     )
                     DropdownMenu(
-                        expanded = showStatusMenu,
-                        onDismissRequest = { showStatusMenu = false }
+                        expanded = showFilterMenu,
+                        onDismissRequest = { showFilterMenu = false }
                     ) {
-                        listOf("Semua Status", "Published", "Draft", "Cancelled").forEach { status ->
+                        filterOptions.forEach { option ->
                             DropdownMenuItem(
-                                text = { Text(status) },
+                                text = { Text(option) },
                                 onClick = {
-                                    selectedStatus = status
-                                    showStatusMenu = false
+                                    selectedFilter = option
+                                    showFilterMenu = false
                                 }
                             )
                         }
@@ -191,7 +214,9 @@ fun CompetitionListContent(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = if (searchQuery.isNotEmpty() || selectedStatus != "Semua Status" || selectedCabang != "Semua Cabang Lomba")
+                            text = if (searchQuery.isNotEmpty() ||
+                                selectedFilter != "Semua Kompetisi" ||
+                                selectedCabang != "Semua Cabang Lomba")
                                 "Tidak ada kompetisi yang sesuai dengan filter"
                             else
                                 "Belum ada kompetisi tersedia",

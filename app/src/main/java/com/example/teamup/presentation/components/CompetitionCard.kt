@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FilePresent
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,7 +37,7 @@ import java.util.Locale
 @Composable
 fun CompetitionCard(
     competition: CompetitionModel,
-    associatedCabangList: List<CabangLombaModel> // Pass in the relevant cabang list directly
+    associatedCabangList: List<CabangLombaModel>
 ) {
     Card(
         modifier = Modifier
@@ -81,6 +82,31 @@ fun CompetitionCard(
                 )
             }
 
+            // Display deadline if available
+            competition.tanggalTutupPendaftaran?.let { deadline ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Timer,
+                        contentDescription = "Batas Pendaftaran",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    val dateFormat = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
+                    val formattedDeadline = dateFormat.format(deadline.toDate())
+
+                    Text(
+                        text = "Batas pendaftaran: $formattedDeadline ${if(competition.autoCloseEnabled) "(Otomatis)" else ""}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(4.dp))
 
             Row(
@@ -101,8 +127,8 @@ fun CompetitionCard(
                 )
             }
 
-            // Display status indicator if available
-            competition.status?.let { status ->
+            // Display visibility status indicator
+            competition.visibilityStatus.let { status ->
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -112,6 +138,27 @@ fun CompetitionCard(
                         "Published" -> MaterialTheme.colorScheme.primary
                         "Draft" -> MaterialTheme.colorScheme.tertiary
                         "Cancelled" -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.outline
+                    }
+
+                    Text(
+                        text = "• $status",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = statusColor
+                    )
+                }
+            }
+
+            // Display activity status indicator
+            competition.activityStatus.let { status ->
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    val statusColor = when(status) {
+                        "Active" -> MaterialTheme.colorScheme.primary
+                        "Inactive" -> MaterialTheme.colorScheme.error
                         else -> MaterialTheme.colorScheme.outline
                     }
 
