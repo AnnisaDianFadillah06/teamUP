@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,7 +31,10 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FilePresent
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -62,6 +66,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -317,6 +322,98 @@ fun EditCompetitionForm(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
+                    // Loading indicator while cabang lomba is being fetched
+                    if (!cabangLombaLoaded && cabangLombaList.isEmpty() && uiState.isLoading) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Memuat cabang lomba...")
+                        }
+                    }
+                    // Display existing cabang lomba items
+                    else if (cabangLombaList.isNotEmpty()) {
+                        Text(
+                            text = "Cabang Lomba yang sudah terdaftar:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+
+                        // Preview of existing cabang lomba
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                        ) {
+                            items(cabangLombaList.size) { index ->
+                                val cabang = cabangLombaList[index]
+                                AssistChip(
+                                    onClick = { /* Optional - could show dialog with options */ },
+                                    label = {
+                                        Text(text = cabang)
+                                    },
+                                    colors = AssistChipDefaults.assistChipColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        labelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    ),
+                                    trailingIcon = {
+                                        IconButton(onClick = {
+                                            cabangLombaList.removeAt(index)
+                                        }) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Remove Cabang Lomba",
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // Show message when no cabang lomba are available
+                    else if (cabangLombaLoaded && cabangLombaList.isEmpty()) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceTint.copy(alpha = 0.1f)
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "Belum ada cabang lomba yang terdaftar",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Tambah Cabang Lomba Baru",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+
                     // Input field and add button
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -351,27 +448,14 @@ fun EditCompetitionForm(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    // Loading indicator while cabang lomba is being fetched
-                    if (!cabangLombaLoaded && cabangLombaList.isEmpty() && uiState.isLoading) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.dp
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Memuat cabang lomba...")
-                        }
-                    }
-                    // Display added cabang lomba items
-                    else if (cabangLombaList.isNotEmpty()) {
+                    // Display list of added cabang lomba in detail view
+                    if (cabangLombaList.isNotEmpty()) {
                         Text(
-                            text = "Cabang Lomba yang ditambahkan:",
+                            text = "Daftar Lengkap Cabang Lomba:",
                             style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
 
@@ -413,17 +497,19 @@ fun EditCompetitionForm(
                             }
                         }
                     }
-                    // Show message when no cabang lomba are available
-                    else if (cabangLombaLoaded && cabangLombaList.isEmpty()) {
-                        Text(
-                            text = "Belum ada cabang lomba yang ditambahkan",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        )
-                    }
                 }
             }
+//                    // Show message when no cabang lomba are available
+//                    else if (cabangLombaLoaded && cabangLombaList.isEmpty()) {
+//                        Text(
+//                            text = "Belum ada cabang lomba yang ditambahkan",
+//                            style = MaterialTheme.typography.bodyMedium,
+//                            color = MaterialTheme.colorScheme.error,
+//                            modifier = Modifier.padding(vertical = 4.dp)
+//                        )
+//                    }
+//                }
+//            }
 
             item {
                 // Date picker field
