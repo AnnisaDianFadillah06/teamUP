@@ -1,7 +1,15 @@
 package com.example.teamup.di
 
-import com.example.teamup.data.repositories.*
+import com.example.teamup.data.repositories.CabangLombaRepository
+import com.example.teamup.data.repositories.CartRepository
+import com.example.teamup.data.repositories.CompetitionRepository
+import com.example.teamup.data.repositories.ContentRepository
+import com.example.teamup.data.repositories.CoursesRepository
+import com.example.teamup.data.repositories.DetailRepository
+import com.example.teamup.data.repositories.MyCoursesRepository
 import com.example.teamup.data.repositories.TeamRepository
+import com.example.teamup.data.repositories.WishlistRepository
+import com.example.teamup.data.sources.remote.FirebaseCompetitionDataSource
 import com.example.teamup.data.sources.remote.FirebaseStorageHelper
 import com.example.teamup.data.sources.remote.FirebaseTeamDataSource
 
@@ -30,6 +38,19 @@ object Injection {
         return MyCoursesRepository.getInstance()
     }
 
+//    fun provideFirebaseTeamDataSource(): FirebaseTeamDataSource {
+//        return FirebaseTeamDataSource()
+//    }
+//
+//    fun provideTeamRepository(): TeamRepository {
+//        return TeamRepository.getInstance(provideFirebaseTeamDataSource())
+//    }
+
+    // Competition related injections
+    private fun provideFirebaseCompetitionDataSource(): FirebaseCompetitionDataSource {
+        return FirebaseCompetitionDataSource()
+    }
+
     fun provideFirebaseTeamDataSource(): FirebaseTeamDataSource {
         return FirebaseTeamDataSource()
     }
@@ -49,5 +70,4 @@ object Injection {
     fun provideCabangLombaRepository(): CabangLombaRepository {
         return CabangLombaRepository.getInstance()
     }
-
 }

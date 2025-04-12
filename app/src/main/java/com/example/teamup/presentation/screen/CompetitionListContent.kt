@@ -213,7 +213,7 @@ fun CompetitionListContent(
                         verticalArrangement = Arrangement.Center
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.earth_icon),
+                            painter = painterResource(id = R.drawable.task2),
                             contentDescription = "No Competition",
                             modifier = Modifier.size(200.dp)
                         )

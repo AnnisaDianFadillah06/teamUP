@@ -17,11 +17,12 @@ import com.example.teamup.common.utils.BackPressHandler
 import com.example.teamup.data.model.ProfileModel
 import com.example.teamup.data.viewmodels.JoinTeamViewModel
 import com.example.teamup.di.ViewModelJoinFactory
+import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.presentation.components.BottomNavigationBar
 import com.example.teamup.route.Routes
 
 @Composable
-fun DashboardScreen(navController: NavHostController = rememberNavController()) {
+fun DashboardScreen(navController: NavHostController = rememberNavController(),  competitionViewModel: CompetitionViewModel) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -58,13 +59,32 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
             composable(Routes.MyCourse.routes) {
                 MyCoursesScreen(navController = navController, paddingValues = paddingValues)
             }
-            composable(
-                Routes.Detail.routes,
-                arguments = listOf(navArgument("id") { type = NavType.IntType })
-            ) {
-                val id = it.arguments?.getInt("id") ?: 0
-                DetailScreen(navController = navController, id = id)
+            composable(Routes.Detail.routes) { backStackEntry ->
+                val courseId = backStackEntry.arguments?.getString("courseId")?.toInt() ?: 0
+                DetailScreen(navController, courseId)
             }
+//            composable(Routes.AddCompetition.routes) {
+//                AddCompetitionScreen(
+//                    navController = navController,
+//                    viewModel = competitionViewModel
+//                )
+//            }
+//            composable(Routes.AddCompetition.routes) {
+//                AddCompetitionForm(
+//                    viewModel = competitionViewModel,
+//                    onSuccess = { navController.popBackStack() } // Navigasi balik setelah sukses
+//                )
+//            }
+//            composable(Routes.CompetitionList.routes) {
+//                CompetitionListScreen(navController)
+//            }
+//            composable(
+//                Routes.Detail.routes,
+//                arguments = listOf(navArgument("id") { type = NavType.IntType })
+//            ) {
+//                val id = it.arguments?.getInt("id") ?: 0
+//                DetailScreen(navController = navController, id = id)
+//            }
             composable(Routes.TeamManagement.routes) {
                 TeamManagementScreen(navController = navController)
             }

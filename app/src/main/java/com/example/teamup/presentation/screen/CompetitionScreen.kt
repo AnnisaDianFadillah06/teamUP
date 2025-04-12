@@ -130,6 +130,7 @@ fun CompetitionScreen(
                 EditCompetitionForm(
                     competition = selectedCompetition!!,
                     viewModel = viewModel,
+                    cabangLombaViewModel = cabangLombaViewModel,
                     onSuccess = {
                         showEditForm = false
                         selectedCompetition = null
@@ -145,7 +146,7 @@ fun CompetitionScreen(
                         selectedCompetition = competition
                         showEditForm = true
                     },
-                    cabangLombaViewModel = cabangLombaViewModel,
+                    cabangLombaViewModel = cabangLombaViewModel,  // Add this line
                     modifier = Modifier.padding(paddingValues)
                 )
             }

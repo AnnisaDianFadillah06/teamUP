@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -13,6 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import androidx.fragment.app.FragmentActivity
 import com.example.teamup.common.theme.ESailTheme
+import com.example.teamup.data.viewmodels.CompetitionViewModel
+import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
+import com.example.teamup.di.Injection
 import com.example.teamup.presentation.StartSail
 import com.google.android.gms.security.ProviderInstaller
 import com.google.firebase.FirebaseApp
@@ -21,6 +25,9 @@ import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 
 // Change to extend FragmentActivity instead of ComponentActivity
 class MainActivity : FragmentActivity() {
+    private val competitionViewModel: CompetitionViewModel by viewModels {
+        CompetitionViewModelFactory(Injection.provideCompetitionRepository(), Injection.provideCabangLombaRepository())
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -47,15 +54,13 @@ class MainActivity : FragmentActivity() {
         } catch (e: Exception) {
             Log.e("MainActivity", "Error setting window flags", e)
         }
-
-
         setContent {
             ESailTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    StartSail()
+                    StartSail(competitionViewModel = competitionViewModel)
                 }
             }
         }
