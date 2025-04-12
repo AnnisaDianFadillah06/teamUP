@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -62,12 +63,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.teamup.R
-import com.example.teamup.common.utils.uploadCompetitionWithMedia
+import com.example.teamup.common.utils.updateCompetitionWithMedia
+import com.example.teamup.data.model.CompetitionModel
 import com.example.teamup.data.model.CompetitionActivityStatus
 import com.example.teamup.data.model.CompetitionVisibilityStatus
 import com.example.teamup.data.viewmodels.CompetitionViewModel
@@ -77,40 +80,76 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddCompetitionForm(
+fun EditCompetitionForm(
+    competition: CompetitionModel,
     viewModel: CompetitionViewModel,
     onSuccess: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var namaLomba by remember { mutableStateOf("") }
+    var namaLomba by remember { mutableStateOf(competition.namaLomba) }
     var newCabangLomba by remember { mutableStateOf("") }
     val cabangLombaList = remember { mutableStateListOf<String>() }
-    var tanggalPelaksanaan by remember { mutableStateOf("") }
-    var deskripsiLomba by remember { mutableStateOf("") }
-//    val jumlahTim = 0 // Default value that will be sent to Firestore
+    var tanggalPelaksanaan by remember { mutableStateOf(competition.tanggalPelaksanaan) }
+    var deskripsiLomba by remember { mutableStateOf(competition.deskripsiLomba) }
+//    var jumlahTim by remember { mutableStateOf(competition.jumlahTim) }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
     var selectedFileName by remember { mutableStateOf("") }
     var isUploading by remember { mutableStateOf(false) }
+    var currentImageUrl by remember { mutableStateOf(competition.imageUrl) }
+    var currentFileUrl by remember { mutableStateOf(competition.fileUrl) }
 
     // Status fields
     var visibilityStatusExpanded by remember { mutableStateOf(false) }
     var activityStatusExpanded by remember { mutableStateOf(false) }
-    var selectedVisibilityStatus by remember { mutableStateOf(CompetitionVisibilityStatus.PUBLISHED.value) }
-    var selectedActivityStatus by remember { mutableStateOf(CompetitionActivityStatus.ACTIVE.value) }
+    var selectedVisibilityStatus by remember { mutableStateOf(competition.visibilityStatus) }
+    var selectedActivityStatus by remember { mutableStateOf(competition.activityStatus) }
 
-    // New deadline date fields
-    var tanggalTutupPendaftaran by remember { mutableStateOf("") }
-    var autoCloseEnabled by remember { mutableStateOf(false) }
+    // Deadline date fields
+    var tanggalTutupPendaftaran by remember { mutableStateOf(competition.getISODeadline()) }
+    var autoCloseEnabled by remember { mutableStateOf(competition.autoCloseEnabled) }
 
     // State for Alert Dialog
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
+    // Initialize cabangLombaList with competition's cabang lomba if any
+    LaunchedEffect(key1 = uiState.cabangLombaList) {
+        if (uiState.cabangLombaList.isNotEmpty() && cabangLombaList.isEmpty()) {
+            cabangLombaList.addAll(uiState.cabangLombaList)
+        }
+    }
+
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
     val deadlineCalendar = Calendar.getInstance()
+
+    // Parse existing date
+    if (tanggalPelaksanaan.isNotEmpty()) {
+        try {
+            val format = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+            val date = format.parse(tanggalPelaksanaan)
+            if (date != null) {
+                calendar.time = date
+            }
+        } catch (e: Exception) {
+            // Handle parse error
+        }
+    }
+
+    // Parse existing deadline date if available
+    if (tanggalTutupPendaftaran.isNotEmpty()) {
+        try {
+            val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            val date = format.parse(tanggalTutupPendaftaran)
+            if (date != null) {
+                deadlineCalendar.time = date
+            }
+        } catch (e: Exception) {
+            // Handle parse error
+        }
+    }
 
     val datePickerDialog = DatePickerDialog(
         context,
@@ -378,6 +417,21 @@ fun AddCompetitionForm(
                 )
             }
 
+//            // Add jumlahTim field
+//            item {
+//                OutlinedTextField(
+//                    value = jumlahTim.toString(),
+//                    onValueChange = {
+//                        val num = it.toIntOrNull() ?: 0
+//                        jumlahTim = num
+//                    },
+//                    label = { Text("Jumlah Tim") },
+//                    modifier = Modifier.fillMaxWidth(),
+//                    singleLine = true,
+//                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+//                )
+//            }
+
             // Add status selection
             item {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -480,8 +534,12 @@ fun AddCompetitionForm(
                     value = if (tanggalTutupPendaftaran.isNotEmpty()) {
                         val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
                         val outputFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-                        val date = inputFormat.parse(tanggalTutupPendaftaran)
-                        outputFormat.format(date!!)
+                        try {
+                            val date = inputFormat.parse(tanggalTutupPendaftaran)
+                            outputFormat.format(date!!)
+                        } catch (e: Exception) {
+                            ""
+                        }
                     } else "",
                     onValueChange = { },
                     label = { Text("Tanggal & Waktu Tutup Pendaftaran") },
@@ -579,6 +637,36 @@ fun AddCompetitionForm(
                                     )
                                 }
                             }
+                        } else if (currentImageUrl.isNotEmpty()) {
+                            // Current image from Firestore
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(currentImageUrl)
+                                        .error(R.drawable.ic_baseline_cancel_24)
+                                        .build(),
+                                    contentDescription = "Current Image",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+
+                                // Add a button to remove/change the image
+                                IconButton(
+                                    onClick = { currentImageUrl = "" },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .background(
+                                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                                            shape = CircleShape
+                                        )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Remove Image",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
                         } else {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -662,6 +750,40 @@ fun AddCompetitionForm(
                                     }
                                 }
                             }
+                        } else if (currentFileUrl.isNotEmpty()) {
+                            // Current file from Firestore
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.FilePresent,
+                                        contentDescription = "File",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = "File lomba saat ini",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+
+                                    // Add a button to remove the file
+                                    IconButton(onClick = { currentFileUrl = "" }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Remove File",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                            }
                         } else {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -690,16 +812,19 @@ fun AddCompetitionForm(
                     onClick = {
                         isUploading = true
 
-                        // Pass the list of cabang lomba and all status values to the upload function
-                        uploadCompetitionWithMedia(
+                        // Update competition using the utility function
+                        updateCompetitionWithMedia(
                             context = context,
+                            competitionId = competition.id,
                             imageUri = selectedImageUri,
                             fileUri = selectedFileUri,
                             namaLomba = namaLomba,
-                            cabangLomba = cabangLombaList.toList(), // Convert to List<String>
+                            cabangLomba = cabangLombaList.toList(),
                             tanggalPelaksanaan = tanggalPelaksanaan,
                             deskripsiLomba = deskripsiLomba,
 //                            jumlahTim = jumlahTim,
+                            currentImageUrl = if (currentImageUrl.isEmpty()) null else currentImageUrl,
+                            currentFileUrl = if (currentFileUrl.isEmpty()) null else currentFileUrl,
                             visibilityStatus = selectedVisibilityStatus,
                             activityStatus = selectedActivityStatus,
                             tanggalTutupPendaftaran = tanggalTutupPendaftaran.takeIf { it.isNotEmpty() },
@@ -712,7 +837,7 @@ fun AddCompetitionForm(
                     enabled = namaLomba.isNotBlank() && cabangLombaList.isNotEmpty() &&
                             tanggalPelaksanaan.isNotBlank() && !uiState.isLoading && !isUploading
                 ) {
-                    Text("Buat Kompetisi")
+                    Text("Update Kompetisi")
                 }
             }
 
@@ -725,7 +850,7 @@ fun AddCompetitionForm(
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Mengupload...",
+                            text = "Mengupdate...",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
