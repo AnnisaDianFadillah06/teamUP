@@ -11,51 +11,20 @@ class CabangLombaRepository {
     private val firestore = FirebaseFirestore.getInstance()
     private val cabangLombaCollection = firestore.collection("cabang_lomba")
 
-    suspend fun addCabangLomba(cabangLomba: CabangLombaModel) {
-        val newCabangLomba = hashMapOf(
-            "competitionId" to cabangLomba.competitionId,
-            "namaCabang" to cabangLomba.namaCabang,
-            "createdAt" to cabangLomba.createdAt
-        )
-        cabangLombaCollection.add(newCabangLomba).await()
+    suspend fun addCabangLomba(cabangLomba: CabangLombaModel): String {
+        val docRef = cabangLombaCollection.add(cabangLomba).await()
+        return docRef.id
     }
 
     suspend fun addMultipleCabangLomba(cabangLombaList: List<CabangLombaModel>) {
-        // Use a batch write for multiple operations
         val batch = firestore.batch()
-        cabangLombaList.forEach { cabangLomba ->
-            val newDoc = cabangLombaCollection.document()
-            val data = hashMapOf(
-                "competitionId" to cabangLomba.competitionId,
-                "namaCabang" to cabangLomba.namaCabang,
-                "createdAt" to cabangLomba.createdAt
-            )
-            batch.set(newDoc, data)
-        }
-        batch.commit().await()
-    }
 
-    // Added new method to get ALL cabang lomba entries
-    fun getAllCabangLomba(): Flow<List<CabangLombaModel>> = callbackFlow {
-        val subscription = cabangLombaCollection
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    close(error)
-                    return@addSnapshotListener
-                }
-                if (snapshot != null) {
-                    val cabangList = snapshot.documents.map { doc ->
-                        CabangLombaModel(
-                            id = doc.id,
-                            competitionId = doc.getString("competitionId") ?: "",
-                            namaCabang = doc.getString("namaCabang") ?: "",
-                            createdAt = doc.getTimestamp("createdAt") ?: com.google.firebase.Timestamp.now()
-                        )
-                    }
-                    trySend(cabangList)
-                }
-            }
-        awaitClose { subscription.remove() }
+        cabangLombaList.forEach { cabangLomba ->
+            val docRef = cabangLombaCollection.document()
+            batch.set(docRef, cabangLomba)
+        }
+
+        batch.commit().await()
     }
 
     fun getCabangLombaByCompetitionId(competitionId: String): Flow<List<CabangLombaModel>> = callbackFlow {
@@ -66,24 +35,65 @@ class CabangLombaRepository {
                     close(error)
                     return@addSnapshotListener
                 }
+
                 if (snapshot != null) {
-                    val cabangList = snapshot.documents.map { doc ->
+                    val cabangLombaList = snapshot.documents.map { doc ->
                         CabangLombaModel(
                             id = doc.id,
                             competitionId = doc.getString("competitionId") ?: "",
-                            namaCabang = doc.getString("namaCabang") ?: "",
-                            createdAt = doc.getTimestamp("createdAt") ?: com.google.firebase.Timestamp.now()
+                            namaCabang = doc.getString("namaCabang") ?: ""
                         )
                     }
-                    trySend(cabangList)
+                    trySend(cabangLombaList)
                 }
             }
+
         awaitClose { subscription.remove() }
+    }
+
+    fun getAllCabangLomba(): Flow<List<CabangLombaModel>> = callbackFlow {
+        val subscription = cabangLombaCollection
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null) {
+                    val cabangLombaList = snapshot.documents.map { doc ->
+                        CabangLombaModel(
+                            id = doc.id,
+                            competitionId = doc.getString("competitionId") ?: "",
+                            namaCabang = doc.getString("namaCabang") ?: ""
+                        )
+                    }
+                    trySend(cabangLombaList)
+                }
+            }
+
+        awaitClose { subscription.remove() }
+    }
+
+    suspend fun deleteCabangLombaByCompetitionId(competitionId: String) {
+        // First get all documents with matching competitionId
+        val documents = cabangLombaCollection
+            .whereEqualTo("competitionId", competitionId)
+            .get()
+            .await()
+
+        // Then delete them in a batch
+        val batch = firestore.batch()
+        documents.forEach { document ->
+            batch.delete(document.reference)
+        }
+
+        batch.commit().await()
     }
 
     companion object {
         @Volatile
         private var instance: CabangLombaRepository? = null
+
         fun getInstance(): CabangLombaRepository =
             instance ?: synchronized(this) {
                 instance ?: CabangLombaRepository().also { instance = it }

@@ -47,6 +47,7 @@ import com.example.teamup.data.model.CompetitionActivityStatus
 import com.example.teamup.data.model.CompetitionVisibilityStatus
 import com.example.teamup.data.viewmodels.CabangLombaViewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModel
+import com.example.teamup.data.model.CompetitionModel
 import com.example.teamup.presentation.components.CompetitionCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,6 +55,7 @@ import com.example.teamup.presentation.components.CompetitionCard
 fun CompetitionListContent(
     uiState: CompetitionViewModel.CompetitionUiState,
     onAddClick: () -> Unit,
+    onEditClick: (CompetitionModel) -> Unit, // Tambahkan parameter ini
     modifier: Modifier = Modifier,
     cabangLombaViewModel: CabangLombaViewModel
 ) {
@@ -248,7 +250,8 @@ fun CompetitionListContent(
                             // Pass only the relevant cabang list to each card
                             CompetitionCard(
                                 competition = competition,
-                                associatedCabangList = associatedCabangList
+                                associatedCabangList = associatedCabangList,
+                                onEditClick = onEditClick // Tambahkan parameter ini
                             )
                         }
                     }

@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.example.teamup.data.model.CompetitionModel
 import com.example.teamup.data.viewmodels.CabangLombaViewModel
 import com.example.teamup.data.viewmodels.CabangLombaViewModelFactory
 import com.example.teamup.data.viewmodels.CompetitionViewModel
@@ -31,6 +32,7 @@ import com.example.teamup.di.Injection
 import com.example.teamup.presentation.components.AddCompetitionForm
 import com.example.teamup.presentation.components.BottomNavigationBar
 import com.example.teamup.presentation.components.CustomBottomNavigationBar
+import com.example.teamup.presentation.components.EditCompetitionForm
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,23 +52,39 @@ fun CompetitionScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddForm by remember { mutableStateOf(false) }
+    var showEditForm by remember { mutableStateOf(false) } // Tambahkan state untuk mode edit
+    var selectedCompetition by remember { mutableStateOf<CompetitionModel?>(null) } // Tambahkan state untuk menyimpan kompetisi yang dipilih
 
     // Handle hardware back button
-    BackHandler(enabled = showAddForm) {
+    BackHandler(enabled = showAddForm || showEditForm) {
         showAddForm = false
+        showEditForm = false
+        selectedCompetition = null
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (showAddForm) "Buat Kompetisi Baru" else "Kompetisi") },
+                title = {
+                    Text(
+                        when {
+                            showAddForm -> "Buat Kompetisi Baru"
+                            showEditForm -> "Edit Kompetisi"
+                            else -> "Kompetisi"
+                        }
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 navigationIcon = {
-                    if (showAddForm) {
-                        IconButton(onClick = { showAddForm = false }) {
+                    if (showAddForm || showEditForm) {
+                        IconButton(onClick = {
+                            showAddForm = false
+                            showEditForm = false
+                            selectedCompetition = null
+                        }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
@@ -78,37 +96,59 @@ fun CompetitionScreen(
             )
         },
         floatingActionButton = {
-            // Only show FAB when not in add form mode
-            if (!showAddForm) {
+            // Only show FAB when not in add or edit form mode
+            if (!showAddForm && !showEditForm) {
                 FloatingActionButton(onClick = { showAddForm = true }) {
                     Icon(Icons.Default.Add, contentDescription = "Add Competition")
                 }
             }
         },
         bottomBar = {
-            if (showAddForm) {
+            if (showAddForm || showEditForm) {
                 CustomBottomNavigationBar(
                     navController = navController,
-                    onCompetitionClick = { showAddForm = false }
+                    onCompetitionClick = {
+                        showAddForm = false
+                        showEditForm = false
+                        selectedCompetition = null
+                    }
                 )
             } else {
                 BottomNavigationBar(navController = navController)
             }
         }
     ) { paddingValues ->
-        if (showAddForm) {
-            AddCompetitionForm(
-                viewModel = viewModel,
-                onSuccess = { showAddForm = false },
-                modifier = Modifier.padding(paddingValues)
-            )
-        } else {
-            CompetitionListContent(
-                uiState = uiState,
-                onAddClick = { showAddForm = true },
-                cabangLombaViewModel = cabangLombaViewModel,
-                modifier = Modifier.padding(paddingValues)
-            )
+        when {
+            showAddForm -> {
+                AddCompetitionForm(
+                    viewModel = viewModel,
+                    onSuccess = { showAddForm = false },
+                    modifier = Modifier.padding(paddingValues)
+                )
+            }
+            showEditForm && selectedCompetition != null -> {
+                EditCompetitionForm(
+                    competition = selectedCompetition!!,
+                    viewModel = viewModel,
+                    onSuccess = {
+                        showEditForm = false
+                        selectedCompetition = null
+                    },
+                    modifier = Modifier.padding(paddingValues)
+                )
+            }
+            else -> {
+                CompetitionListContent(
+                    uiState = uiState,
+                    onAddClick = { showAddForm = true },
+                    onEditClick = { competition ->
+                        selectedCompetition = competition
+                        showEditForm = true
+                    },
+                    cabangLombaViewModel = cabangLombaViewModel,
+                    modifier = Modifier.padding(paddingValues)
+                )
+            }
         }
     }
 }

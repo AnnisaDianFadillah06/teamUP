@@ -20,7 +20,7 @@ class CompetitionRepository {
             "namaLomba" to competition.namaLomba,
             "tanggalPelaksanaan" to competition.tanggalPelaksanaan,
             "deskripsiLomba" to competition.deskripsiLomba,
-            "jumlahTim" to competition.jumlahTim,
+//            "jumlahTim" to competition.jumlahTim,
             "imageUrl" to competition.imageUrl,
             "fileUrl" to competition.fileUrl,
             "createdAt" to competition.createdAt,
@@ -49,7 +49,7 @@ class CompetitionRepository {
                             namaLomba = doc.getString("namaLomba") ?: "",
                             tanggalPelaksanaan = doc.getString("tanggalPelaksanaan") ?: "",
                             deskripsiLomba = doc.getString("deskripsiLomba") ?: "",
-                            jumlahTim = doc.getLong("jumlahTim")?.toInt() ?: 0,
+//                            jumlahTim = doc.getLong("jumlahTim")?.toInt() ?: 0,
                             imageUrl = doc.getString("imageUrl") ?: "",
                             fileUrl = doc.getString("fileUrl") ?: "",
                             createdAt = doc.getTimestamp("createdAt") ?: com.google.firebase.Timestamp.now(),
@@ -75,6 +75,36 @@ class CompetitionRepository {
             }
 
         awaitClose { subscription.remove() }
+    }
+
+    // Get a competition by ID
+    suspend fun getCompetitionById(id: String): CompetitionModel? {
+        val document = competitionsCollection.document(id).get().await()
+        return if (document.exists()) {
+            CompetitionModel(
+                id = document.id,
+                namaLomba = document.getString("namaLomba") ?: "",
+                tanggalPelaksanaan = document.getString("tanggalPelaksanaan") ?: "",
+                deskripsiLomba = document.getString("deskripsiLomba") ?: "",
+//                jumlahTim = document.getLong("jumlahTim")?.toInt() ?: 0,
+                imageUrl = document.getString("imageUrl") ?: "",
+                fileUrl = document.getString("fileUrl") ?: "",
+                createdAt = document.getTimestamp("createdAt") ?: Timestamp.now(),
+                visibilityStatus = document.getString("visibilityStatus") ?: CompetitionVisibilityStatus.PUBLISHED.value,
+                activityStatus = document.getString("activityStatus") ?: CompetitionActivityStatus.ACTIVE.value,
+                tanggalTutupPendaftaran = document.getTimestamp("tanggalTutupPendaftaran"),
+                autoCloseEnabled = document.getBoolean("autoCloseEnabled") ?: false
+            )
+        } else {
+            null
+        }
+    }
+
+    // Update competition method with flexible field updates
+    suspend fun updateCompetition(competitionId: String, updates: Map<String, Any?>) {
+        // Filter out null values before updating
+        val filteredUpdates = updates.filterValues { it != null }
+        competitionsCollection.document(competitionId).update(filteredUpdates).await()
     }
 
     // Add method to update competition status
