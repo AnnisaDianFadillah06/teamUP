@@ -42,4 +42,12 @@ object Injection {
         return FirebaseStorageHelper()
     }
 
+    fun provideCompetitionRepository(): CompetitionRepository {
+        return CompetitionRepository.getInstance()
+    }
+
+    fun provideCabangLombaRepository(): CabangLombaRepository {
+        return CabangLombaRepository.getInstance()
+    }
+
 }

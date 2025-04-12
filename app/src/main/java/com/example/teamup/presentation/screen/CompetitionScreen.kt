@@ -1,215 +1,153 @@
 package com.example.teamup.presentation.screen
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.dp
-import com.example.teamup.R
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import com.example.teamup.data.model.CompetitionModel
-import java.util.UUID
-
+import com.example.teamup.data.viewmodels.CabangLombaViewModel
+import com.example.teamup.data.viewmodels.CabangLombaViewModelFactory
+import com.example.teamup.data.viewmodels.CompetitionViewModel
+import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
+import com.example.teamup.di.Injection
+import com.example.teamup.presentation.components.AddCompetitionForm
+import com.example.teamup.presentation.components.BottomNavigationBar
+import com.example.teamup.presentation.components.CustomBottomNavigationBar
+import com.example.teamup.presentation.components.EditCompetitionForm
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompetitionScreen(
-    onAddCompetitionClick: () -> Unit = {}
+    navController: NavHostController,
+    viewModel: CompetitionViewModel = viewModel(
+        factory = CompetitionViewModelFactory(
+            Injection.provideCompetitionRepository(),
+            Injection.provideCabangLombaRepository()
+        )
+    ),
+    cabangLombaViewModel: CabangLombaViewModel = viewModel(
+        factory = CabangLombaViewModelFactory(
+            Injection.provideCabangLombaRepository()
+        )
+    )
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Competition") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_baseline_cancel_24),
-                contentDescription = "No Competition",
-                modifier = Modifier.size(200.dp)
-            )
+    val uiState by viewModel.uiState.collectAsState()
+    var showAddForm by remember { mutableStateOf(false) }
+    var showEditForm by remember { mutableStateOf(false) } // Tambahkan state untuk mode edit
+    var selectedCompetition by remember { mutableStateOf<CompetitionModel?>(null) } // Tambahkan state untuk menyimpan kompetisi yang dipilih
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "No competition available yet",
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = onAddCompetitionClick,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Add Competition")
-            }
-        }
+    // Handle hardware back button
+    BackHandler(enabled = showAddForm || showEditForm) {
+        showAddForm = false
+        showEditForm = false
+        selectedCompetition = null
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AddCompetitionScreen(
-    onCreateCompetition: (CompetitionModel) -> Unit = {},
-    onBackClick: () -> Unit = {}
-) {
-    var namaLomba by remember { mutableStateOf("") }
-    var cabangLomba by remember { mutableStateOf("") }
-    var tanggalPelaksanaan by remember { mutableStateOf("") }
-    var deskripsiLomba by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Buat Kompetisi") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.arrow_back),
-                            contentDescription = "Back"
-                        )
-                    }
+                title = {
+                    Text(
+                        when {
+                            showAddForm -> "Buat Kompetisi Baru"
+                            showEditForm -> "Edit Kompetisi"
+                            else -> "Kompetisi"
+                        }
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "Mulai membuat lomba yang kompetitif dengan mudah dan cepat. Lakukan langkah nyata dan dapatkan gelar!",
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            OutlinedTextField(
-                value = namaLomba,
-                onValueChange = { namaLomba = it },
-                label = { Text("Nama Lomba") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions.Default.copy(
-                    imeAction = ImeAction.Next
-                )
-            )
-
-            OutlinedTextField(
-                value = cabangLomba,
-                onValueChange = { cabangLomba = it },
-                label = { Text("Cabang Lomba") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions.Default.copy(
-                    imeAction = ImeAction.Next
-                )
-            )
-
-            // Date Picker for Tanggal Pelaksanaan
-            OutlinedTextField(
-                value = tanggalPelaksanaan,
-                onValueChange = { tanggalPelaksanaan = it },
-                label = { Text("Tanggal Pelaksanaan") },
-                modifier = Modifier.fillMaxWidth(),
-                trailingIcon = {
-                    IconButton(onClick = { /* TODO: Show Date Picker */ }) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.arrow_back),
-                            contentDescription = "Select Date"
-                        )
+                ),
+                navigationIcon = {
+                    if (showAddForm || showEditForm) {
+                        IconButton(onClick = {
+                            showAddForm = false
+                            showEditForm = false
+                            selectedCompetition = null
+                        }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
                     }
                 }
             )
-
-            OutlinedTextField(
-                value = deskripsiLomba,
-                onValueChange = { deskripsiLomba = it },
-                label = { Text("Deskripsi Lomba") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 100.dp),
-                singleLine = false,
-                keyboardOptions = KeyboardOptions.Default.copy(
-                    imeAction = ImeAction.Done
-                )
-            )
-
-            // File Upload Section
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Upload File Pendukung", modifier = Modifier.weight(1f))
-                Button(onClick = { /* TODO: Implement File Upload */ }) {
-                    Text("Upload")
+        },
+        floatingActionButton = {
+            // Only show FAB when not in add or edit form mode
+            if (!showAddForm && !showEditForm) {
+                FloatingActionButton(onClick = { showAddForm = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Competition")
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    val competitionData = CompetitionModel(
-                        id = UUID.randomUUID().toString(),
-                        name = namaLomba,
-                        iconResId = R.drawable.ic_baseline_cancel_24, // Ganti dengan icon yang sesuai
-                        teamCount = 0, // Atur default atau input jika perlu
-                        namaLomba = namaLomba,
-                        cabangLomba = cabangLomba,
-                        tanggalPelaksanaan = tanggalPelaksanaan,
-                        deskripsiLomba = deskripsiLomba
-                    )
-                    onCreateCompetition(competitionData)
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Buat Kompetisi")
+        },
+        bottomBar = {
+            if (showAddForm || showEditForm) {
+                CustomBottomNavigationBar(
+                    navController = navController,
+                    onCompetitionClick = {
+                        showAddForm = false
+                        showEditForm = false
+                        selectedCompetition = null
+                    }
+                )
+            } else {
+                BottomNavigationBar(navController = navController)
+            }
+        }
+    ) { paddingValues ->
+        when {
+            showAddForm -> {
+                AddCompetitionForm(
+                    viewModel = viewModel,
+                    onSuccess = { showAddForm = false },
+                    modifier = Modifier.padding(paddingValues)
+                )
+            }
+            showEditForm && selectedCompetition != null -> {
+                EditCompetitionForm(
+                    competition = selectedCompetition!!,
+                    viewModel = viewModel,
+                    onSuccess = {
+                        showEditForm = false
+                        selectedCompetition = null
+                    },
+                    modifier = Modifier.padding(paddingValues)
+                )
+            }
+            else -> {
+                CompetitionListContent(
+                    uiState = uiState,
+                    onAddClick = { showAddForm = true },
+                    onEditClick = { competition ->
+                        selectedCompetition = competition
+                        showEditForm = true
+                    },
+                    cabangLombaViewModel = cabangLombaViewModel,
+                    modifier = Modifier.padding(paddingValues)
+                )
             }
         }
     }

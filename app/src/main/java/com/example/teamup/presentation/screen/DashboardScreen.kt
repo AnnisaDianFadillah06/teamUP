@@ -4,10 +4,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.ViewModelStoreOwner
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -25,16 +21,7 @@ import com.example.teamup.presentation.components.BottomNavigationBar
 import com.example.teamup.route.Routes
 
 @Composable
-fun DashboardScreen(
-    lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
-    viewModelStoreOwner: ViewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
-        "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
-    }
-) {
-    // Penting: gunakan navController lokal untuk dashboard
-    val navController = rememberNavController()
-    navController.setViewModelStore(viewModelStoreOwner.viewModelStore)
-
+fun DashboardScreen(navController: NavHostController = rememberNavController()) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -60,7 +47,7 @@ fun DashboardScreen(
                 ProfileScreen(navController = navController)
             }
             composable(Routes.Competition.routes) {
-                WishlistScreen(navController = navController, paddingValues = paddingValues)
+                CompetitionScreen(navController = navController)
             }
             composable(Routes.Wishlist.routes) {
                 WishlistScreen(navController = navController, paddingValues = paddingValues)

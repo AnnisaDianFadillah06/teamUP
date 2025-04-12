@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.teamup.R
-import com.example.teamup.data.model.CompetitionModel
+import com.example.teamup.data.model.CompetitionModelDummy
 import com.example.teamup.data.model.TeamModel
 import com.example.teamup.data.viewmodels.JoinTeamViewModel
 import com.example.teamup.route.Routes
@@ -155,7 +155,7 @@ fun JoinTeamScreen(
 
 @Composable
 fun CategoryCard(
-    category: CompetitionModel,
+    category: CompetitionModelDummy,
     onClick: () -> Unit
 ) {
     Column(
