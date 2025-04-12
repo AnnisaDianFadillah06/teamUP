@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -26,6 +27,7 @@ import coil.request.ImageRequest
 import com.example.teamup.R
 import com.example.teamup.common.theme.DodgerBlue
 import com.example.teamup.data.model.MemberInviteModel
+import com.example.teamup.route.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,18 +80,30 @@ fun InviteMemberScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* Handle adding new member */ },
+                onClick = { navController.navigate(Routes.InviteSelect.routes) },
                 containerColor = DodgerBlue,
                 contentColor = Color.White,
-                shape = CircleShape
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .padding(16.dp)
+                    .shadow(
+                        elevation = 6.dp,
+                        shape = RoundedCornerShape(16.dp)
+                    )
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Add")
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add Member"
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Anggota")
+                    Text(
+                        text = "Anggota",
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
         }

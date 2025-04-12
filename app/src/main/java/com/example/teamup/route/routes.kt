@@ -1,7 +1,7 @@
 package com.example.teamup.route
 
 sealed class Routes(val routes: String) {
-
+    object SplashScreen : Routes("splash_screen")
     object TeamManagement : Routes("team_management")
     object FormAddTeam : Routes("form_add_team")
     object JoinTeam : Routes("join_team")
@@ -40,4 +40,5 @@ sealed class Routes(val routes: String) {
         fun createRoute(teamId: String, teamName: String) =
             "chat_group/$teamId/$teamName"
     }
+    object InviteSelect : Routes("invite_select")
 }

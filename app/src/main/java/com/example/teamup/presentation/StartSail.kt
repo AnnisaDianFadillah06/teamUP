@@ -25,6 +25,7 @@ import com.example.teamup.presentation.screen.ProfileScreen
 import com.example.teamup.presentation.screen.RegisterScreen
 import com.example.teamup.presentation.screen.RegisterSuccessScreen
 import com.example.teamup.presentation.screen.ResetPasswordScreen
+import com.example.teamup.presentation.screen.SplashScreen
 import com.example.teamup.presentation.screen.TeamListScreen
 import com.example.teamup.presentation.screen.VerificationScreen
 import com.example.teamup.route.Routes
@@ -35,23 +36,28 @@ fun StartSail(
     navController: NavHostController = rememberNavController(),
     competitionViewModel: CompetitionViewModel
 ) {
-    val context = LocalContext.current
-    val isLoggedIn = SessionManager.isLoggedIn(context)
-
-    val startDestination = if (isLoggedIn) {
-        Routes.Dashboard.routes
-    } else {
-        Routes.LoginV5.routes
-    }
-
     BackPressHandler(navController)
 
     Scaffold { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = startDestination,
+            startDestination = Routes.SplashScreen.routes,
             modifier = Modifier.padding(paddingValues) // ✅ Gunakan paddingValues di sini
         ) {
+            composable(Routes.SplashScreen.routes) {
+                val context = LocalContext.current
+                SplashScreen {
+                    // Navigasi ke screen berikutnya setelah animasi selesai
+                    val destination = if (SessionManager.isLoggedIn(context)) {
+                        Routes.Dashboard.routes
+                    } else {
+                        Routes.LoginV5.routes
+                    }
+                    navController.navigate(destination) {
+                        popUpTo(Routes.SplashScreen.routes) { inclusive = true }
+                    }
+                }
+            }
             composable(Routes.Register.routes) {
                 RegisterScreen(navController = navController)
             }
