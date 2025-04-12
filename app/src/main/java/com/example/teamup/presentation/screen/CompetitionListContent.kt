@@ -1,6 +1,7 @@
 package com.example.teamup.presentation.screen
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -130,14 +132,15 @@ fun CompetitionListContent(
                 )
             )
 
-            // Filter chips
+            // Filter chips - horizontally scrollable
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .horizontalScroll(rememberScrollState()), // Add horizontal scrolling
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Status Filter chip (combined filter)
+                // Status Filter chip
                 Box {
                     FilterChip(
                         selected = false,
