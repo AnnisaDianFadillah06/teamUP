@@ -75,6 +75,7 @@ dependencies {
     implementation ("com.google.accompanist:accompanist-flowlayout:0.27.1")
     implementation ("androidx.compose.material:material-icons-extended:1.3.1")
     implementation ("androidx.core:core-splashscreen:1.0.0")
+    implementation("com.airbnb.android:lottie-compose:6.4.0")
     // Firebase Firestore
     implementation ("com.google.firebase:firebase-firestore-ktx")
 

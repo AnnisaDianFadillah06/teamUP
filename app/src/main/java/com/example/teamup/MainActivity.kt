@@ -10,7 +10,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.fragment.app.FragmentActivity
 import com.example.teamup.common.theme.ESailTheme
@@ -24,7 +23,6 @@ import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        installSplashScreen()
 
         // ✅ App Check pakai Debug Provider
         Log.d("AppCheck", "Initializing AppCheck Debug provider")
