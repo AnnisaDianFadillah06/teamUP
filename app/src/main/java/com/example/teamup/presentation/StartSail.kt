@@ -6,17 +6,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.teamup.common.utils.BackPressHandler
 import com.example.teamup.common.utils.SessionManager
+import com.example.teamup.data.viewmodels.CompetitionViewModel
+import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
+import com.example.teamup.di.Injection
 import com.example.teamup.presentation.screen.AddTeamScreen
 import com.example.teamup.presentation.screen.DashboardScreen
 import com.example.teamup.presentation.screen.FingerprintLoginScreen
 import com.example.teamup.presentation.screen.ForgotPasswordScreen
-import com.example.teamup.presentation.screen.LoginScreen
 import com.example.teamup.presentation.screen.LoginScreenV5
 import com.example.teamup.presentation.screen.ProfileScreen
 import com.example.teamup.presentation.screen.RegisterScreen
@@ -30,7 +33,8 @@ import com.example.teamup.route.Routes
 @Composable
 fun StartSail(
     modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    competitionViewModel: CompetitionViewModel
 ) {
     BackPressHandler(navController)
 
@@ -54,9 +58,6 @@ fun StartSail(
                     }
                 }
             }
-            composable(Routes.Login.routes) {
-                LoginScreen(navController = navController)
-            }
             composable(Routes.Register.routes) {
                 RegisterScreen(navController = navController)
             }
@@ -69,7 +70,7 @@ fun StartSail(
 
             // Dashboard & Teams
             composable(Routes.Dashboard.routes) {
-                DashboardScreen()
+                DashboardScreen(competitionViewModel = competitionViewModel)
             }
             composable(Routes.TeamList.routes) {
                 TeamListScreen(navController = navController)
@@ -97,8 +98,13 @@ fun StartSail(
     }
 }
 
-@Preview(showBackground = true)
+@Preview
 @Composable
 fun StartSailPreview() {
-    StartSail()
+    val fakeViewModel = viewModel<CompetitionViewModel>(
+        factory = CompetitionViewModelFactory(
+            Injection.provideCompetitionRepository(), Injection.provideCabangLombaRepository()
+        )
+    )
+    StartSail(competitionViewModel = fakeViewModel)
 }

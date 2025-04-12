@@ -42,5 +42,3 @@ sealed class Routes(val routes: String) {
     }
     object InviteSelect : Routes("invite_select")
 }
-
-

@@ -68,9 +68,10 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.teamup.R
 import com.example.teamup.common.utils.updateCompetitionWithMedia
-import com.example.teamup.data.model.CompetitionModel
 import com.example.teamup.data.model.CompetitionActivityStatus
+import com.example.teamup.data.model.CompetitionModel
 import com.example.teamup.data.model.CompetitionVisibilityStatus
+import com.example.teamup.data.viewmodels.CabangLombaViewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -81,13 +82,20 @@ import java.util.Locale
 fun EditCompetitionForm(
     competition: CompetitionModel,
     viewModel: CompetitionViewModel,
+    cabangLombaViewModel: CabangLombaViewModel,
     onSuccess: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var namaLomba by remember { mutableStateOf(competition.namaLomba) }
     var newCabangLomba by remember { mutableStateOf("") }
-    val cabangLombaList = remember { mutableStateListOf<String>() }
+    val cabangLombaList = remember {
+        if (competition.cabangLomba.isNotEmpty()) {
+            mutableStateListOf<String>().apply { addAll(competition.cabangLomba) }
+        } else {
+            mutableStateListOf<String>()
+        }
+    }
     var tanggalPelaksanaan by remember { mutableStateOf(competition.tanggalPelaksanaan) }
     var deskripsiLomba by remember { mutableStateOf(competition.deskripsiLomba) }
 //    var jumlahTim by remember { mutableStateOf(competition.jumlahTim) }
@@ -112,10 +120,24 @@ fun EditCompetitionForm(
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
-    // Initialize cabangLombaList with competition's cabang lomba if any
+    // Load cabang lomba dari viewModel jika cabangLombaList masih kosong atau jika uiState.cabangLombaList berubah
     LaunchedEffect(key1 = uiState.cabangLombaList) {
-        if (uiState.cabangLombaList.isNotEmpty() && cabangLombaList.isEmpty()) {
+        // Jika cabangLombaList kosong dan ada data di uiState, load data dari uiState
+        if (cabangLombaList.isEmpty() && uiState.cabangLombaList.isNotEmpty()) {
             cabangLombaList.addAll(uiState.cabangLombaList)
+        }
+        // Jika competition.cabangLomba kosong dan belum ada request untuk mendapatkan data cabang lomba
+        else if (competition.cabangLomba.isEmpty() && uiState.cabangLombaList.isEmpty()) {
+            // Request cabang lomba data berdasarkan competition ID
+            cabangLombaViewModel.getCabangLombaByCompetitionId(competition.id)
+        }
+    }
+
+    // Effect untuk navigasi setelah sukses
+    LaunchedEffect(key1 = uiState.isSuccess) {
+        if (uiState.isSuccess) {
+            viewModel.resetSuccess()
+            onSuccess()
         }
     }
 
@@ -810,17 +832,18 @@ fun EditCompetitionForm(
                     onClick = {
                         isUploading = true
 
-                        // Update competition using the utility function
+                        // Update competition using the utility function with merged cabang lomba
                         updateCompetitionWithMedia(
                             context = context,
                             competitionId = competition.id,
                             imageUri = selectedImageUri,
                             fileUri = selectedFileUri,
                             namaLomba = namaLomba,
+                            // Kirim cabang lomba yang sudah digabung (yang lama dan yang baru)
                             cabangLomba = cabangLombaList.toList(),
                             tanggalPelaksanaan = tanggalPelaksanaan,
                             deskripsiLomba = deskripsiLomba,
-//                            jumlahTim = jumlahTim,
+//                    jumlahTim = jumlahTim,
                             currentImageUrl = if (currentImageUrl.isEmpty()) null else currentImageUrl,
                             currentFileUrl = if (currentFileUrl.isEmpty()) null else currentFileUrl,
                             visibilityStatus = selectedVisibilityStatus,
@@ -828,6 +851,7 @@ fun EditCompetitionForm(
                             tanggalTutupPendaftaran = tanggalTutupPendaftaran.takeIf { it.isNotEmpty() },
                             autoCloseEnabled = autoCloseEnabled,
                             viewModel = viewModel,
+                            keepExistingCabang = true, // Tambahkan parameter ini ke updateCompetitionWithMedia
                             onComplete = { isUploading = false }
                         )
                     },

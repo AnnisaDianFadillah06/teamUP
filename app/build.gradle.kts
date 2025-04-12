@@ -70,12 +70,18 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("io.coil-kt:coil-compose:2.4.0")
     implementation(libs.androidx.navigation.compose)
     implementation ("com.google.accompanist:accompanist-flowlayout:0.27.1")
     implementation ("androidx.compose.material:material-icons-extended:1.3.1")
     implementation ("androidx.core:core-splashscreen:1.0.0")
     implementation("com.airbnb.android:lottie-compose:6.4.0")
+
+    // Coroutines for Firebase
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.1")
+    implementation ("com.google.android.material:material:1.9.0") // atau versi terbaru
+    implementation ("androidx.compose.material3:material3:1.2.1") // atau versi terbaru
+
     // Firebase Firestore
     implementation ("com.google.firebase:firebase-firestore-ktx")
 
