@@ -1,7 +1,7 @@
 package com.example.teamup.route
 
 sealed class Routes(val routes: String) {
-
+    object SplashScreen : Routes("splash_screen")
     object TeamManagement : Routes("team_management")
     object FormAddTeam : Routes("form_add_team")
     object JoinTeam : Routes("join_team")
