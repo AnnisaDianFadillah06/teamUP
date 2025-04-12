@@ -5,6 +5,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.tasks.await
 
 class CabangLombaRepository {
@@ -74,21 +75,44 @@ class CabangLombaRepository {
         awaitClose { subscription.remove() }
     }
 
-    suspend fun deleteCabangLombaByCompetitionId(competitionId: String) {
-        // First get all documents with matching competitionId
-        val documents = cabangLombaCollection
-            .whereEqualTo("competitionId", competitionId)
-            .get()
-            .await()
+    // New function to update cabang lomba entries by merging with existing ones
+    suspend fun updateCabangLombaForCompetition(competitionId: String, newCabangNames: List<String>) {
+        // First get existing cabang lomba
+        val existingCabangLomba = getCabangLombaByCompetitionId(competitionId).first()
+        val existingNames = existingCabangLomba.map { it.namaCabang }
 
-        // Then delete them in a batch
-        val batch = firestore.batch()
-        documents.forEach { document ->
-            batch.delete(document.reference)
+        // Find new cabang names that don't exist yet
+        val cabangNamesToAdd = newCabangNames.filter { !existingNames.contains(it) }
+
+        // Create models for new cabang names
+        val newCabangModels = cabangNamesToAdd.map { cabangName ->
+            CabangLombaModel(
+                competitionId = competitionId,
+                namaCabang = cabangName
+            )
         }
 
-        batch.commit().await()
+        // Only add new cabang lomba if there are any
+        if (newCabangModels.isNotEmpty()) {
+            addMultipleCabangLomba(newCabangModels)
+        }
     }
+
+//    suspend fun deleteCabangLombaByCompetitionId(competitionId: String) {
+//        // First get all documents with matching competitionId
+//        val documents = cabangLombaCollection
+//            .whereEqualTo("competitionId", competitionId)
+//            .get()
+//            .await()
+//
+//        // Then delete them in a batch
+//        val batch = firestore.batch()
+//        documents.forEach { document ->
+//            batch.delete(document.reference)
+//        }
+//
+//        batch.commit().await()
+//    }
 
     companion object {
         @Volatile

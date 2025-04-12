@@ -68,12 +68,9 @@ class CompetitionViewModel(
                     // Get the current selected competition
                     val currentCompetition = _selectedCompetition.value
 
-                    // Update the selected competition with cabang lomba data
-                    _selectedCompetition.update {
-                        currentCompetition?.copy(
-                            // We'll extend the CompetitionModel with a transient field for cabangLomba
-                            // This is handled in the next section
-                        )
+                    // Update the selected competition with cabang lomba data if needed
+                    if (currentCompetition != null) {
+                        _selectedCompetition.value = currentCompetition
                     }
 
                     _uiState.update {
@@ -184,7 +181,7 @@ class CompetitionViewModel(
         deskripsiLomba: String,
         imageUrl: String? = null,
         fileUrl: String? = null,
-        jumlahTim: Int = 0,
+//        jumlahTim: Int = 0,
         visibilityStatus: String = CompetitionVisibilityStatus.PUBLISHED.value,
         activityStatus: String = CompetitionActivityStatus.ACTIVE.value,
         tanggalTutupPendaftaran: String? = null,
@@ -218,21 +215,12 @@ class CompetitionViewModel(
                 // Update the competition
                 repository.updateCompetition(competitionId, updates)
 
-                // Then, update cabang lomba entries linked to this competition
-                // First delete the existing ones
-                cabangLombaRepository.deleteCabangLombaByCompetitionId(competitionId)
-
-                // Then add the new ones
-                val cabangEntries = cabangLombaList.filter { it.isNotBlank() }.map { cabangName ->
-                    CabangLombaModel(
-                        competitionId = competitionId,
-                        namaCabang = cabangName
-                    )
-                }
-
-                if (cabangEntries.isNotEmpty()) {
-                    cabangLombaRepository.addMultipleCabangLomba(cabangEntries)
-                }
+                // Update cabang lomba entries by merging with existing ones
+                // Instead of deleting and re-adding all entries
+                cabangLombaRepository.updateCabangLombaForCompetition(
+                    competitionId,
+                    cabangLombaList.filter { it.isNotBlank() }
+                )
 
                 _uiState.update {
                     it.copy(

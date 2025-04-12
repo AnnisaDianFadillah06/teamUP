@@ -44,10 +44,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.teamup.R
 import com.example.teamup.data.model.CompetitionActivityStatus
+import com.example.teamup.data.model.CompetitionModel
 import com.example.teamup.data.model.CompetitionVisibilityStatus
 import com.example.teamup.data.viewmodels.CabangLombaViewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModel
-import com.example.teamup.data.model.CompetitionModel
 import com.example.teamup.presentation.components.CompetitionCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,9 +55,9 @@ import com.example.teamup.presentation.components.CompetitionCard
 fun CompetitionListContent(
     uiState: CompetitionViewModel.CompetitionUiState,
     onAddClick: () -> Unit,
-    onEditClick: (CompetitionModel) -> Unit, // Tambahkan parameter ini
-    modifier: Modifier = Modifier,
-    cabangLombaViewModel: CabangLombaViewModel
+    onEditClick: (CompetitionModel) -> Unit,
+    cabangLombaViewModel: CabangLombaViewModel,// Tambahkan parameter ini
+    modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var showFilterMenu by remember { mutableStateOf(false) }
@@ -82,10 +82,10 @@ fun CompetitionListContent(
     // Define our filter options
     val filterOptions = listOf(
         "Semua Status",
-        "Terbuka (Published & Active)",
-        "Ditutup (Published & Inactive)",
+        "Terbuka (Aktif & Published)",
+        "Ditutup",
         "Draft",
-        "Cancelled"
+        "Dibatalkan"
     )
 
     val filteredCompetitions = uiState.competitions.filter { competition ->

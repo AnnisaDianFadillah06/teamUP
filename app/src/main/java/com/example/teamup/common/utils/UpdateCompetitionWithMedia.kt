@@ -2,6 +2,8 @@ package com.example.teamup.common.utils
 
 import android.content.Context
 import android.net.Uri
+import com.example.teamup.data.model.CompetitionActivityStatus
+import com.example.teamup.data.model.CompetitionVisibilityStatus
 import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.CoroutineScope
@@ -22,11 +24,12 @@ fun updateCompetitionWithMedia(
 //    jumlahTim: Int,
     currentImageUrl: String? = null,
     currentFileUrl: String? = null,
-    visibilityStatus: String,
-    activityStatus: String,
+    visibilityStatus: String = CompetitionVisibilityStatus.PUBLISHED.value,
+    activityStatus: String = CompetitionActivityStatus.ACTIVE.value,
     tanggalTutupPendaftaran: String? = null,
-    autoCloseEnabled: Boolean,
+    autoCloseEnabled: Boolean = false,
     viewModel: CompetitionViewModel,
+    keepExistingCabang: Boolean = false, // Add this parameter with default value
     onComplete: () -> Unit
 ) {
     CoroutineScope(Dispatchers.IO).launch {
