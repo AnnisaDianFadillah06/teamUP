@@ -1,6 +1,7 @@
 package com.example.teamup.presentation.screen
 
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -124,9 +125,8 @@ fun ProfileScreen(navController: NavController) {
 
 @Composable
 fun ImageProfile() {
-    AsyncImage(
-        model = ImageRequest.Builder(LocalContext.current)
-            .data("https://avatars.githubusercontent.com/u/69514214?v=4").crossfade(true).build(),
+    Image(
+        painter = painterResource(id = R.drawable.captain_icon),
         contentDescription = "Image Profile",
         contentScale = ContentScale.Crop,
         modifier = Modifier
@@ -194,12 +194,12 @@ fun Header() {
         ImageProfile()
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "Celvine Adi Putra",
+            text = "Alya Dian Indriani",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
         )
         Spacer(modifier = Modifier.height(5.dp))
         Text(
-            text = "celvineadiputra2@gmail.com",
+            text = "alyadianindriani@gmail.com",
             style = MaterialTheme.typography.displaySmall.copy(
                 fontWeight = FontWeight.Normal,
                 fontSize = 12.sp
