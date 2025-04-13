@@ -12,12 +12,10 @@ data class TeamModel(
     @DrawableRes val avatarResId: Int, // Local resource as fallback
     val imageUrl: String? = null, // URL to Firebase Storage image
     val createdAt: Timestamp = Timestamp.now(),
-    val isJoined: Boolean = false,
-    val isFull: Boolean = false,
-    val memberCount: Int = 0,
-    val maxMembers: Int = 5
-    //isJoined: To track whether the current user has joined this team
-    //isFull: To indicate if the team has reached its maximum capacity
-    //memberCount: The current number of team members
-    //maxMembers: The maximum number of members allowed in the team (default 5)
+    val members: List<String> = emptyList(), // List of member user IDs
+    val maxMembers: Int = 5, // Maximum members allowed (default 5)
+    val isPrivate: Boolean = true, // Team privacy setting
+    val memberCount: Int = 0, // Current number of members
+    val isJoined: Boolean = false, // Whether current user has joined
+    val isFull: Boolean = false // Whether team has reached capacity
 )
