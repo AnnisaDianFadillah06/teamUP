@@ -35,7 +35,15 @@ class TeamViewModel(
         getAllTeams()
     }
 
-    fun addTeam(name: String, description: String, category: String, avatarUri: String) {
+    // Updated addTeam function in TeamViewModel
+    fun addTeam(
+        name: String,
+        description: String,
+        category: String,
+        avatarUri: String,
+        maxMembers: Int = 5,
+        isPrivate: Boolean = true
+    ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
@@ -57,14 +65,19 @@ class TeamViewModel(
                     }
                 } else null
 
-                // Create team with either the uploaded URL or default resource ID
+                // Create team with all parameters
                 val team = TeamModel(
                     name = name,
                     description = description,
                     category = category,
-                    avatarResId = defaultAvatarResId, // Always include a default resource ID
-                    imageUrl = imageUrl, // Add this field to your TeamModel
-                    createdAt = Timestamp.now()
+                    avatarResId = defaultAvatarResId,
+                    imageUrl = imageUrl,
+                    createdAt = Timestamp.now(),
+                    maxMembers = maxMembers,
+                    isPrivate = isPrivate,
+                    memberCount = 1, // Starting with 1 member (creator)
+                    isJoined = true, // Creator has joined by default
+                    isFull = false // Not full initially
                 )
 
                 val teamId = repository.addTeam(team)
