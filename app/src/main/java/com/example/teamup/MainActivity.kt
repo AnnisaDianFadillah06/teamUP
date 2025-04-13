@@ -22,8 +22,8 @@ import com.google.android.gms.security.ProviderInstaller
 import com.google.firebase.FirebaseApp
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
+import dagger.hilt.android.AndroidEntryPoint
 
-// Change to extend FragmentActivity instead of ComponentActivity
 class MainActivity : FragmentActivity() {
     private val competitionViewModel: CompetitionViewModel by viewModels {
         CompetitionViewModelFactory(Injection.provideCompetitionRepository(), Injection.provideCabangLombaRepository())

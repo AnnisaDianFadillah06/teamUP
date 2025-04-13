@@ -1,4 +1,4 @@
-package com.example.teamup.presentation.screen
+package com.example.teamup.presentation.screen.register
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
