@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -39,9 +40,9 @@ fun TeamManagementScreen(
 ) {
     val teamMembers = remember {
         listOf(
-            TeamMemberModel(id = "1", userId = "1234", teamId = "team_1", name = "Nama Tim1", profileImage = R.drawable.captain_icon, role = "Admin", email = "annisadian01@gmail.com"),
-            TeamMemberModel(id = "2", userId = "5678", teamId = "team_1", name = "Nama Tim2", profileImage = R.drawable.captain_icon, role = "Member", email = "annisadian01@gmail.com"),
-            TeamMemberModel(id = "3", userId = "9012", teamId = "team_1", name = "Nama Tim3", profileImage = R.drawable.captain_icon, role = "Member", email = "annisadian01@gmail.com")
+            TeamMemberModel(id = "1", userId = "1234", teamId = "team_1", name = "Al-Fath", profileImage = R.drawable.captain_icon, role = "Admin", email = "annisadian01@gmail.com", memberCount = 3, maxMembers = 3, category = "KMIPN - Cipta Inovasi"),
+            TeamMemberModel(id = "2", userId = "5678", teamId = "team_1", name = "Garuda", profileImage = R.drawable.captain_icon, role = "Member", email = "annisadian01@gmail.com", memberCount = 3, maxMembers = 5, category = "KMIPN - Smart City"),
+            TeamMemberModel(id = "3", userId = "9012", teamId = "team_1", name = "Brawijaya", profileImage = R.drawable.captain_icon, role = "Member", email = "annisadian01@gmail.com", memberCount = 5, maxMembers = 5, category = "Gemastik - IoT")
         )
     }
 
@@ -107,30 +108,20 @@ fun TeamManagementScreen(
                 }
             }
 
-            // Team members list with Card
+            // Team members list with Card (now using the new style)
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(teamMembers) { member ->
                     if ((selectedTabIndex == 0) || (selectedTabIndex == 1 && member.role == "Admin")) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .padding(4.dp),
-                            elevation = CardDefaults.cardElevation(4.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White)
-                        ) {
-                            TeamManagementMemberItem(member)
-                        }
+                        TeamManagementMemberItem(member, navController)
                     }
                 }
             }
         }
-
 
         // Bottom Sheet
         if (showBottomSheet) {
@@ -160,39 +151,105 @@ fun TeamManagementScreen(
 }
 
 @Composable
-fun TeamManagementMemberItem(member: TeamMemberModel) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+fun TeamManagementMemberItem(member: TeamMemberModel, navController: NavController) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                // Navigate directly from the card
+                navController.navigate(
+                    Routes.TeamDetailGrup.createRoute(
+                        teamId = "team1",
+                        isJoined = true,
+                        isFull = false
+                    )
+                )
+            },
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        Image(
-            painter = painterResource(id = member.profileImage),
-            contentDescription = "Profile Picture",
+        Row(
             modifier = Modifier
-                .size(50.dp)
-                .clip(CircleShape)
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Column {
-            Text(text = member.name, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
-            Text(text = member.id, style = MaterialTheme.typography.bodyMedium.copy(color = SoftGray2))
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        if (member.role == "Admin") {
-            Text(
-                text = member.role,
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = DodgerBlue,
-                    fontWeight = FontWeight.Medium
-                ),
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Member Avatar
+            Image(
+                painter = painterResource(id = member.profileImage),
+                contentDescription = "Profile Picture",
                 modifier = Modifier
-                    .background(color = DodgerBlue.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .size(48.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
             )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Member Info
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = member.name,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+
+                Text(
+                    text = member.category,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = Color.Gray
+                    )
+                )
+
+                // Display email
+                Text(
+                    text = "${member.memberCount}/${member.maxMembers} anggota",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = Color.Gray
+                    )
+                )
+            }
+
+            // Role indicator (Admin or Member)
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                if (member.role == "Admin") {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(DodgerBlue.copy(alpha = 0.1f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = member.role,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = DodgerBlue,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFFEEEEEE))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = member.role,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                }
+            }
         }
     }
 }
