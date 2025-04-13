@@ -1,5 +1,6 @@
 package com.example.teamup.presentation.screen
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -37,6 +39,7 @@ fun JoinTeamScreen(
     navController: NavController,
     viewModel: JoinTeamViewModel
 ) {
+    val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     val categories by viewModel.categories.collectAsState()
     val popularTeams by viewModel.popularTeams.collectAsState()
@@ -106,7 +109,11 @@ fun JoinTeamScreen(
                         CategoryCard(
                             category = category,
                             onClick = {
-                                navController.navigate(Routes.CategoryTeams.routes.replace("{categoryId}", category.id))
+                                Toast.makeText(
+                                    context,  // Use LocalContext.current for Compose
+                                    R.string.in_dev,
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         )
                     }
@@ -168,7 +175,7 @@ fun CategoryCard(
             modifier = Modifier
                 .size(64.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(Color.White),
             contentAlignment = Alignment.Center
         ) {
             Image(
@@ -217,7 +224,8 @@ fun TeamCard(
                 )
             },
         shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Row(
             modifier = Modifier

@@ -36,7 +36,7 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
     }) { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = Routes.Home.routes
+            startDestination = Routes.Profile.routes
         ) {
             composable(Routes.Home.routes) {
                 HomeScreen(navController = navController, paddingValues = paddingValues)
