@@ -36,6 +36,38 @@
                 android:name="android.app.lib_name"
                 android:value="" />
         </activity>
+        <!-- Activity untuk menangani deep link dari verifikasi email -->
+        <activity
+            android:name=".deeplink.DeepLinkHandlerActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.ESail">
+
+            <!-- Add this intent filter to your DeepLinkHandlerActivity -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!-- Handle https URLs -->
+                <data
+                    android:scheme="https"
+                    android:host="teamupapp-b6cc1.web.app"
+                    android:pathPattern="/emailverified.html" />
+            </intent-filter>
+
+            <!-- Add this intent filter for your page.link URL -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="https"
+                    android:host="teamupapp.page.link" />
+            </intent-filter>
+        </activity>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

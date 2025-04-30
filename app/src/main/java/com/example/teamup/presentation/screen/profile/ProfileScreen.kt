@@ -1,4 +1,4 @@
-package com.example.teamup.presentation.screen
+package com.example.teamup.presentation.screen.profile
 
 import android.widget.Toast
 import androidx.compose.foundation.Image
