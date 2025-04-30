@@ -52,8 +52,8 @@ fun CompetitionScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddForm by remember { mutableStateOf(false) }
-    var showEditForm by remember { mutableStateOf(false) } // Tambahkan state untuk mode edit
-    var selectedCompetition by remember { mutableStateOf<CompetitionModel?>(null) } // Tambahkan state untuk menyimpan kompetisi yang dipilih
+    var showEditForm by remember { mutableStateOf(false) }
+    var selectedCompetition by remember { mutableStateOf<CompetitionModel?>(null) }
 
     // Handle hardware back button
     BackHandler(enabled = showAddForm || showEditForm) {
@@ -146,11 +146,11 @@ fun CompetitionScreen(
                         selectedCompetition = competition
                         showEditForm = true
                     },
-                    cabangLombaViewModel = cabangLombaViewModel,  // Add this line
+                    cabangLombaViewModel = cabangLombaViewModel,
+                    viewModel = viewModel,  // Passing viewModel untuk akses fungsi refresh
                     modifier = Modifier.padding(paddingValues)
                 )
             }
         }
     }
 }
-
