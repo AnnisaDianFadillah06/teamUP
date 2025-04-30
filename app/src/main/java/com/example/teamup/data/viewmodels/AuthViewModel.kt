@@ -5,6 +5,7 @@ import android.app.Activity
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.teamup.data.model.RegistrationData
 import com.example.teamup.data.repositories.AuthRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.PhoneAuthOptions
@@ -23,17 +24,18 @@ sealed class AuthUiState {
     data class Error(val error: String) : AuthUiState()
 }
 
-data class RegistrationData(
-    val fullName: String,
-    val username: String,
-    val email: String,
-    val phone: String,
-    val password: String
-)
+//data class RegistrationData(
+//    val fullName: String,
+//    val username: String,
+//    val email: String,
+//    val phone: String,
+//    val password: String
+//)
 
 class AuthViewModel(
     private val repository: AuthRepository = AuthRepository()
 ) : ViewModel() {
+
     // Untuk menyimpan data registrasi sementara
     var registrationData: RegistrationData? = null
         private set
@@ -41,11 +43,25 @@ class AuthViewModel(
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState: StateFlow<AuthUiState> = _uiState
 
+//    fun setRegistrationData(fullName: String, username: String, email: String, phone: String, password: String) {
+//        registrationData = RegistrationData(fullName, username, email, phone, password)
+//    }
+
+    // Set registration data
     fun setRegistrationData(fullName: String, username: String, email: String, phone: String, password: String) {
-        registrationData = RegistrationData(fullName, username, email, phone, password)
+        registrationData = RegistrationData(
+            fullName = fullName,
+            username = username,
+            email = email,
+            phone = phone,
+            password = password
+        )
     }
 
-    // Delegasi ke repository
+
+
+
+        // Delegasi ke repository
     suspend fun isUsernameTaken(username: String): Boolean {
         return try {
             repository.isUsernameTaken(username)
