@@ -3,7 +3,7 @@ package com.example.teamup.data.repositories
 
 import android.util.Log
 import androidx.activity.ComponentActivity
-import com.example.teamup.data.viewmodels.RegistrationData
+import com.example.teamup.data.model.RegistrationData
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseException
 import com.google.firebase.auth.*

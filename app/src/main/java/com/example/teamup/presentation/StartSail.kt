@@ -29,8 +29,11 @@ import com.example.teamup.presentation.screen.register.RegisterSuccessScreen
 import com.example.teamup.presentation.screen.ResetPasswordScreen
 import com.example.teamup.presentation.screen.SplashScreen
 import com.example.teamup.presentation.screen.TeamListScreen
+import com.example.teamup.presentation.screen.profile.CompleteProfileScreen
+import com.example.teamup.presentation.screen.profile.ProfileSettingsScreen
 import com.example.teamup.presentation.screen.register.CekEmailScreen
 import com.example.teamup.presentation.screen.register.VerificationScreen
+import com.example.teamup.data.viewmodels.ProfileViewModel
 import com.example.teamup.route.Routes
 
 @Composable
@@ -39,6 +42,8 @@ fun StartSail(
     navController: NavHostController = rememberNavController(),
     competitionViewModel: CompetitionViewModel
 ) {
+    val profileViewModel: ProfileViewModel = viewModel()
+
     BackPressHandler(navController)
 
     Scaffold { paddingValues ->
@@ -92,6 +97,18 @@ fun StartSail(
             }
             composable(Routes.ResetPassword.routes) {
                 ResetPasswordScreen(navController = navController)
+            }
+
+            // Profile related routes
+//            composable(Routes.Profile.routes) {
+//                ProfileScreen(navController, profileViewModel)
+//            }
+            composable(Routes.ProfileSettings.routes) {
+                ProfileSettingsScreen(navController, profileViewModel)
+            }
+
+            composable(Routes.CompleteProfile.routes) {
+                CompleteProfileScreen(navController, profileViewModel)
             }
 
 
