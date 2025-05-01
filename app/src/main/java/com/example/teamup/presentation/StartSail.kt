@@ -71,9 +71,6 @@ fun StartSail(
             composable(Routes.Dashboard.routes) {
                 DashboardScreen(competitionViewModel = competitionViewModel)
             }
-            composable(Routes.TeamList.routes) {
-                TeamListScreen(navController = navController)
-            }
             composable(Routes.Verification.routes) {
                 VerificationScreen(navController = navController)
             }

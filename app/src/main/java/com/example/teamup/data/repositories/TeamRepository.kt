@@ -33,6 +33,40 @@ class TeamRepository private constructor(
         return remoteDataSource.getAllTeams()
     }
 
+    suspend fun getTeamById(teamId: String): TeamModel? {
+        if (!initialized) {
+            initialize()
+        }
+        return remoteDataSource.getTeamById(teamId)
+    }
+
+    suspend fun joinTeam(teamId: String, userId: String): Boolean {
+        if (!initialized) {
+            initialize()
+        }
+        return remoteDataSource.joinTeam(teamId, userId)
+    }
+
+    suspend fun leaveTeam(teamId: String, userId: String): Boolean {
+        if (!initialized) {
+            initialize()
+        }
+        return remoteDataSource.leaveTeam(teamId, userId)
+    }
+
+    suspend fun deleteTeam(teamId: String): Boolean {
+        if (!initialized) {
+            initialize()
+        }
+        return remoteDataSource.deleteTeam(teamId)
+    }
+
+    suspend fun getTeamsByUserId(userId: String): List<TeamModel> {
+        if (!initialized) {
+            initialize()
+        }
+        return remoteDataSource.getTeamsByUserId(userId)
+    }
 
     companion object {
         @Volatile

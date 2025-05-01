@@ -134,6 +134,9 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
                     viewModel = joinTeamViewModel
                 )
             }
+            composable(Routes.TeamListCategory.routes) {
+                TeamListScreen(navController = navController)
+            }
             composable(
                 route = Routes.TeamDetailGrup.routes,
                 arguments = listOf(
