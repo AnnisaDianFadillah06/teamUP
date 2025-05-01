@@ -1,11 +1,14 @@
+//authrepository.kt
 package com.example.teamup.data.repositories
 
 import android.util.Log
 import androidx.activity.ComponentActivity
-import com.example.teamup.data.viewmodels.RegistrationData
+import com.example.teamup.data.model.RegistrationData
+import com.google.firebase.Firebase
 import com.google.firebase.FirebaseException
 import com.google.firebase.auth.*
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.functions.functions
 import kotlinx.coroutines.tasks.await
 import java.util.concurrent.TimeUnit
 
@@ -18,12 +21,26 @@ class AuthRepository {
         auth.createUserWithEmailAndPassword(email, password).await()
 
     // 2. Kirim email verifikasi
+    // 2. Kirim email verifikasi
     suspend fun sendEmailVerification() {
-        val user = auth.currentUser
-            ?: throw Exception("User not logged in")
-        user.sendEmailVerification().await()
-        // Unit is implicit
+        val user = auth.currentUser ?: throw Exception("User not logged in")
+
+        val actionCodeSettings = ActionCodeSettings.newBuilder()
+            .setUrl("https://teamupapp-b6cc1.web.app/emailverified.html")
+            .setHandleCodeInApp(true) // Change to TRUE to handle in app
+            .setAndroidPackageName("com.example.teamup", true, null)
+            .setIOSBundleId("com.example.teamup")
+            .build()
+
+        try {
+            user.sendEmailVerification(actionCodeSettings).await()
+            Log.d("Email", "Email verifikasi dikirim dengan custom link.")
+        } catch (e: Exception) {
+            Log.e("Email", "Gagal kirim verifikasi", e)
+        }
+
     }
+
 
     // 3. Kirim OTP SMS via Firebase PhoneAuth
     fun sendPhoneOtp(

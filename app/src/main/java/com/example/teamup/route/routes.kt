@@ -19,6 +19,8 @@ sealed class Routes(val routes: String) {
     data object Home : Routes("home")
     data object Search : Routes("search")
     data object Profile : Routes("profile")
+    object CompleteProfile : Routes("complete_profile")
+    object ProfileSettings : Routes ("profile_settings" )
     data object Competition : Routes("competition")
     data object Wishlist : Routes("wishlist")
     data object Cart : Routes("cart")
@@ -27,6 +29,9 @@ sealed class Routes(val routes: String) {
         fun createRoute(id: Int) = "detail/$id"
     }
     object Verification : Routes("verification")
+    object CekEmail : Routes("cek_email/{email}") {
+        fun createRoute(email: String) = "cek_email/$email"
+    }
     object RegisterSuccess : Routes("register_success")
     object ForgotPassword : Routes("forgot_password")
     object ResetPassword : Routes("reset_password")
