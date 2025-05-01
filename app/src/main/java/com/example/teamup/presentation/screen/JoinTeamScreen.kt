@@ -108,12 +108,7 @@ fun JoinTeamScreen(
                     items(categories) { category ->
                         CategoryCard(
                             category = category,
-                            onClick = {
-                                Toast.makeText(
-                                    context,  // Use LocalContext.current for Compose
-                                    R.string.in_dev,
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                            onClick = { navController.navigate(Routes.TeamListCategory.routes)
                             }
                         )
                     }

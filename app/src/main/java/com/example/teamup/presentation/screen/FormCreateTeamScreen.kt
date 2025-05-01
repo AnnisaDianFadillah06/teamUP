@@ -32,6 +32,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import com.example.teamup.R
 import com.example.teamup.common.theme.*
 import com.example.teamup.data.model.CompetitionActivityStatus
 import com.example.teamup.data.model.CompetitionModel
@@ -548,7 +549,7 @@ fun FormCreateTeamScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Submit button
+// Submit button
             Button(
                 onClick = {
                     val categoryText = selectedCompetitionName
@@ -557,11 +558,11 @@ fun FormCreateTeamScreen(
                     val maxMembersInt = maxMembers.toIntOrNull() ?: 5
 
                     teamViewModel.addTeam(
-                        teamName,
-                        teamDescription,
-                        categoryBranch,
-                        "default_avatar",
-                        selectedImageUri,
+                        name = teamName,
+                        description = teamDescription,
+                        category = categoryBranch,
+                        avatarResId = R.drawable.captain_icon, // default avatar dari resources
+                        imageUri = selectedImageUri,
                         maxMembers = maxMembersInt,
                         isPrivate = isPrivate,
                         onSuccess = {
@@ -569,7 +570,6 @@ fun FormCreateTeamScreen(
                         },
                         onFailure = {
                             Log.e("AddTeam", "Failed to add team: ${it.message}")
-                            // tampilkan pesan error ke user, misalnya pakai Snackbar atau Toast
                         }
                     )
                 },
@@ -580,8 +580,10 @@ fun FormCreateTeamScreen(
                     containerColor = DodgerBlue
                 ),
                 shape = RoundedCornerShape(8.dp),
-                enabled = teamName.isNotEmpty() && selectedCompetitionId.isNotEmpty() &&
-                        selectedBranch.isNotEmpty() && !competitionUiState.isLoading
+                enabled = teamName.isNotEmpty() &&
+                        selectedCompetitionId.isNotEmpty() &&
+                        selectedBranch.isNotEmpty() &&
+                        !competitionUiState.isLoading
             ) {
                 if (competitionUiState.isLoading) {
                     CircularProgressIndicator(
