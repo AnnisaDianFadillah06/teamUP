@@ -8,7 +8,6 @@ sealed class Routes(val routes: String) {
     object TeamDetail : Routes("team_detail")
     object CategoryTeams : Routes("category_team")
     object TeamList : Routes("team_list") //contoh firebase
-    object AddTeam : Routes("add_team") //contoh firebase
 
     data object Login : Routes("login")
     data object Register : Routes("register")

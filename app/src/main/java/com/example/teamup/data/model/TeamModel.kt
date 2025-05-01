@@ -11,6 +11,7 @@ data class TeamModel(
     val category: String = "",
     @DrawableRes val avatarResId: Int, // Local resource as fallback
     val imageUrl: String? = null, // URL to Firebase Storage image
+    val driveFileId: String? = null,  // Tambahkan field untuk menyimpan ID file di Google Drive
     val createdAt: Timestamp = Timestamp.now(),
     val members: List<String> = emptyList(), // List of member user IDs
     val maxMembers: Int = 5, // Maximum members allowed (default 5)

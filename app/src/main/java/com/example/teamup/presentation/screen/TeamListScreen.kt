@@ -1,21 +1,36 @@
 package com.example.teamup.presentation.screen
 
+import android.widget.Toast
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.example.teamup.R
 import com.example.teamup.data.model.TeamModel
 import com.example.teamup.data.viewmodels.TeamViewModel
 import com.example.teamup.data.viewmodels.TeamViewModelFactory
@@ -26,125 +41,200 @@ import com.example.teamup.route.Routes
 @Composable
 fun TeamListScreen(
     navController: NavController,
-    viewModel: TeamViewModel = viewModel(
+    teamViewModel: TeamViewModel = viewModel(
         factory = TeamViewModelFactory(
             Injection.provideTeamRepository(),
-            Injection.provideFirebaseStorageHelper()
+            Injection.provideGoogleDriveHelper()
         )
     )
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val teams by viewModel.teams.collectAsState()
+    val teams by teamViewModel.teams.collectAsState()
+    val uiState by teamViewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    LaunchedEffect(key1 = Unit) {
+        teamViewModel.getAllTeams()
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Teams") }
+                title = {
+                    Text(
+                        text = "Teams",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                },
+                actions = {
+                    IconButton(onClick = { navController.navigate(Routes.FormAddTeam.routes) }) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add Team"
+                        )
+                    }
+                }
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate(Routes.AddTeam.routes) }
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Team")
-            }
         }
     ) { paddingValues ->
         Box(
             modifier = Modifier
-                .padding(paddingValues)
                 .fillMaxSize()
+                .padding(paddingValues)
         ) {
-            if (uiState.isLoading && teams.isEmpty()) {
+            if (uiState.isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center)
                 )
             } else if (teams.isEmpty()) {
-                Text(
-                    text = "No teams found. Click + to add a team.",
+                Column(
                     modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(16.dp)
-                )
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "No teams found",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { navController.navigate(Routes.FormAddTeam.routes) }
+                    ) {
+                        Text("Create New Team")
+                    }
+                }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(teams) { team ->
-                        TeamCard(team = team)
+                        TeamListItem(team = team, navController = navController)
                     }
                 }
             }
 
-            uiState.errorMessage?.let { error ->
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp)
-                )
+            if (uiState.errorMessage != null) {
+                Toast.makeText(context, uiState.errorMessage, Toast.LENGTH_LONG).show()
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TeamCard(team: TeamModel, modifier: Modifier = Modifier, onClick: (TeamModel) -> Unit = {}) {
+fun TeamListItem(
+    team: TeamModel,
+    navController: NavController
+) {
     Card(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable { onClick(team) }
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth()
-        ) {
-            // Debug text to check if ID is present
-            if (team.id.isNotEmpty()) {
-                Text(
-                    text = "ID: ${team.id}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
+            .clickable {
+                navController.navigate(
+                    Routes.TeamDetailGrup.createRoute(
+                        teamId = team.id,
+                        isJoined = team.isJoined,
+                        isFull = team.isFull
+                    )
                 )
-
-                Spacer(modifier = Modifier.height(4.dp))
+            },
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Team Avatar - Load from imageUrl if available, fallback to resource
+            if (team.imageUrl != null) {
+                // Load from Google Drive URL
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(team.imageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Team Avatar",
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(id = R.drawable.captain_icon)
+                )
+            } else {
+                // Load from resource ID
+                Image(
+                    painter = painterResource(id = team.avatarResId),
+                    contentDescription = "Team Avatar",
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
             }
 
-            Text(
-                text = "Name: ${team.name}",
-                style = MaterialTheme.typography.titleMedium
-            )
+            Spacer(modifier = Modifier.width(16.dp))
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "Description: ${team.description}",
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+            Column(
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = "Category: ${team.category}",
-                    style = MaterialTheme.typography.bodySmall
+                    text = team.name,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    )
                 )
 
-                team.createdAt?.let {
+                Text(
+                    text = team.category,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = Color.Gray
+                    )
+                )
+
+                Text(
+                    text = "${team.memberCount}/${team.maxMembers} members",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = Color.Gray
+                    )
+                )
+            }
+
+            // Status indicator
+            if (team.isJoined) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0xFFE3F2FD))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
                     Text(
-                        text = it.toDate().toString(),
-                        style = MaterialTheme.typography.bodySmall
+                        text = "Joined",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = Color.Black,
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
+                }
+            } else if (team.isFull) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0xFFEEEEEE))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "Full",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
+                        )
                     )
                 }
             }
