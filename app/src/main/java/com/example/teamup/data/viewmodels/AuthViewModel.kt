@@ -1,9 +1,11 @@
+//authviewmodel.kt
 package com.example.teamup.data.viewmodels
 
 import android.app.Activity
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.teamup.data.model.RegistrationData
 import com.example.teamup.data.repositories.AuthRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.PhoneAuthOptions
@@ -22,17 +24,18 @@ sealed class AuthUiState {
     data class Error(val error: String) : AuthUiState()
 }
 
-data class RegistrationData(
-    val fullName: String,
-    val username: String,
-    val email: String,
-    val phone: String,
-    val password: String
-)
+//data class RegistrationData(
+//    val fullName: String,
+//    val username: String,
+//    val email: String,
+//    val phone: String,
+//    val password: String
+//)
 
 class AuthViewModel(
     private val repository: AuthRepository = AuthRepository()
 ) : ViewModel() {
+
     // Untuk menyimpan data registrasi sementara
     var registrationData: RegistrationData? = null
         private set
@@ -40,11 +43,25 @@ class AuthViewModel(
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState: StateFlow<AuthUiState> = _uiState
 
+//    fun setRegistrationData(fullName: String, username: String, email: String, phone: String, password: String) {
+//        registrationData = RegistrationData(fullName, username, email, phone, password)
+//    }
+
+    // Set registration data
     fun setRegistrationData(fullName: String, username: String, email: String, phone: String, password: String) {
-        registrationData = RegistrationData(fullName, username, email, phone, password)
+        registrationData = RegistrationData(
+            fullName = fullName,
+            username = username,
+            email = email,
+            phone = phone,
+            password = password
+        )
     }
 
-    // Delegasi ke repository
+
+
+
+        // Delegasi ke repository
     suspend fun isUsernameTaken(username: String): Boolean {
         return try {
             repository.isUsernameTaken(username)
@@ -68,12 +85,12 @@ class AuthViewModel(
             false // Asumsikan email belum dipakai jika terjadi error
         }
     }
+
     fun isPasswordStrong(password: String): Boolean {
         val regex =
             Regex("^(?=.*[0-9])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}\$")
         return regex.matches(password)
     }
-
 
     // 1. Registrasi email + kirim verifikasi
     fun registerWithEmail(
@@ -89,6 +106,21 @@ class AuthViewModel(
                 onResult(true, null)
             } catch (e: Exception) {
                 _uiState.value = AuthUiState.Error(e.message ?: "Registrasi gagal")
+                onResult(false, e.message)
+            }
+        }
+    }
+
+    // Fungsi baru untuk mengirim ulang email verifikasi
+    fun resendEmailVerification(onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.Loading
+            try {
+                repository.sendEmailVerification()
+                _uiState.value = AuthUiState.Success("Email verifikasi terkirim ulang")
+                onResult(true, null)
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error(e.message ?: "Gagal mengirim ulang email verifikasi")
                 onResult(false, e.message)
             }
         }
@@ -110,7 +142,6 @@ class AuthViewModel(
         PhoneAuthProvider.verifyPhoneNumber(options)
     }
 
-
     // 3. Verifikasi OTP
     fun verifyPhoneOtp(
         verificationId: String,
@@ -129,6 +160,8 @@ class AuthViewModel(
             }
         }
     }
+
+    // Fungsi yang telah ada untuk memeriksa status verifikasi user
     fun reloadCurrentUser(onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             try {
@@ -140,7 +173,6 @@ class AuthViewModel(
             }
         }
     }
-
 
     // 4. Simpan profil (dipanggil setelah salah satu verifikasi berhasil)
     fun saveProfile(
@@ -176,7 +208,6 @@ class AuthViewModel(
             }
         }
     }
-
 
     fun updatePassword(
         newPassword: String,

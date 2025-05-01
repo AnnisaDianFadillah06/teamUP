@@ -19,7 +19,9 @@ import com.example.teamup.data.viewmodels.JoinTeamViewModel
 import com.example.teamup.di.ViewModelJoinFactory
 import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.presentation.components.BottomNavigationBar
+import com.example.teamup.presentation.screen.profile.ProfileScreen
 import com.example.teamup.route.Routes
+
 
 @Composable
 fun DashboardScreen(navController: NavHostController = rememberNavController(),  competitionViewModel: CompetitionViewModel) {

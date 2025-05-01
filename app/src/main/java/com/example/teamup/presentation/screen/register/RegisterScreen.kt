@@ -1,4 +1,4 @@
-package com.example.teamup.presentation.screen
+package com.example.teamup.presentation.screen.register
 
 import android.util.Log
 import android.util.Patterns

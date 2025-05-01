@@ -1,4 +1,5 @@
-package com.example.teamup.presentation.screen
+//verificationscreen.kt
+package com.example.teamup.presentation.screen.register
 
 import android.app.Activity
 import android.util.Log
@@ -116,9 +117,11 @@ fun VerificationScreen(
                         isProcessing = false
                         if (ok) {
                             Log.d("VerificationScreen", "Email verifikasi berhasil")
-                            navController.navigate(Routes.RegisterSuccess.routes) {
-                                popUpTo(Routes.Verification.routes) { inclusive = true }
+                            // Perubahan: Navigasi ke halaman instruksi verifikasi email
+                            navController.navigate(Routes.CekEmail.createRoute(data.email)) {
+                                popUpTo(Routes.Verification.routes) { inclusive = false }
                             }
+
                         } else {
                             Log.e("VerificationScreen", "Gagal kirim email: $err")
                             message = err ?: "Gagal kirim email. Periksa koneksi Firebase."
