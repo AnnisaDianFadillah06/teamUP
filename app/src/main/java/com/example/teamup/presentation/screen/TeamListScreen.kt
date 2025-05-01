@@ -36,6 +36,7 @@ import com.example.teamup.data.viewmodels.TeamViewModel
 import com.example.teamup.data.viewmodels.TeamViewModelFactory
 import com.example.teamup.di.Injection
 import com.example.teamup.route.Routes
+import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +52,7 @@ fun TeamListScreen(
     val teams by teamViewModel.teams.collectAsState()
     val uiState by teamViewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
 
     LaunchedEffect(key1 = Unit) {
         teamViewModel.getAllTeams()
@@ -114,7 +116,14 @@ fun TeamListScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(teams) { team ->
-                        TeamListItem(team = team, navController = navController)
+                        // Check if user is a member or captain of the team
+                        val isJoined = currentUserId != null &&
+                                (team.members.contains(currentUserId) || team.captainId == currentUserId)
+
+                        // Create a copy of the team with updated isJoined status
+                        val updatedTeam = team.copy(isJoined = isJoined)
+
+                        TeamListItem(team = updatedTeam, navController = navController)
                     }
                 }
             }
@@ -144,12 +153,13 @@ fun TeamListItem(
                 )
             },
         shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Team Avatar - Load from imageUrl if available, fallback to resource
@@ -162,7 +172,7 @@ fun TeamListItem(
                         .build(),
                     contentDescription = "Team Avatar",
                     modifier = Modifier
-                        .size(64.dp)
+                        .size(48.dp)
                         .clip(CircleShape),
                     contentScale = ContentScale.Crop,
                     placeholder = painterResource(id = R.drawable.captain_icon)
@@ -173,7 +183,7 @@ fun TeamListItem(
                     painter = painterResource(id = team.avatarResId),
                     contentDescription = "Team Avatar",
                     modifier = Modifier
-                        .size(64.dp)
+                        .size(48.dp)
                         .clip(CircleShape),
                     contentScale = ContentScale.Crop
                 )
