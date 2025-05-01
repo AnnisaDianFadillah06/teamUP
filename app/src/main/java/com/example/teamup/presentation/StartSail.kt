@@ -16,7 +16,6 @@ import com.example.teamup.common.utils.SessionManager
 import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
 import com.example.teamup.di.Injection
-import com.example.teamup.presentation.screen.AddTeamScreen
 import com.example.teamup.presentation.screen.DashboardScreen
 import com.example.teamup.presentation.screen.FingerprintLoginScreen
 import com.example.teamup.presentation.screen.ForgotPasswordScreen
@@ -74,9 +73,6 @@ fun StartSail(
             }
             composable(Routes.TeamList.routes) {
                 TeamListScreen(navController = navController)
-            }
-            composable(Routes.AddTeam.routes) {
-                AddTeamScreen(navController = navController)
             }
             composable(Routes.Verification.routes) {
                 VerificationScreen(navController = navController)

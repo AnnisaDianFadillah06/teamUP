@@ -1,6 +1,7 @@
 package com.example.teamup.presentation.screen
 
 import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -48,7 +49,8 @@ fun FormCreateTeamScreen(
     navController: NavController,
     teamViewModel: TeamViewModel = viewModel(
         factory = TeamViewModelFactory(
-            Injection.provideTeamRepository()
+            Injection.provideTeamRepository(),
+            Injection.provideGoogleDriveHelper()
         )
     ),
     competitionViewModel: CompetitionViewModel = viewModel(
@@ -552,20 +554,24 @@ fun FormCreateTeamScreen(
                     val categoryText = selectedCompetitionName
                     val branchText = selectedBranch
                     val categoryBranch = "$categoryText - $branchText"
-                    val avatarResId = selectedImageUri?.toString() ?: "default_avatar"
                     val maxMembersInt = maxMembers.toIntOrNull() ?: 5
 
                     teamViewModel.addTeam(
                         teamName,
                         teamDescription,
                         categoryBranch,
-                        avatarResId,
+                        "default_avatar",
+                        selectedImageUri,
                         maxMembers = maxMembersInt,
-                        isPrivate = isPrivate
+                        isPrivate = isPrivate,
+                        onSuccess = {
+                            navController.popBackStack()
+                        },
+                        onFailure = {
+                            Log.e("AddTeam", "Failed to add team: ${it.message}")
+                            // tampilkan pesan error ke user, misalnya pakai Snackbar atau Toast
+                        }
                     )
-
-                    // Navigate back or to team detail on success
-                    navController.popBackStack()
                 },
                 modifier = Modifier
                     .fillMaxWidth()

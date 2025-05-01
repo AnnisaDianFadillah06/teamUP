@@ -1,10 +1,11 @@
 package com.example.teamup.di
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.teamup.data.repositories.CompetitionRepositoryDummy
 import com.example.teamup.data.repositories.TeamRepository
-import com.example.teamup.data.sources.remote.FirebaseTeamDataSource
+import com.example.teamup.data.sources.remote.GoogleDriveTeamDataSource
 import com.example.teamup.data.viewmodels.JoinTeamViewModel
 
 class ViewModelJoinFactory(
@@ -26,8 +27,12 @@ class ViewModelJoinFactory(
 
         fun getInstance(): ViewModelJoinFactory {
             return instance ?: synchronized(this) {
-                val firebaseTeamDataSource = FirebaseTeamDataSource()
-                val teamRepository = TeamRepository.getInstance(firebaseTeamDataSource)
+                val googleDriveTeamDataSource = Injection.provideGoogleDriveTeamDataSource()
+
+                // Log untuk debugging
+                Log.d("ViewModelJoinFactory", "Creating TeamRepository with GoogleDriveTeamDataSource")
+
+                val teamRepository = TeamRepository.getInstance(googleDriveTeamDataSource)
                 val competitionRepository = CompetitionRepositoryDummy()
 
                 instance ?: ViewModelJoinFactory(
