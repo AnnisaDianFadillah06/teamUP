@@ -1,39 +1,122 @@
-package com.example.teamup
+package com.example.teamup.presentation
 
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.teamup.presentation.screen.*
+import androidx.navigation.navArgument
+import com.example.teamup.common.utils.BackPressHandler
+import com.example.teamup.common.utils.SessionManager
+import com.example.teamup.data.viewmodels.CompetitionViewModel
+import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
+import com.example.teamup.di.Injection
+import com.example.teamup.presentation.screen.DashboardScreen
+import com.example.teamup.presentation.screen.FingerprintLoginScreen
+import com.example.teamup.presentation.screen.ForgotPasswordScreen
+import com.example.teamup.presentation.screen.LoginScreenV5
+import com.example.teamup.presentation.screen.profile.ProfileScreen
+import com.example.teamup.presentation.screen.register.RegisterScreen
+import com.example.teamup.presentation.screen.register.RegisterSuccessScreen
+import com.example.teamup.presentation.screen.ResetPasswordScreen
+import com.example.teamup.presentation.screen.SplashScreen
+import com.example.teamup.presentation.screen.TeamListScreen
+import com.example.teamup.presentation.screen.profile.CompleteProfileScreen
+import com.example.teamup.presentation.screen.profile.ProfileSettingsScreen
+import com.example.teamup.presentation.screen.register.CekEmailScreen
+import com.example.teamup.presentation.screen.register.VerificationScreen
+import com.example.teamup.data.viewmodels.ProfileViewModel
 import com.example.teamup.route.Routes
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StartSail(
     modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    competitionViewModel: CompetitionViewModel
 ) {
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val profileViewModel: ProfileViewModel = viewModel()
+
+    BackPressHandler(navController)
 
     Scaffold { paddingValues ->
-        val padding = paddingValues
-        NavHost(navController = navController, startDestination = Routes.Login.routes) {
-            composable(Routes.Login.routes) {
-                LoginScreen(navController = navController)
+        NavHost(
+            navController = navController,
+            startDestination = Routes.SplashScreen.routes,
+            modifier = Modifier.padding(paddingValues) // ✅ Gunakan paddingValues di sini
+        ) {
+            composable(Routes.SplashScreen.routes) {
+                val context = LocalContext.current
+                SplashScreen {
+                    // Navigasi ke screen berikutnya setelah animasi selesai
+                    val destination = if (SessionManager.isLoggedIn(context)) {
+                        Routes.Dashboard.routes
+                    } else {
+                        Routes.LoginV5.routes
+                    }
+                    navController.navigate(destination) {
+                        popUpTo(Routes.SplashScreen.routes) { inclusive = true }
+                    }
+                }
             }
             composable(Routes.Register.routes) {
                 RegisterScreen(navController = navController)
             }
-            composable(Routes.Dashboard.routes) {
-                DashboardScreen()
+            composable(Routes.FingerprintLogin.routes) {
+                FingerprintLoginScreen(navController = navController)
             }
+            composable(Routes.LoginV5.routes) {
+                LoginScreenV5(navController = navController)
+            }
+
+            // Dashboard & Teams
+            composable(Routes.Dashboard.routes) {
+                DashboardScreen(competitionViewModel = competitionViewModel)
+            }
+            composable(Routes.Verification.routes) {
+                VerificationScreen(navController = navController)
+            }
+            composable(Routes.RegisterSuccess.routes) {
+                RegisterSuccessScreen(navController = navController)
+            }
+            composable(Routes.ForgotPassword.routes) {
+                ForgotPasswordScreen(navController = navController)
+            }
+            composable(Routes.ResetPassword.routes) {
+                ResetPasswordScreen(navController = navController)
+            }
+
+            // Profile related routes
+//            composable(Routes.Profile.routes) {
+//                ProfileScreen(navController, profileViewModel)
+//            }
+            composable(Routes.ProfileSettings.routes) {
+                ProfileSettingsScreen(navController, profileViewModel)
+            }
+
+            composable(Routes.CompleteProfile.routes) {
+                CompleteProfileScreen(navController, profileViewModel)
+            }
+
+
+            composable(
+                route = Routes.CekEmail.routes,
+                arguments = listOf(
+                    navArgument("email") {
+                        type = NavType.StringType
+                    }
+                )
+            ) { backStackEntry ->
+                val email = backStackEntry.arguments?.getString("email") ?: ""
+                CekEmailScreen(navController, email = email)
+            }
+
         }
     }
 }
@@ -41,5 +124,10 @@ fun StartSail(
 @Preview
 @Composable
 fun StartSailPreview() {
-    StartSail()
+    val fakeViewModel = viewModel<CompetitionViewModel>(
+        factory = CompetitionViewModelFactory(
+            Injection.provideCompetitionRepository(), Injection.provideCabangLombaRepository()
+        )
+    )
+    StartSail(competitionViewModel = fakeViewModel)
 }

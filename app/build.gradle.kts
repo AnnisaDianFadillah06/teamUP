@@ -2,6 +2,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.gms.google-services")
+    id("kotlin-kapt")
+    id("dagger.hilt.android.plugin")
 }
 
 android {
@@ -38,6 +41,7 @@ android {
         jvmTarget = "1.8"
     }
     buildFeatures {
+        viewBinding = true
         compose = true
     }
     composeOptions {
@@ -46,12 +50,12 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/DEPENDENCIES"
         }
     }
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -60,6 +64,9 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.functions.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -67,9 +74,48 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("io.coil-kt:coil-compose:2.4.0")
     implementation(libs.androidx.navigation.compose)
     implementation ("com.google.accompanist:accompanist-flowlayout:0.27.1")
     implementation ("androidx.compose.material:material-icons-extended:1.3.1")
     implementation ("androidx.core:core-splashscreen:1.0.0")
+    implementation("com.airbnb.android:lottie-compose:6.4.0")
+
+    // Coroutines for Firebase
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.1")
+    implementation ("com.google.android.material:material:1.9.0") // atau versi terbaru
+    implementation ("androidx.compose.material3:material3:1.2.1") // atau versi terbaru
+
+    // Firebase Firestore
+    implementation ("com.google.firebase:firebase-firestore-ktx")
+
+    // Firebase Authentication (jika diperlukan)
+    implementation ("com.google.firebase:firebase-auth-ktx")
+    implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
+    implementation ("com.google.firebase:firebase-auth")
+    implementation ("com.google.firebase:firebase-firestore")
+    //app check untuk keperluan verifikasi
+    implementation ("com.google.firebase:firebase-appcheck-debug:17.0.0")
+
+    // Firebase Storage (jika diperlukan)
+    implementation ("com.google.firebase:firebase-storage-ktx")
+    
+    // Implementasi Fingerprint
+    implementation ("androidx.biometric:biometric:1.2.0-alpha05")
+
+    // Google Sign-In and Drive
+    implementation ("com.google.android.gms:play-services-auth:21.0.0")
+    implementation ("com.google.api-client:google-api-client-android:2.2.0")
+    implementation ("com.google.apis:google-api-services-drive:v3-rev20231128-2.0.0")
+    implementation ("com.google.oauth-client:google-oauth-client-jetty:1.34.1")
+    implementation ("com.google.http-client:google-http-client-gson:1.43.3")
+    implementation ("com.google.http-client:google-http-client-android:1.43.3")
+
+    // Coroutines
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+
+    //hilt
+    implementation("com.google.dagger:hilt-android:2.44")
+    kapt("com.google.dagger:hilt-compiler:2.44")
+    implementation ("androidx.hilt:hilt-navigation-compose:1.1.0")
 }

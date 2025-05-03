@@ -22,9 +22,11 @@ import com.example.teamup.route.NavigationItem
 @Composable
 fun BottomNavigationBar(navController: NavController) {
     val items = listOf(
-        NavigationItem.Home,
-        NavigationItem.Sail,
-        NavigationItem.Wishlist,
+//        NavigationItem.Home,
+//        NavigationItem.Sail,
+//        NavigationItem.Wishlist,
+        NavigationItem.Competition,
+        NavigationItem.TeamManagement,
         NavigationItem.Profile,
     )
     val navBackStackEntry by navController.currentBackStackEntryAsState()

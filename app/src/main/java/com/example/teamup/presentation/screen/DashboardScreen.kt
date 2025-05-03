@@ -1,7 +1,5 @@
 package com.example.teamup.presentation.screen
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,21 +26,25 @@ import com.example.teamup.di.Injection
 import com.example.teamup.presentation.components.BottomNavigationBar
 import com.example.teamup.presentation.screen.profile.ProfileScreen
 import com.example.teamup.route.Routes
-import com.example.teamup.ui.components.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
-fun DashboardScreen(navController: NavHostController = rememberNavController()) {
-
+fun DashboardScreen(navController: NavHostController = rememberNavController(),  competitionViewModel: CompetitionViewModel) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // Tambahkan BackPressHandler
+    BackPressHandler(navController)
+
     Scaffold(bottomBar = {
-        if (currentRoute != Routes.Detail.routes && currentRoute != Routes.Cart.routes && currentRoute != Routes.Search.routes) {
+        if (currentRoute != "draft_invitation/{selectedIds}" && currentRoute != Routes.Invite.routes && currentRoute != Routes.InviteSelect.routes && currentRoute != Routes.Detail.routes && currentRoute != Routes.ChatGroup.routes && currentRoute != Routes.FormAddTeam.routes && currentRoute != Routes.Cart.routes && currentRoute != Routes.Search.routes) {
             BottomNavigationBar(navController)
         }
     }) { paddingValues ->
-        NavHost(navController = navController, startDestination = Routes.Home.routes) {
+        NavHost(
+            navController = navController,
+            startDestination = Routes.Profile.routes
+        ) {
             composable(Routes.Home.routes) {
                 HomeScreen(navController = navController, paddingValues = paddingValues)
             }
@@ -52,6 +54,9 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
             composable(Routes.Profile.routes) {
                 ProfileScreen(navController = navController)
             }
+            composable(Routes.Competition.routes) {
+                CompetitionScreen(navController = navController)
+            }
             composable(Routes.Wishlist.routes) {
                 WishlistScreen(navController = navController, paddingValues = paddingValues)
             }
@@ -60,6 +65,45 @@ fun DashboardScreen(navController: NavHostController = rememberNavController()) 
             }
             composable(Routes.MyCourse.routes) {
                 MyCoursesScreen(navController = navController, paddingValues = paddingValues)
+            }
+            composable(Routes.Detail.routes) { backStackEntry ->
+                val courseId = backStackEntry.arguments?.getString("courseId")?.toInt() ?: 0
+                DetailScreen(navController, courseId)
+            }
+
+//            composable(Routes.AddCompetition.routes) {
+//                AddCompetitionScreen(
+//                    navController = navController,
+//                    viewModel = competitionViewModel
+//                )
+//            }
+//            composable(Routes.AddCompetition.routes) {
+//                AddCompetitionForm(
+//                    viewModel = competitionViewModel,
+//                    onSuccess = { navController.popBackStack() } // Navigasi balik setelah sukses
+//                )
+//            }
+//            composable(Routes.CompetitionList.routes) {
+//                CompetitionListScreen(navController)
+//            }
+//            composable(
+//                Routes.Detail.routes,
+//                arguments = listOf(navArgument("id") { type = NavType.IntType })
+//            ) {
+//                val id = it.arguments?.getInt("id") ?: 0
+//                DetailScreen(navController = navController, id = id)
+//            }
+            composable(Routes.TeamManagement.routes) {
+                TeamManagementScreen(navController = navController)
+            }
+            composable(Routes.FormAddTeam.routes) {
+                FormCreateTeamScreen(navController = navController)
+            }
+            composable(Routes.Invite.routes) {
+                InviteMemberScreen(navController = navController)
+            }
+            composable(Routes.InviteSelect.routes) {
+                InviteSelectMemberScreen(navController = navController)
             }
             composable(
                 route = "draft_invitation/{selectedIds}",

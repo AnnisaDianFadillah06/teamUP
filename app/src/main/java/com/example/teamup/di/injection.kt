@@ -18,6 +18,20 @@ import com.example.teamup.data.sources.remote.GoogleDriveTeamDataSource
 import com.example.teamup.data.viewmodels.NotificationViewModel
 
 object Injection {
+    // Add context property to the Injection object
+    private var appContext: Context? = null
+
+    // Initialize method to set context
+    fun initialize(context: Context) {
+        appContext = context.applicationContext
+    }
+
+    private fun getContext(): Context {
+        return appContext ?: throw IllegalStateException(
+            "Application context not initialized. Call Injection.initialize() first."
+        )
+    }
+
     fun provideCourseRepository(): CoursesRepository {
         return CoursesRepository.getInstance()
     }
