@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ESail</string>
+    <string name="app_name">Team Up</string>
     <string name="email">Email</string>
     <string name="email_address">Email Address</string>
     <string name="phone_number">Phone Number</string>
@@ -12,6 +12,7 @@
     <string name="sign_up">Sign Up</string>
     <string name="sign_in">Sign In</string>
     <string name="user_name">User Name</string>
+    <string name="fullName">Full Name</string>
     <string name="in_dev">Feature in development</string>
     <string name="cart">Cart</string>
     <string name="price_detail">Price Detail</string>

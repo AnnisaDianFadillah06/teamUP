@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verifikasi Email Berhasil</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <style>
+      body {
+        font-family: "Roboto", Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f5f5f5;
+        margin: 0;
+        padding: 16px;
+      }
+      .card {
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 32px;
+        text-align: center;
+        max-width: 400px;
+        width: 100%;
+      }
+      .icon {
+        font-size: 64px;
+        color: #4caf50;
+        margin-bottom: 24px;
+      }
+      .error-icon {
+        font-size: 64px;
+        color: #f44336;
+        margin-bottom: 24px;
+      }
+      h1 {
+        color: #333;
+        margin-bottom: 16px;
+      }
+      p {
+        color: #666;
+        margin-bottom: 24px;
+        line-height: 1.5;
+      }
+      .button {
+        background-color: #6200ee;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 4px;
+        font-size: 16px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+      }
+      .button:hover {
+        background-color: #3700b3;
+      }
+      .note {
+        font-size: 14px;
+        color: #888;
+        margin-top: 24px;
+      }
+      #loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .spinner {
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border-left-color: #6200ee;
+        animation: spin 1s linear infinite;
+        margin-bottom: 16px;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Loading state -->
+    <div id="loading" class="card">
+      <div class="spinner"></div>
+      <h1>Memproses Verifikasi</h1>
+      <p>Mohon tunggu sebentar...</p>
+    </div>
+
+    <!-- Success state -->
+    <div id="success" class="card" style="display: none">
+      <div class="icon">✓</div>
+      <h1>Verifikasi Email Berhasil!</h1>
+      <p>
+        Alamat email Anda telah berhasil diverifikasi. Sekarang Anda dapat
+        kembali ke aplikasi TeamUp untuk melanjutkan.
+      </p>
+      <a href="teamup://emailverified" class="button">Kembali ke Aplikasi</a>
+      <p class="note">
+        Jika tombol di atas tidak berfungsi, silakan buka kembali aplikasi
+        TeamUp secara manual.
+      </p>
+    </div>
+
+    <!-- Error state -->
+    <div id="error" class="card" style="display: none">
+      <div class="error-icon">!</div>
+      <h1>Terjadi Kesalahan</h1>
+      <p id="error-message">
+        Tidak dapat memverifikasi email Anda. Silakan coba lagi nanti.
+      </p>
+      <a href="teamup://home" class="button">Kembali ke Aplikasi</a>
+    </div>
+
+    <script>
+      // Firebase configuration - Ganti dengan konfigurasi Firebase Anda
+      const firebaseConfig = {
+        apiKey: "AIzaSyAbcC_O32NyWaLJAtfpSi4ugjTtumCgXik", // Ganti dengan apiKey proyek Firebase Anda
+        authDomain: "teamupapp-b6cc1.firebaseapp.com",
+        projectId: "teamupapp-b6cc1",
+        storageBucket: "teamupapp-b6cc1.appspot.com",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID",
+      };
+
+      // Initialize Firebase
+      firebase.initializeApp(firebaseConfig);
+
+      // Get the verification code from the URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const mode = urlParams.get("mode");
+      const actionCode = urlParams.get("oobCode");
+
+      // Function to show specific div and hide others
+      function showElement(elementId) {
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("success").style.display = "none";
+        document.getElementById("error").style.display = "none";
+        document.getElementById(elementId).style.display = "block";
+      }
+
+      // Handle email verification
+      if (mode === "verifyEmail" && actionCode) {
+        firebase
+          .auth()
+          .applyActionCode(actionCode)
+          .then(() => {
+            // Email verification successful
+            showElement("success");
+
+            // Try to redirect to app
+            setTimeout(() => {
+              window.location.href = "teamup://emailverified";
+            }, 1000);
+          })
+          .catch((error) => {
+            // Show error message
+            document.getElementById(
+              "error-message"
+            ).textContent = `Error: ${error.message}`;
+            showElement("error");
+            console.error("Verification error:", error);
+          });
+      } else {
+        // If no action code/mode or invalid
+        document.getElementById("error-message").textContent =
+          "Link verifikasi tidak valid atau telah kedaluwarsa. Silakan minta link baru.";
+        showElement("error");
+      }
+
+      // Auto redirect after 3 seconds regardless of verification status
+      setTimeout(() => {
+        if (document.getElementById("loading").style.display === "block") {
+          window.location.href = "teamup://emailverified";
+        }
+      }, 3000);
+    </script>
+  </body>
+</html>
