@@ -8,11 +8,14 @@ import com.example.teamup.data.repositories.ContentRepository
 import com.example.teamup.data.repositories.CoursesRepository
 import com.example.teamup.data.repositories.DetailRepository
 import com.example.teamup.data.repositories.MyCoursesRepository
+import com.example.teamup.data.repositories.NotificationRepository
 import com.example.teamup.data.repositories.TeamRepository
 import com.example.teamup.data.repositories.WishlistRepository
 import com.example.teamup.data.sources.remote.FirebaseCompetitionDataSource
+import com.example.teamup.data.sources.remote.FirebaseNotificationDataSource
 import com.example.teamup.data.sources.remote.GoogleDriveHelper
 import com.example.teamup.data.sources.remote.GoogleDriveTeamDataSource
+import com.example.teamup.data.viewmodels.NotificationViewModel
 
 object Injection {
     // Add context property to the Injection object
@@ -76,5 +79,19 @@ object Injection {
 
     fun provideCabangLombaRepository(): CabangLombaRepository {
         return CabangLombaRepository.getInstance()
+    }
+
+    // Notification related injections
+    private fun provideFirebaseNotificationDataSource(): FirebaseNotificationDataSource {
+        return FirebaseNotificationDataSource(getContext())
+    }
+
+    fun provideNotificationRepository(): NotificationRepository {
+        return NotificationRepository.getInstance(provideFirebaseNotificationDataSource())
+    }
+
+    fun provideNotificationViewModel(): NotificationViewModel {
+        val repository = provideNotificationRepository()
+        return NotificationViewModel.getInstance(repository)
     }
 }

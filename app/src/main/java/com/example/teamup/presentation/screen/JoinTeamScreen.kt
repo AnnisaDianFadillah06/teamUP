@@ -30,7 +30,11 @@ import androidx.navigation.NavController
 import com.example.teamup.R
 import com.example.teamup.data.model.CompetitionModelDummy
 import com.example.teamup.data.model.TeamModel
+import com.example.teamup.data.repositories.NotificationRepository
+import com.example.teamup.data.sources.remote.FirebaseNotificationDataSource
 import com.example.teamup.data.viewmodels.JoinTeamViewModel
+import com.example.teamup.data.viewmodels.NotificationViewModel
+import com.example.teamup.presentation.components.NotificationIcon
 import com.example.teamup.route.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,9 +48,17 @@ fun JoinTeamScreen(
     val categories by viewModel.categories.collectAsState()
     val popularTeams by viewModel.popularTeams.collectAsState()
 
+    // Get NotificationViewModel to display unread count
+    val notificationRepository = NotificationRepository.getInstance(
+        FirebaseNotificationDataSource(context)
+    )
+    val notificationViewModel = NotificationViewModel.getInstance(notificationRepository)
+    val unreadCount by notificationViewModel.unreadCount.collectAsState()
+
     LaunchedEffect(key1 = Unit) {
         viewModel.loadCategories()
         viewModel.loadPopularTeams()
+        notificationViewModel.loadNotifications()
     }
 
     Scaffold(
@@ -60,6 +72,12 @@ fun JoinTeamScreen(
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
+                },
+                actions = {
+                    NotificationIcon(
+                        count = unreadCount,
+                        onClick = { navController.navigate(Routes.Notifications.routes) }
+                    )
                 }
             )
         }

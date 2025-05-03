@@ -8,6 +8,7 @@ sealed class Routes(val routes: String) {
     object TeamDetail : Routes("team_detail")
     object CategoryTeams : Routes("category_team")
     object TeamListCategory : Routes("team_list")
+    object Notifications : Routes("notification")
 
     data object Login : Routes("login")
     data object Register : Routes("register")
