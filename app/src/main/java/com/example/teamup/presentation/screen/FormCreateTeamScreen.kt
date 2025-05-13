@@ -1,6 +1,7 @@
 package com.example.teamup.presentation.screen
 
 import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -31,6 +32,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import com.example.teamup.R
 import com.example.teamup.common.theme.*
 import com.example.teamup.data.model.CompetitionActivityStatus
 import com.example.teamup.data.model.CompetitionModel
@@ -48,7 +50,8 @@ fun FormCreateTeamScreen(
     navController: NavController,
     teamViewModel: TeamViewModel = viewModel(
         factory = TeamViewModelFactory(
-            Injection.provideTeamRepository()
+            Injection.provideTeamRepository(),
+            Injection.provideGoogleDriveHelper()
         )
     ),
     competitionViewModel: CompetitionViewModel = viewModel(
@@ -546,26 +549,29 @@ fun FormCreateTeamScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Submit button
+// Submit button
             Button(
                 onClick = {
                     val categoryText = selectedCompetitionName
                     val branchText = selectedBranch
                     val categoryBranch = "$categoryText - $branchText"
-                    val avatarResId = selectedImageUri?.toString() ?: "default_avatar"
                     val maxMembersInt = maxMembers.toIntOrNull() ?: 5
 
                     teamViewModel.addTeam(
-                        teamName,
-                        teamDescription,
-                        categoryBranch,
-                        avatarResId,
+                        name = teamName,
+                        description = teamDescription,
+                        category = categoryBranch,
+                        avatarResId = R.drawable.captain_icon, // default avatar dari resources
+                        imageUri = selectedImageUri,
                         maxMembers = maxMembersInt,
-                        isPrivate = isPrivate
+                        isPrivate = isPrivate,
+                        onSuccess = {
+                            navController.popBackStack()
+                        },
+                        onFailure = {
+                            Log.e("AddTeam", "Failed to add team: ${it.message}")
+                        }
                     )
-
-                    // Navigate back or to team detail on success
-                    navController.popBackStack()
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -574,8 +580,10 @@ fun FormCreateTeamScreen(
                     containerColor = DodgerBlue
                 ),
                 shape = RoundedCornerShape(8.dp),
-                enabled = teamName.isNotEmpty() && selectedCompetitionId.isNotEmpty() &&
-                        selectedBranch.isNotEmpty() && !competitionUiState.isLoading
+                enabled = teamName.isNotEmpty() &&
+                        selectedCompetitionId.isNotEmpty() &&
+                        selectedBranch.isNotEmpty() &&
+                        !competitionUiState.isLoading
             ) {
                 if (competitionUiState.isLoading) {
                     CircularProgressIndicator(
