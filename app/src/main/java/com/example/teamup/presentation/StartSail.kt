@@ -18,7 +18,6 @@ import com.example.teamup.common.utils.SessionManager
 import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
 import com.example.teamup.di.Injection
-import com.example.teamup.presentation.screen.AddTeamScreen
 import com.example.teamup.presentation.screen.DashboardScreen
 import com.example.teamup.presentation.screen.FingerprintLoginScreen
 import com.example.teamup.presentation.screen.ForgotPasswordScreen
@@ -29,8 +28,11 @@ import com.example.teamup.presentation.screen.register.RegisterSuccessScreen
 import com.example.teamup.presentation.screen.ResetPasswordScreen
 import com.example.teamup.presentation.screen.SplashScreen
 import com.example.teamup.presentation.screen.TeamListScreen
+import com.example.teamup.presentation.screen.profile.CompleteProfileScreen
+import com.example.teamup.presentation.screen.profile.ProfileSettingsScreen
 import com.example.teamup.presentation.screen.register.CekEmailScreen
 import com.example.teamup.presentation.screen.register.VerificationScreen
+import com.example.teamup.data.viewmodels.ProfileViewModel
 import com.example.teamup.route.Routes
 
 @Composable
@@ -39,6 +41,8 @@ fun StartSail(
     navController: NavHostController = rememberNavController(),
     competitionViewModel: CompetitionViewModel
 ) {
+    val profileViewModel: ProfileViewModel = viewModel()
+
     BackPressHandler(navController)
 
     Scaffold { paddingValues ->
@@ -75,12 +79,6 @@ fun StartSail(
             composable(Routes.Dashboard.routes) {
                 DashboardScreen(competitionViewModel = competitionViewModel)
             }
-            composable(Routes.TeamList.routes) {
-                TeamListScreen(navController = navController)
-            }
-            composable(Routes.AddTeam.routes) {
-                AddTeamScreen(navController = navController)
-            }
             composable(Routes.Verification.routes) {
                 VerificationScreen(navController = navController)
             }
@@ -92,6 +90,18 @@ fun StartSail(
             }
             composable(Routes.ResetPassword.routes) {
                 ResetPasswordScreen(navController = navController)
+            }
+
+            // Profile related routes
+//            composable(Routes.Profile.routes) {
+//                ProfileScreen(navController, profileViewModel)
+//            }
+            composable(Routes.ProfileSettings.routes) {
+                ProfileSettingsScreen(navController, profileViewModel)
+            }
+
+            composable(Routes.CompleteProfile.routes) {
+                CompleteProfileScreen(navController, profileViewModel)
             }
 
 

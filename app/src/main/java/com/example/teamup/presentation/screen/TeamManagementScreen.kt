@@ -1,9 +1,7 @@
 package com.example.teamup.presentation.screen
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,14 +20,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.teamup.R
 import com.example.teamup.common.theme.*
-import com.example.teamup.data.model.TeamMemberModel
+import com.example.teamup.data.model.TeamModel
+import com.example.teamup.data.repositories.TeamRepository
+import com.example.teamup.data.sources.remote.GoogleDriveHelper
+import com.example.teamup.data.sources.remote.GoogleDriveTeamDataSource
+import com.example.teamup.data.viewmodels.TeamViewModel
+import com.example.teamup.data.viewmodels.TeamViewModelFactory
 import com.example.teamup.route.Routes
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,13 +46,39 @@ fun TeamManagementScreen(
     navController: NavController,
     teamName: String = "Tim Lomba"
 ) {
-    val teamMembers = remember {
-        listOf(
-            TeamMemberModel(id = "1", userId = "1234", teamId = "team_1", name = "Al-Fath", profileImage = R.drawable.captain_icon, role = "Admin", email = "annisadian01@gmail.com", memberCount = 3, maxMembers = 3, category = "KMIPN - Cipta Inovasi"),
-            TeamMemberModel(id = "2", userId = "5678", teamId = "team_1", name = "Garuda", profileImage = R.drawable.captain_icon, role = "Member", email = "annisadian01@gmail.com", memberCount = 3, maxMembers = 5, category = "KMIPN - Smart City"),
-            TeamMemberModel(id = "3", userId = "9012", teamId = "team_1", name = "Brawijaya", profileImage = R.drawable.captain_icon, role = "Member", email = "annisadian01@gmail.com", memberCount = 5, maxMembers = 5, category = "Gemastik - IoT")
-        )
+    // Context for creating repositories and view models
+    val context = LocalContext.current
+
+    // Initialize repositories and view model
+    val driveHelper = remember { GoogleDriveHelper(context) }
+    val teamDataSource = remember { GoogleDriveTeamDataSource(context) }
+    val teamRepository = remember { TeamRepository.getInstance(teamDataSource) }
+    val teamViewModel: TeamViewModel = viewModel(
+        factory = TeamViewModelFactory(teamRepository, driveHelper)
+    )
+
+    // Get current user ID
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+
+    // Collect states from view model
+    val uiState by teamViewModel.uiState.collectAsState()
+    val userTeams by teamViewModel.userTeams.collectAsState()
+
+// Cek status loading dan error
+    if (uiState.isLoading) {
+        // Tampilkan loading
+    } else if (uiState.errorMessage != null) {
+        // Tampilkan error
+    } else {
+        // Tampilkan data tim
+        LazyColumn {
+            items(userTeams) { team ->
+                TeamListItem(team, navController, currentUserId)
+            }
+        }
     }
+
+
 
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Anggota", "Admin")
@@ -108,16 +142,80 @@ fun TeamManagementScreen(
                 }
             }
 
-            // Team members list with Card (now using the new style)
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(teamMembers) { member ->
-                    if ((selectedTabIndex == 0) || (selectedTabIndex == 1 && member.role == "Admin")) {
-                        TeamManagementMemberItem(member, navController)
+            // Show loading indicator when loading
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = DodgerBlue)
+                }
+            } else if (uiState.errorMessage != null) {
+                // Show error message
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = uiState.errorMessage ?: "Unknown error occurred")
+                }
+            } else {
+                // Team members list based on tab selection
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (selectedTabIndex == 0) {
+                        // All teams the user is a member of
+                        items(userTeams) { team ->
+                            TeamListItem(team, navController, currentUserId)
+                        }
+
+                        if (userTeams.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "You haven't joined any teams yet",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        // Teams where user is captain/admin
+                        val adminTeams = if (currentUserId != null) {
+                            userTeams.filter { it.captainId == currentUserId }
+                        } else {
+                            emptyList()
+                        }
+
+                        items(adminTeams) { team ->
+                            TeamListItem(team, navController, currentUserId, isAdmin = true)
+                        }
+
+                        if (adminTeams.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "You're not an admin of any team",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -151,17 +249,21 @@ fun TeamManagementScreen(
 }
 
 @Composable
-fun TeamManagementMemberItem(member: TeamMemberModel, navController: NavController) {
+fun TeamListItem(
+    team: TeamModel,
+    navController: NavController,
+    currentUserId: String?,
+    isAdmin: Boolean = false
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                // Navigate directly from the card
                 navController.navigate(
                     Routes.TeamDetailGrup.createRoute(
-                        teamId = "team1",
-                        isJoined = true,
-                        isFull = false
+                        teamId = team.id,
+                        isJoined = team.members.contains(currentUserId),
+                        isFull = team.isFull
                     )
                 )
             },
@@ -175,50 +277,64 @@ fun TeamManagementMemberItem(member: TeamMemberModel, navController: NavControll
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Member Avatar
-            Image(
-                painter = painterResource(id = member.profileImage),
-                contentDescription = "Profile Picture",
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
+            // Team Image/Avatar
+            if (team.imageUrl != null) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(team.imageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Team Image",
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Image(
+                    painter = painterResource(id = team.avatarResId),
+                    contentDescription = "Team Avatar",
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            }
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Member Info
+            // Team Info
             Column(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = member.name,
+                    text = team.name,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold
                     )
                 )
 
                 Text(
-                    text = member.category,
+                    text = team.category,
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = Color.Gray
                     )
                 )
 
-                // Display email
+                // Display member count
                 Text(
-                    text = "${member.memberCount}/${member.maxMembers} anggota",
+                    text = "${team.memberCount}/${team.maxMembers} anggota",
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = Color.Gray
                     )
                 )
             }
 
-            // Role indicator (Admin or Member)
+            // Role indicator
             Column(
                 horizontalAlignment = Alignment.End
             ) {
-                if (member.role == "Admin") {
+                if (isAdmin || team.captainId == currentUserId) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))
@@ -226,7 +342,7 @@ fun TeamManagementMemberItem(member: TeamMemberModel, navController: NavControll
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = member.role,
+                            text = "Admin",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = DodgerBlue,
                                 fontWeight = FontWeight.Medium
@@ -241,7 +357,7 @@ fun TeamManagementMemberItem(member: TeamMemberModel, navController: NavControll
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = member.role,
+                            text = "Member",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = Color.Gray,
                                 fontWeight = FontWeight.Medium
