@@ -1,4 +1,4 @@
-package com.example.teamup.presentation.screen
+package com.example.teamup.presentation.screen.competition
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.padding
@@ -29,10 +29,10 @@ import com.example.teamup.data.viewmodels.CabangLombaViewModelFactory
 import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
 import com.example.teamup.di.Injection
-import com.example.teamup.presentation.components.AddCompetitionForm
+import com.example.teamup.presentation.components.competition.AddCompetitionForm
 import com.example.teamup.presentation.components.BottomNavigationBar
 import com.example.teamup.presentation.components.CustomBottomNavigationBar
-import com.example.teamup.presentation.components.EditCompetitionForm
+import com.example.teamup.presentation.components.competition.EditCompetitionForm
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

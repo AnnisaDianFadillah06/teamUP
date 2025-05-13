@@ -4,7 +4,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -16,14 +15,12 @@ import androidx.navigation.navArgument
 import com.example.teamup.R
 import com.example.teamup.common.utils.BackPressHandler
 import com.example.teamup.data.model.ProfileModel
-import com.example.teamup.data.repositories.NotificationRepository
-import com.example.teamup.data.sources.remote.FirebaseNotificationDataSource
-import com.example.teamup.data.viewmodels.JoinTeamViewModel
-import com.example.teamup.di.ViewModelJoinFactory
 import com.example.teamup.data.viewmodels.CompetitionViewModel
-import com.example.teamup.data.viewmodels.NotificationViewModel
+import com.example.teamup.data.viewmodels.JoinTeamViewModel
 import com.example.teamup.di.Injection
+import com.example.teamup.di.ViewModelJoinFactory
 import com.example.teamup.presentation.components.BottomNavigationBar
+import com.example.teamup.presentation.screen.competition.CompetitionScreen
 import com.example.teamup.presentation.screen.profile.ProfileScreen
 import com.example.teamup.route.Routes
 

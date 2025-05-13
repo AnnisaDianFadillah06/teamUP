@@ -19,15 +19,13 @@ import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
 import com.example.teamup.di.Injection
 import com.example.teamup.presentation.screen.DashboardScreen
-import com.example.teamup.presentation.screen.FingerprintLoginScreen
+import com.example.teamup.presentation.screen.login.FingerprintLoginScreen
 import com.example.teamup.presentation.screen.ForgotPasswordScreen
-import com.example.teamup.presentation.screen.LoginScreenV5
-import com.example.teamup.presentation.screen.profile.ProfileScreen
+import com.example.teamup.presentation.screen.login.LoginScreenV5
 import com.example.teamup.presentation.screen.register.RegisterScreen
 import com.example.teamup.presentation.screen.register.RegisterSuccessScreen
 import com.example.teamup.presentation.screen.ResetPasswordScreen
 import com.example.teamup.presentation.screen.SplashScreen
-import com.example.teamup.presentation.screen.TeamListScreen
 import com.example.teamup.presentation.screen.profile.CompleteProfileScreen
 import com.example.teamup.presentation.screen.profile.ProfileSettingsScreen
 import com.example.teamup.presentation.screen.register.CekEmailScreen
