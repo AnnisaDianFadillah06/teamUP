@@ -1,4 +1,4 @@
-package com.example.teamup.presentation.screen
+package com.example.teamup.presentation.screen.competition
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.horizontalScroll
@@ -52,7 +52,7 @@ import com.example.teamup.data.model.CompetitionModel
 import com.example.teamup.data.model.CompetitionVisibilityStatus
 import com.example.teamup.data.viewmodels.CabangLombaViewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModel
-import com.example.teamup.presentation.components.CompetitionCard
+import com.example.teamup.presentation.components.competition.CompetitionCard
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable

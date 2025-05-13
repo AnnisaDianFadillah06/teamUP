@@ -1,4 +1,4 @@
-package com.example.teamup.presentation.screen
+package com.example.teamup.presentation.screen.competition
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,7 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.teamup.data.viewmodels.CompetitionViewModel
-import com.example.teamup.presentation.components.CompetitionStatusForm
+import com.example.teamup.presentation.components.competition.CompetitionStatusForm
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

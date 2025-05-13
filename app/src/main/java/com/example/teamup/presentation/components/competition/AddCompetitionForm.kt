@@ -1,4 +1,4 @@
-package com.example.teamup.presentation.components
+package com.example.teamup.presentation.components.competition
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
