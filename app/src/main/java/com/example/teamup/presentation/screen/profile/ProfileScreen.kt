@@ -1,5 +1,7 @@
+//profilescreen.kt
 package com.example.teamup.presentation.screen.profile
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -75,7 +77,16 @@ fun ProfileScreen(
                     titleContentColor = White
                 ),
                 actions = {
-                    IconButton(onClick = { navController.navigate(Routes.ProfileSettings.routes) }) {
+
+                    IconButton(onClick = {
+                        try {
+                            Log.d("ProfileNavigation", "Attempting to navigate to: ${Routes.ProfileSettings.routes}")
+                            navController.navigate(Routes.ProfileSettings.routes)
+                        } catch (e: Exception) {
+                            Log.e("ProfileNavigation", "Navigation error: ${e.message}", e)
+                            Toast.makeText(context, "Cannot navigate to settings: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings", tint = White)
                     }
                 }
@@ -217,7 +228,7 @@ fun ProfileHeader(profile: UserProfileData) {
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    Icon(Icons.Default.Email, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(64.dp))
+                    Icon(Icons.Default.Email, contentDescription = null, tint = Color.Gray, modifier = Modifier.fillMaxSize().padding(32.dp))
                 }
             }
 
