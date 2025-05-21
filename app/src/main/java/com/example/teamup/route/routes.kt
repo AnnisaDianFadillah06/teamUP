@@ -7,6 +7,8 @@ sealed class Routes(val routes: String) {
     object JoinTeam : Routes("join_team")
     object TeamDetail : Routes("team_detail")
     object CategoryTeams : Routes("category_team")
+    object TeamList : Routes("team_list") //contoh firebase
+    object AddTeam : Routes("add_team") //contoh firebase
     object TeamListCategory : Routes("team_list")
     object Notifications : Routes("notification")
 
@@ -21,8 +23,8 @@ sealed class Routes(val routes: String) {
     data object HomeV5 : Routes("homev5")
     data object Search : Routes("search")
     data object Profile : Routes("profile")
-    data object CompleteProfile : Routes("complete_profile")
-    data object ProfileSettings : Routes ("profile_settings" )
+    object CompleteProfile : Routes("complete_profile")
+    object ProfileSettings : Routes("profile_settings") // Pastikan nama route sesuai
     data object Competition : Routes("competition")
     data object Wishlist : Routes("wishlist")
     data object Cart : Routes("cart")
