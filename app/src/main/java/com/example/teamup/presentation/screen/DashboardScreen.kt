@@ -22,6 +22,7 @@ import com.example.teamup.di.ViewModelJoinFactory
 import com.example.teamup.presentation.components.BottomNavigationBar
 import com.example.teamup.presentation.screen.competition.CompetitionScreen
 import com.example.teamup.presentation.screen.profile.ProfileScreen
+import com.example.teamup.presentation.screen.profile.ProfileSettingsScreen
 import com.example.teamup.route.Routes
 
 
@@ -189,6 +190,14 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
                     teamId = teamId,
                     teamName = teamName
                 )
+            }
+
+            composable(Routes.Profile.routes) {
+                ProfileScreen(navController)
+            }
+            // >>> tambahkan ini <<<
+            composable(Routes.ProfileSettings.routes) {
+                ProfileSettingsScreen(navController)
             }
         }
     }
