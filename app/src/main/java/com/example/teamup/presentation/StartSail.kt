@@ -99,13 +99,6 @@ fun StartSail(
                 ResetPasswordScreen(navController = navController)
             }
 
-            // Profile related routes
-//            composable(Routes.Profile.routes) {
-//                ProfileScreen(navController, profileViewModel)
-//            }
-            composable(Routes.ProfileSettings.routes) {
-                ProfileSettingsScreen(navController, profileViewModel)
-            }
 
             composable(Routes.CompleteProfile.routes) {
                 CompleteProfileScreen(navController, profileViewModel)
