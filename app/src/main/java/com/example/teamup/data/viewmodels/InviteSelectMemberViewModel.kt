@@ -1,15 +1,20 @@
 package com.example.teamup.data.viewmodels
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.teamup.R
 import com.example.teamup.data.model.ProfileModel
+import com.example.teamup.data.model.UserProfileData
 import com.example.teamup.presentation.screen.FilterOption
 import com.example.teamup.presentation.screen.FilterType
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class InviteSelectMemberViewModel : ViewModel() {
+
+    private val firestore = FirebaseFirestore.getInstance()
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -17,45 +22,33 @@ class InviteSelectMemberViewModel : ViewModel() {
     private val _selectedFilters = MutableStateFlow<List<FilterOption>>(emptyList())
     val selectedFilters: StateFlow<List<FilterOption>> = _selectedFilters.asStateFlow()
 
-    private val _members = MutableStateFlow<List<ProfileModel>>(
-        listOf(
-            ProfileModel("1", "Annisa Dian", "annisadian@gmail.com", R.drawable.captain_icon, "Universitas Indonesia", "Informatika", listOf("UI/UX", "Mobile")),
-            ProfileModel("2", "Annisa Dian", "annisa.dian@gmail.com", R.drawable.captain_icon, "Universitas Indonesia", "Elektro", listOf("Mobile", "Backend")),
-            ProfileModel("3", "Annisa Dian", "dian.annisa@gmail.com", R.drawable.captain_icon, "Universitas Gadjah Mada", "Informatika", listOf("Frontend", "UI/UX")),
-            ProfileModel("4", "Annisa Dian", "annisa.d@gmail.com", R.drawable.captain_icon, "Institut Teknologi Bandung", "Mesin", listOf("Backend", "Database")),
-            ProfileModel("5", "Annisa Dian", "ad.annisa@gmail.com", R.drawable.captain_icon, "Universitas Brawijaya", "Elektro", listOf("Mobile", "Database")),
-            ProfileModel("6", "Annisa Dian", "annisa.dian01@gmail.com", R.drawable.captain_icon, "Universitas Indonesia", "Informatika", listOf("UI/UX", "Frontend")),
-        )
-    )
+    private val _members = MutableStateFlow<List<ProfileModel>>(emptyList())
     val members: StateFlow<List<ProfileModel>> = _members.asStateFlow()
 
     private val _filteredMembers = MutableStateFlow<List<ProfileModel>>(emptyList())
     val filteredMembers: StateFlow<List<ProfileModel>> = _filteredMembers.asStateFlow()
 
-    // Filter options
-    val universityFilters = listOf(
-        FilterOption("ui", "Universitas Indonesia", FilterType.UNIVERSITY),
-        FilterOption("ugm", "Universitas Gadjah Mada", FilterType.UNIVERSITY),
-        FilterOption("itb", "Institut Teknologi Bandung", FilterType.UNIVERSITY),
-        FilterOption("ub", "Universitas Brawijaya", FilterType.UNIVERSITY),
-        FilterOption("unair", "Universitas Airlangga", FilterType.UNIVERSITY)
-    )
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    val majorFilters = listOf(
-        FilterOption("informatika", "Informatika", FilterType.MAJOR),
-        FilterOption("elektro", "Elektro", FilterType.MAJOR),
-        FilterOption("mesin", "Mesin", FilterType.MAJOR)
-    )
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    val skillFilters = listOf(
-        FilterOption("mobile", "Mobile", FilterType.SKILL),
-        FilterOption("uiux", "UI/UX", FilterType.SKILL),
-        FilterOption("frontend", "Frontend", FilterType.SKILL),
-        FilterOption("backend", "Backend", FilterType.SKILL),
-        FilterOption("database", "Database", FilterType.SKILL)
-    )
+    // Dynamic filter options that will be populated from Firestore data
+    private val _universityFilters = MutableStateFlow<List<FilterOption>>(emptyList())
+    val universityFilters: StateFlow<List<FilterOption>> = _universityFilters.asStateFlow()
+
+    private val _majorFilters = MutableStateFlow<List<FilterOption>>(emptyList())
+    val majorFilters: StateFlow<List<FilterOption>> = _majorFilters.asStateFlow()
+
+    private val _skillFilters = MutableStateFlow<List<FilterOption>>(emptyList())
+    val skillFilters: StateFlow<List<FilterOption>> = _skillFilters.asStateFlow()
 
     init {
+        // Load data from Firestore when ViewModel is created
+        loadMembersFromFirestore()
+
+        // Set up filtering logic
         viewModelScope.launch {
             combine(_members, _selectedFilters, _searchQuery) { members, filters, query ->
                 getFilteredMembers(members, filters, query)
@@ -63,6 +56,111 @@ class InviteSelectMemberViewModel : ViewModel() {
                 _filteredMembers.value = it
             }
         }
+    }
+
+    private fun loadMembersFromFirestore() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val snapshot = firestore.collection("users")
+                    .whereEqualTo("profileCompleted", true)
+                    .get()
+                    .await()
+
+                val membersList = mutableListOf<ProfileModel>()
+                val universities = mutableSetOf<String>()
+                val majors = mutableSetOf<String>()
+                val skills = mutableSetOf<String>()
+
+                for (document in snapshot.documents) {
+                    try {
+                        val userData = UserProfileData(
+                            userId = document.id,
+                            fullName = document.getString("fullName") ?: "",
+                            username = document.getString("username") ?: "",
+                            email = document.getString("email") ?: "",
+                            phone = document.getString("phone") ?: "",
+                            university = document.getString("university") ?: "",
+                            major = document.getString("major") ?: "",
+                            skills = document.get("skills") as? List<String> ?: emptyList(),
+                            profilePictureUrl = document.getString("profilePictureUrl") ?: "",
+                            profileCompleted = document.getBoolean("profileCompleted") ?: false
+                        )
+
+                        // Convert UserProfileData to ProfileModel
+                        val profileModel = ProfileModel(
+                            id = userData.userId,
+                            name = userData.fullName,
+                            email = userData.email,
+                            imageResId = 0, // Default image resource, you might want to handle profile pictures differently
+                            university = userData.university,
+                            major = userData.major,
+                            skills = userData.skills,
+                            profilePictureUrl = userData.profilePictureUrl,
+                            isSelected = false
+                        )
+
+                        membersList.add(profileModel)
+
+                        // Collect unique values for filters
+                        if (userData.university.isNotBlank()) {
+                            universities.add(userData.university)
+                        }
+                        if (userData.major.isNotBlank()) {
+                            majors.add(userData.major)
+                        }
+                        userData.skills.forEach { skill ->
+                            if (skill.isNotBlank()) {
+                                skills.add(skill)
+                            }
+                        }
+
+                    } catch (e: Exception) {
+                        Log.e("InviteSelectMemberVM", "Error parsing document ${document.id}", e)
+                    }
+                }
+
+                // Update members list
+                _members.value = membersList
+
+                // Update filter options based on actual data
+                _universityFilters.value = universities.sorted().map { university ->
+                    FilterOption(
+                        id = university.lowercase().replace(" ", "_"),
+                        name = university,
+                        type = FilterType.UNIVERSITY
+                    )
+                }
+
+                _majorFilters.value = majors.sorted().map { major ->
+                    FilterOption(
+                        id = major.lowercase().replace(" ", "_"),
+                        name = major,
+                        type = FilterType.MAJOR
+                    )
+                }
+
+                _skillFilters.value = skills.sorted().map { skill ->
+                    FilterOption(
+                        id = skill.lowercase().replace(" ", "_"),
+                        name = skill,
+                        type = FilterType.SKILL
+                    )
+                }
+
+                Log.d("InviteSelectMemberVM", "Loaded ${membersList.size} members from Firestore")
+
+            } catch (e: Exception) {
+                _errorMessage.value = "Error loading members: ${e.message}"
+                Log.e("InviteSelectMemberVM", "Error loading members from Firestore", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun refreshMembers() {
+        loadMembersFromFirestore()
     }
 
     fun updateSearchQuery(query: String) {
@@ -95,6 +193,10 @@ class InviteSelectMemberViewModel : ViewModel() {
 
     fun getSelectedMembers(): List<ProfileModel> {
         return _members.value.filter { it.isSelected }
+    }
+
+    fun clearError() {
+        _errorMessage.value = null
     }
 
     private fun getFilteredMembers(

@@ -4,6 +4,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -15,10 +16,14 @@ import androidx.navigation.navArgument
 import com.example.teamup.R
 import com.example.teamup.common.utils.BackPressHandler
 import com.example.teamup.data.model.ProfileModel
-import com.example.teamup.data.viewmodels.CompetitionViewModel
+import com.example.teamup.data.repositories.NotificationRepository
+import com.example.teamup.data.sources.remote.FirebaseNotificationDataSource
 import com.example.teamup.data.viewmodels.JoinTeamViewModel
-import com.example.teamup.di.Injection
 import com.example.teamup.di.ViewModelJoinFactory
+import com.example.teamup.data.viewmodels.CompetitionViewModel
+import com.example.teamup.data.viewmodels.NotificationViewModel
+import com.example.teamup.data.viewmodels.SharedMemberViewModel
+import com.example.teamup.di.Injection
 import com.example.teamup.presentation.components.BottomNavigationBar
 import com.example.teamup.presentation.screen.competition.CompetitionScreen
 import com.example.teamup.presentation.screen.profile.ProfileScreen
@@ -30,6 +35,7 @@ import com.example.teamup.route.Routes
 fun DashboardScreen(navController: NavHostController = rememberNavController(),  competitionViewModel: CompetitionViewModel) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val sharedMemberViewModel: SharedMemberViewModel = viewModel()
 
     // Tambahkan BackPressHandler
     BackPressHandler(navController)
@@ -108,35 +114,20 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
                 InviteMemberScreen(navController = navController)
             }
             composable(Routes.InviteSelect.routes) {
-                InviteSelectMemberScreen(navController = navController)
-            }
-            composable(
-                route = "draft_invitation/{selectedIds}",
-                arguments = listOf(navArgument("selectedIds") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val selectedIds = backStackEntry.arguments
-                    ?.getString("selectedIds")
-                    ?.split(",") ?: emptyList()
-
-                // Ambil semua data member dari tempat yang bisa diakses, misalnya di sini kamu bisa inject dummy list atau viewModel jika masih dalam scope
-                val allMembers = listOf(
-                    ProfileModel("1", "Annisa Dian", "annisadian@gmail.com", R.drawable.captain_icon, "Universitas Indonesia", "Informatika", listOf("UI/UX", "Mobile")),
-                    ProfileModel("2", "Annisa Dian", "annisa.dian@gmail.com", R.drawable.captain_icon, "Universitas Indonesia", "Elektro", listOf("Mobile", "Backend")),
-                    ProfileModel("3", "Annisa Dian", "dian.annisa@gmail.com", R.drawable.captain_icon, "Universitas Gadjah Mada", "Informatika", listOf("Frontend", "UI/UX")),
-                    ProfileModel("4", "Annisa Dian", "annisa.d@gmail.com", R.drawable.captain_icon, "Institut Teknologi Bandung", "Mesin", listOf("Backend", "Database")),
-                    ProfileModel("5", "Annisa Dian", "ad.annisa@gmail.com", R.drawable.captain_icon, "Universitas Brawijaya", "Elektro", listOf("Mobile", "Database")),
-                    ProfileModel("6", "Annisa Dian", "annisa.dian01@gmail.com", R.drawable.captain_icon, "Universitas Indonesia", "Informatika", listOf("UI/UX", "Frontend")),
+                InviteSelectMemberScreen(
+                    navController = navController,
+                    sharedViewModel = sharedMemberViewModel
                 )
+            }
 
-                val selectedMembers = remember(selectedIds) {
-                    allMembers.filter { it.id in selectedIds }
-                }
-
+// Update composable untuk draft screen - hapus parameter selectedIds
+            composable(Routes.DraftSelectMember.routes) {
                 DraftInviteSelectMemberScreen(
                     navController = navController,
-                    selectedMembers = selectedMembers
+                    sharedViewModel = sharedMemberViewModel
                 )
             }
+
             composable(Routes.JoinTeam.routes) {
                 val viewModelFactory = ViewModelJoinFactory.getInstance()
                 val joinTeamViewModel: JoinTeamViewModel = viewModel(factory = viewModelFactory)
