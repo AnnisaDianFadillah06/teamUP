@@ -46,7 +46,11 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
 //                HomeScreen(navController = navController, paddingValues = paddingValues)
 //            }
             composable(Routes.HomeV5.routes) {
-                HomeScreenV5(navController = navController, paddingValues = paddingValues)
+                HomeScreenV5(
+                    navController = navController,
+                    paddingValues = paddingValues,
+                    competitionViewModel = competitionViewModel // Pass viewModel
+                )
             }
             composable(Routes.Search.routes) {
                 SearchScreen(navController = navController)
