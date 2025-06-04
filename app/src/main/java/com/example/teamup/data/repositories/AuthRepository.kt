@@ -7,6 +7,7 @@ import com.example.teamup.data.model.RegistrationData
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseException
 import com.google.firebase.auth.*
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.functions.functions
 import kotlinx.coroutines.tasks.await
@@ -71,18 +72,45 @@ class AuthRepository {
         return auth.signInWithCredential(credential).await()
     }
 
-    // 5. Simpan profil ke Firestore
+//    // 5. Simpan profil ke Firestore
+//    suspend fun saveUserProfile(data: RegistrationData) {
+//        val uid = auth.currentUser?.uid
+//            ?: throw Exception("User not logged in")
+//        val userMap = mapOf(
+//            "fullName" to data.fullName,
+//            "username" to data.username,
+//            "email" to data.email,
+//            "phone" to data.phone
+//        )
+//        firestore.collection("users").document(uid).set(userMap).await()
+//    }
+
+    // 5. Simpan profil ke Firestore - MODIFIED VERSION
     suspend fun saveUserProfile(data: RegistrationData) {
-        val uid = auth.currentUser?.uid
-            ?: throw Exception("User not logged in")
-        val userMap = mapOf(
+        val user = auth.currentUser ?: throw Exception("User not logged in")
+        val uid = user.uid
+
+        // Gabungkan data registrasi dengan metadata sistem
+        val userMap = hashMapOf(
+            // Data dari registrasi
             "fullName" to data.fullName,
             "username" to data.username,
             "email" to data.email,
-            "phone" to data.phone
+            "phone" to data.phone,
+            // Metadata sistem
+            "uid" to uid,
+            "createdAt" to FieldValue.serverTimestamp(),
+            "isActive" to true,
+            "emailVerified" to user.isEmailVerified,
+            "phoneVerified" to (user.phoneNumber != null),
+            // Role default untuk pengguna biasa
+            "role" to "user"
         )
+
         firestore.collection("users").document(uid).set(userMap).await()
     }
+
+
 
     // Tambahkan penanganan error dan timeout yang lebih panjang
     suspend fun isEmailTaken(email: String): Boolean {

@@ -21,6 +21,10 @@ import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.presentation.components.BottomNavigationBar
 import com.example.teamup.presentation.screen.profile.ProfileScreen
 import com.example.teamup.presentation.screen.profile.ProfileSettingsScreen
+import com.example.teamup.presentation.screen.profile.CreatePostScreen
+import com.example.teamup.presentation.screen.profile.AddEditExperienceScreen
+import com.example.teamup.presentation.screen.profile.EditExperiencesScreen
+import com.example.teamup.presentation.screen.profile.AddEditEducationScreen
 import com.example.teamup.route.Routes
 
 
@@ -179,6 +183,31 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
             composable(Routes.ProfileSettings.routes) {
                 ProfileSettingsScreen(navController)
             }
+
+            // TAMBAHAN ROUTES BARU UNTUK PROFILE
+            composable(Routes.CreatePost.routes) {
+                CreatePostScreen(navController = navController)
+            }
+
+            composable(Routes.AddExperience.routes) {
+                AddEditExperienceScreen(navController = navController)
+            }
+            composable(Routes.EditExperiences.routes) {
+                EditExperiencesScreen(navController = navController)
+            }
+            composable(Routes.AddEducation.routes) {
+                AddEditEducationScreen(navController = navController)
+            }
+//            composable(Routes.EditEducation.routes) {
+//                EditEducationScreen(navController = navController)
+//            }
+//            composable(Routes.AddSkills.routes) {
+//                AddSkillsScreen(navController = navController)
+//            }
+//            composable(Routes.EditSkills.routes) {
+//                EditSkillsScreen(navController = navController)
+//            }
+
         }
     }
 }

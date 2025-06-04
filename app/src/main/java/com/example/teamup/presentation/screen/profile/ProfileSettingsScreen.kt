@@ -15,7 +15,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -48,6 +47,8 @@ import com.example.teamup.data.viewmodels.ProfileViewModel
 import com.example.teamup.presentation.components.LogoutDialog
 import com.example.teamup.route.Routes
 import com.google.firebase.auth.FirebaseAuth
+import androidx.compose.material.icons.filled.Edit
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,13 +90,13 @@ fun ProfileSettingsScreen(
 
     // Initialize edit fields with current data
     LaunchedEffect(userData) {
-        userData?.let {
-            fullNameEdit = it.fullName
-            usernameEdit = it.username
-            phoneEdit = it.phone
-            universityEdit = it.university
-            majorEdit = it.major
-            skillsEdit = it.skills.joinToString(", ")
+        userData?.let { data ->
+            fullNameEdit = data.fullName
+            usernameEdit = data.username
+            phoneEdit = data.phone
+            universityEdit = data.education?.school ?: ""
+            majorEdit = data.education?.fieldOfStudy ?: ""
+            skillsEdit = data.skills.joinToString(", ")
         }
     }
 
@@ -116,17 +117,19 @@ fun ProfileSettingsScreen(
             val skillsList = skillsEdit.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 
             if (selectedImageUri != null) {
-                // If image was changed
+                // If image was changed, use saveCompleteProfile
                 profileViewModel.saveCompleteProfile(
                     userId = userId,
-                    university = universityEdit,
-                    major = majorEdit,
+                    school = universityEdit,
+                    degree = "", // You might want to add a degree field to your form
+                    fieldOfStudy = majorEdit,
                     skills = skillsList,
                     imageUri = selectedImageUri!!
                 ) { success ->
                     if (success) {
                         Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
                         isEditMode = false
+                        selectedImageUri = null
                     } else {
                         Toast.makeText(context, "Failed to update profile", Toast.LENGTH_SHORT).show()
                     }
@@ -139,8 +142,6 @@ fun ProfileSettingsScreen(
                     username = usernameEdit,
                     email = userData?.email ?: "",
                     phone = phoneEdit,
-                    university = universityEdit,
-                    major = majorEdit,
                     skills = skillsList,
                     imageUri = null
                 ) { success ->
@@ -155,6 +156,24 @@ fun ProfileSettingsScreen(
         }
     }
 
+    // Handle profile item clicks
+    val handleProfileItemClick = { label: String ->
+        when (label) {
+            "Edit Profile" -> {
+                isEditMode = true
+            }
+            "Notifications" -> {
+                Toast.makeText(context, R.string.in_dev, Toast.LENGTH_SHORT).show()
+            }
+            "Invite Friends" -> {
+                Toast.makeText(context, R.string.in_dev, Toast.LENGTH_SHORT).show()
+            }
+            else -> {
+                Toast.makeText(context, R.string.in_dev, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -163,6 +182,7 @@ fun ProfileSettingsScreen(
                     IconButton(onClick = {
                         if (isEditMode) {
                             isEditMode = false
+                            selectedImageUri = null // Reset selected image
                         } else {
                             navController.navigateUp()
                         }
@@ -176,11 +196,7 @@ fun ProfileSettingsScreen(
                     navigationIconContentColor = White
                 ),
                 actions = {
-                    if (!isEditMode) {
-                        IconButton(onClick = { isEditMode = true }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit Profile", tint = White)
-                        }
-                    } else {
+                    if (isEditMode) {
                         TextButton(
                             onClick = {
                                 saveProfileChanges()
@@ -226,29 +242,31 @@ fun ProfileSettingsScreen(
                                             .border(2.dp, DodgerBlue, CircleShape)
                                             .clickable { imagePicker.launch("image/*") }
                                     ) {
-                                        val imageToShow = selectedImageUri ?: userData?.profilePictureUrl
-
-                                        if (selectedImageUri != null) {
-                                            Image(
-                                                painter = rememberAsyncImagePainter(selectedImageUri),
-                                                contentDescription = "Selected Profile Picture",
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentScale = ContentScale.Crop
-                                            )
-                                        } else if (!userData?.profilePictureUrl.isNullOrEmpty()) {
-                                            Image(
-                                                painter = rememberAsyncImagePainter(userData!!.profilePictureUrl),
-                                                contentDescription = "Profile Picture",
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentScale = ContentScale.Crop
-                                            )
-                                        } else {
-                                            Image(
-                                                painter = painterResource(R.drawable.captain_icon),
-                                                contentDescription = "Default Profile Picture",
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentScale = ContentScale.Crop
-                                            )
+                                        when {
+                                            selectedImageUri != null -> {
+                                                Image(
+                                                    painter = rememberAsyncImagePainter(selectedImageUri),
+                                                    contentDescription = "Selected Profile Picture",
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            }
+                                            !userData?.profilePictureUrl.isNullOrEmpty() -> {
+                                                Image(
+                                                    painter = rememberAsyncImagePainter(userData!!.profilePictureUrl),
+                                                    contentDescription = "Profile Picture",
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            }
+                                            else -> {
+                                                Image(
+                                                    painter = painterResource(R.drawable.captain_icon),
+                                                    contentDescription = "Default Profile Picture",
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            }
                                         }
 
                                         Icon(
@@ -330,7 +348,7 @@ fun ProfileSettingsScreen(
                                     OutlinedTextField(
                                         value = majorEdit,
                                         onValueChange = { majorEdit = it },
-                                        label = { Text("Major") },
+                                        label = { Text("Field of Study") },
                                         modifier = Modifier.fillMaxWidth(),
                                         singleLine = true
                                     )
@@ -353,7 +371,7 @@ fun ProfileSettingsScreen(
                     // View Profile Mode
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         item { ProfileHeader(userData) }
-                        item { ProfileBody() }
+                        item { ProfileBody(onItemClick = handleProfileItemClick) }
                         item {
                             Row(
                                 modifier = Modifier
@@ -438,27 +456,26 @@ fun ProfileHeader(userData: UserProfileData?) {
 }
 
 @Composable
-fun ProfileBody() {
+fun ProfileBody(onItemClick: (String) -> Unit) {
     Column(modifier = Modifier.padding(16.dp)) {
         Card(colors = CardDefaults.cardColors(containerColor = White)) {
             ProfileItem.data.forEach { item ->
-                BodyRow(icon = item.Icon, label = item.Label)
+                BodyRow(
+                    icon = item.Icon,
+                    label = item.Label,
+                    onClick = { onItemClick(item.Label) }
+                )
             }
         }
     }
 }
 
 @Composable
-fun BodyRow(icon: Int, label: String) {
-    val context = LocalContext.current
+fun BodyRow(icon: Int, label: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {
-                Toast
-                    .makeText(context, R.string.in_dev, Toast.LENGTH_SHORT)
-                    .show()
-            }
+            .clickable { onClick() }
             .padding(horizontal = 20.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically

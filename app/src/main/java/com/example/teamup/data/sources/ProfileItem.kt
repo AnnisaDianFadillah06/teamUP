@@ -11,30 +11,30 @@ object ProfileItem {
             Label = "Edit Profile",
             Route = "/"
         ),
-        ProfileItemModel(
-            Id = 2,
-            Icon = R.drawable.wallet,
-            Label = "Payment Option",
-            Route = "/"
-        ),
+//        ProfileItemModel(
+//            Id = 2,
+//            Icon = R.drawable.wallet,
+//            Label = "Payment Option",
+//            Route = "/"
+//        ),
         ProfileItemModel(
             Id = 3,
             Icon = R.drawable.bell_icon,
             Label = "Notifications",
             Route = "/"
         ),
-        ProfileItemModel(
-            Id = 4,
-            Icon = R.drawable.shield,
-            Label = "Security",
-            Route = "/"
-        ),
-        ProfileItemModel(
-            Id = 5,
-            Icon = R.drawable.earth_asia,
-            Label = "Language",
-            Route = "/"
-        ),
+//        ProfileItemModel(
+//            Id = 4,
+//            Icon = R.drawable.shield,
+//            Label = "Security",
+//            Route = "/"
+//        ),
+//        ProfileItemModel(
+//            Id = 5,
+//            Icon = R.drawable.earth_asia,
+//            Label = "Language",
+//            Route = "/"
+//        ),
         ProfileItemModel(
             Id = 6,
             Icon = R.drawable.share_nodes,

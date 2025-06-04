@@ -10,9 +10,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Settings
@@ -26,6 +30,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -35,9 +40,10 @@ import com.example.teamup.common.theme.DodgerBlue
 import com.example.teamup.common.theme.SoftGray2
 import com.example.teamup.common.theme.White
 import com.example.teamup.common.theme.White2
+import com.example.teamup.data.model.Activity
+import com.example.teamup.data.model.Experience
 import com.example.teamup.data.model.UserProfileData
 import com.example.teamup.data.viewmodels.ProfileViewModel
-import com.example.teamup.presentation.components.LogoutDialog
 import com.example.teamup.route.Routes
 import com.google.firebase.auth.FirebaseAuth
 
@@ -49,7 +55,6 @@ fun ProfileScreen(
 ) {
     val context = LocalContext.current
     val currentUser = FirebaseAuth.getInstance().currentUser
-    var showLogoutDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(currentUser?.uid) {
         currentUser?.uid?.let { profileViewModel.getUserData(it) }
@@ -57,16 +62,6 @@ fun ProfileScreen(
 
     val userData by profileViewModel.userData.collectAsState()
     val isLoading by profileViewModel.isLoading.collectAsState()
-
-    val handleLogout = {
-        FirebaseAuth.getInstance().signOut()
-        context.getSharedPreferences("teamup_prefs", android.content.Context.MODE_PRIVATE)
-            .edit().clear().apply()
-        navController.navigate(Routes.LoginV5.routes) {
-            popUpTo(navController.graph.startDestinationId) { inclusive = true }
-        }
-        Toast.makeText(context, "Successfully logged out", Toast.LENGTH_SHORT).show()
-    }
 
     Scaffold(
         topBar = {
@@ -77,7 +72,6 @@ fun ProfileScreen(
                     titleContentColor = White
                 ),
                 actions = {
-
                     IconButton(onClick = {
                         try {
                             Log.d("ProfileNavigation", "Attempting to navigate to: ${Routes.ProfileSettings.routes}")
@@ -109,15 +103,33 @@ fun ProfileScreen(
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         item { ProfileHeader(profile) }
 
+                        // Activities Section
                         item {
-                            ProfileSection(title = "Education") {
-                                if (profile.university.isNotEmpty() && profile.major.isNotEmpty()) {
-                                    Text(profile.university, fontWeight = FontWeight.SemiBold)
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(profile.major)
+                            ProfileSectionWithActions(
+                                title = "Aktivitas",
+                                itemCount = profile.activities.size,
+                                onAddClick = {
+                                    navController.navigate("create_post")
+                                },
+                                onEditClick = {
+                                    navController.navigate("edit_activities")
+                                }
+                            ) {
+                                if (profile.activities.isNotEmpty()) {
+                                    profile.activities.take(3).forEach { activity ->
+                                        ActivityItem(activity = activity)
+                                        Spacer(Modifier.height(8.dp))
+                                    }
+                                    if (profile.activities.size > 3) {
+                                        TextButton(onClick = {
+                                            navController.navigate("all_activities")
+                                        }) {
+                                            Text("Tampilkan semua posting →")
+                                        }
+                                    }
                                 } else {
                                     Text(
-                                        "No education details added yet",
+                                        "Belum ada aktivitas",
                                         fontStyle = FontStyle.Italic,
                                         color = Color.Gray
                                     )
@@ -125,8 +137,75 @@ fun ProfileScreen(
                             }
                         }
 
+                        // Experience Section
                         item {
-                            ProfileSection(title = "Skills") {
+                            ProfileSectionWithActions(
+                                title = "Pengalaman",
+                                itemCount = profile.experiences.size,
+                                onAddClick = {
+                                    navController.navigate("add_experience")
+                                },
+                                onEditClick = {
+                                    navController.navigate("edit_experiences")
+                                }
+                            ) {
+                                if (profile.experiences.isNotEmpty()) {
+                                    profile.experiences.forEach { experience ->
+                                        ExperienceItem(experience = experience)
+                                        Spacer(Modifier.height(12.dp))
+                                    }
+                                } else {
+                                    Text(
+                                        "Belum ada pengalaman kerja",
+                                        fontStyle = FontStyle.Italic,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+                        }
+
+                        // Education Section (Updated)
+                        item {
+                            ProfileSectionWithActions(
+                                title = "Pendidikan",
+                                itemCount = if ((profile.education?.school ?: "").isNotEmpty()) 1 else 0,
+                                onAddClick = {
+                                    navController.navigate("add_education")
+                                },
+                                onEditClick = {
+                                    navController.navigate("edit_education")
+                                }
+                            ) {
+                                val school = profile.education?.school.orEmpty()
+                                val field = profile.education?.fieldOfStudy.orEmpty()
+
+                                if (school.isNotEmpty() && field.isNotEmpty()) {
+                                    Text(school, fontWeight = FontWeight.SemiBold)
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(field)
+                                } else {
+                                    Text(
+                                        "Belum ada informasi pendidikan",
+                                        fontStyle = FontStyle.Italic,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+
+                        }
+
+                        // Skills Section (Updated)
+                        item {
+                            ProfileSectionWithActions(
+                                title = "Keahlian",
+                                itemCount = profile.skills.size,
+                                onAddClick = {
+                                    navController.navigate("add_skills")
+                                },
+                                onEditClick = {
+                                    navController.navigate("edit_skills")
+                                }
+                            ) {
                                 if (profile.skills.isNotEmpty()) {
                                     FlowRow(
                                         modifier = Modifier.fillMaxWidth(),
@@ -146,7 +225,7 @@ fun ProfileScreen(
                                     }
                                 } else {
                                     Text(
-                                        "No skills added yet",
+                                        "Belum ada keahlian yang ditambahkan",
                                         fontStyle = FontStyle.Italic,
                                         color = Color.Gray
                                     )
@@ -154,8 +233,9 @@ fun ProfileScreen(
                             }
                         }
 
+                        // Contact Information Section (unchanged)
                         item {
-                            ProfileSection(title = "Contact Information") {
+                            ProfileSection(title = "Informasi Kontak") {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.Email, contentDescription = "Email", tint = SoftGray2)
                                     Spacer(Modifier.width(12.dp))
@@ -171,19 +251,6 @@ fun ProfileScreen(
                                 }
                             }
                         }
-
-                        item {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 20.dp),
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                TextButton(onClick = { showLogoutDialog = true }) {
-                                    Text("Log Out", color = Color.Red)
-                                }
-                            }
-                        }
                     }
                 } ?: Box(
                     Modifier.fillMaxSize(),
@@ -194,10 +261,163 @@ fun ProfileScreen(
             }
         }
     }
+}
 
-    if (showLogoutDialog) {
-        LogoutDialog(onDismiss = { showLogoutDialog = false }, onConfirm = handleLogout)
+@Composable
+fun ProfileSectionWithActions(
+    title: String,
+    itemCount: Int,
+    onAddClick: () -> Unit,
+    onEditClick: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Card(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = White),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(title, fontWeight = FontWeight.Bold)
+                    if (itemCount > 0) {
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "$itemCount",
+                            color = DodgerBlue,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+                Row {
+                    IconButton(
+                        onClick = onAddClick,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Add",
+                            tint = DodgerBlue,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    if (itemCount > 0) {
+                        IconButton(
+                            onClick = onEditClick,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                tint = SoftGray2,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            content()
+        }
     }
+}
+
+@Composable
+fun ActivityItem(activity: Activity) {
+    Column {
+        Text(
+            activity.content,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis
+        )
+        if (activity.mediaUrls.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(activity.mediaUrls.take(3)) { mediaUrl ->
+                    Image(
+                        painter = rememberAsyncImagePainter(mediaUrl),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            formatTimestamp(activity.timestamp),
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
+        )
+    }
+}
+
+@Composable
+fun ExperienceItem(experience: Experience) {
+    Row {
+        // Company logo placeholder
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(Color.Gray.copy(alpha = 0.3f), RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                experience.company.take(2).uppercase(),
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                experience.position,
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                experience.company,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
+            val dateRange = if (experience.isCurrent) {
+                "${experience.startDate} - Saat ini"
+            } else {
+                "${experience.startDate} - ${experience.endDate}"
+            }
+            Text(
+                dateRange,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+            if (experience.location.isNotEmpty()) {
+                Text(
+                    experience.location,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+        }
+    }
+}
+
+// Helper function
+fun formatTimestamp(timestamp: Long): String {
+    // Implementation for formatting timestamp
+    return "Baru saja" // Placeholder
 }
 
 @Composable
