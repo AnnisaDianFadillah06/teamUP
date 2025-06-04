@@ -5,7 +5,6 @@ sealed class Routes(val routes: String) {
     object TeamManagement : Routes("team_management")
     object FormAddTeam : Routes("form_add_team")
     object JoinTeam : Routes("join_team")
-    object TeamDetail : Routes("team_detail")
     object CategoryTeams : Routes("category_team")
     object TeamList : Routes("team_list") //contoh firebase
     object AddTeam : Routes("add_team") //contoh firebase
@@ -49,4 +48,5 @@ sealed class Routes(val routes: String) {
             "chat_group/$teamId/$teamName"
     }
     object InviteSelect : Routes("invite_select")
+    object DraftSelectMember : Routes("draft_select_member")
 }
