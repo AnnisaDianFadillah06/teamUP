@@ -23,6 +23,7 @@ import com.example.teamup.route.NavigationItem
 fun BottomNavigationBar(navController: NavController) {
     val items = listOf(
 //        NavigationItem.Home,
+        NavigationItem.HomeV5,
 //        NavigationItem.Sail,
 //        NavigationItem.Wishlist,
         NavigationItem.Competition,

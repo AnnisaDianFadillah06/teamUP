@@ -18,10 +18,11 @@ sealed class Routes(val routes: String) {
 
     // Dashboard routes
     data object Home : Routes("home")
+    data object HomeV5 : Routes("homev5")
     data object Search : Routes("search")
     data object Profile : Routes("profile")
-    object CompleteProfile : Routes("complete_profile")
-    object ProfileSettings : Routes ("profile_settings" )
+    data object CompleteProfile : Routes("complete_profile")
+    data object ProfileSettings : Routes ("profile_settings" )
     data object Competition : Routes("competition")
     data object Wishlist : Routes("wishlist")
     data object Cart : Routes("cart")
