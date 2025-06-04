@@ -93,24 +93,6 @@ fun LoginScreen(navController: NavController) {
             }
         })
 
-        Spacer(modifier = Modifier.height(5.dp))
-        PrimaryButton(text = "Add", onClick = {
-            navController.navigate(Routes.AddTeam.routes) {
-                popUpTo(Routes.AddTeam.routes) {
-                    inclusive = true
-                }
-            }
-        })
-
-        Spacer(modifier = Modifier.height(5.dp))
-        PrimaryButton(text = "List", onClick = {
-            navController.navigate(Routes.TeamList.routes) {
-                popUpTo(Routes.TeamList.routes) {
-                    inclusive = true
-                }
-            }
-        })
-
         Spacer(modifier = Modifier.height(20.dp))
 
         AuthSocial()
