@@ -29,8 +29,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import com.example.teamup.R
 import com.example.teamup.data.model.ProfileModel
 import com.example.teamup.data.viewmodels.InviteSelectMemberViewModel
+import com.example.teamup.data.viewmodels.SharedMemberViewModel
 import com.example.teamup.route.Routes
 
 // Data models for this screen
@@ -48,7 +51,8 @@ enum class FilterType {
 @Composable
 fun InviteSelectMemberScreen(
     navController: NavController,
-    viewModel: InviteSelectMemberViewModel = remember { InviteSelectMemberViewModel() }
+    viewModel: InviteSelectMemberViewModel = remember { InviteSelectMemberViewModel() },
+    sharedViewModel: SharedMemberViewModel // Tambahkan parameter ini
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedFilters by viewModel.selectedFilters.collectAsState()
@@ -183,11 +187,12 @@ fun InviteSelectMemberScreen(
                 }
             }
 
-            // Draft Button
+            // Draft Button - Modified untuk menggunakan SharedViewModel
             Button(
                 onClick = {
-                    val selectedIds = viewModel.getSelectedMembers().joinToString(",") { it.id }
-                    navController.navigate("draft_invitation/$selectedIds")
+                    val selectedMembers = viewModel.getSelectedMembers()
+                    sharedViewModel.setSelectedMembers(selectedMembers)
+                    navController.navigate(Routes.DraftSelectMember.routes)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -227,6 +232,11 @@ fun FilterDialog(
     var expandedMajor by remember { mutableStateOf(false) }
     var expandedSkill by remember { mutableStateOf(false) }
 
+    // Observe filter options from ViewModel
+    val universityFilters by viewModel.universityFilters.collectAsState()
+    val majorFilters by viewModel.majorFilters.collectAsState()
+    val skillFilters by viewModel.skillFilters.collectAsState()
+
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(16.dp),
@@ -261,68 +271,74 @@ fun FilterDialog(
                 }
 
                 // University filter section
-                FilterSection(
-                    title = "Universitas",
-                    isExpanded = expandedUniversity,
-                    onToggleExpand = { expandedUniversity = !expandedUniversity },
-                    content = {
-                        FilterOptionsGrid(
-                            options = viewModel.universityFilters,
-                            selectedFilters = selectedFilters,
-                            onFilterClick = { filter ->
-                                if (selectedFilters.contains(filter)) {
-                                    viewModel.removeFilter(filter)
-                                } else {
-                                    viewModel.addFilter(filter)
+                if (universityFilters.isNotEmpty()) {
+                    FilterSection(
+                        title = "Universitas",
+                        isExpanded = expandedUniversity,
+                        onToggleExpand = { expandedUniversity = !expandedUniversity },
+                        content = {
+                            FilterOptionsGrid(
+                                options = universityFilters,
+                                selectedFilters = selectedFilters,
+                                onFilterClick = { filter ->
+                                    if (selectedFilters.contains(filter)) {
+                                        viewModel.removeFilter(filter)
+                                    } else {
+                                        viewModel.addFilter(filter)
+                                    }
                                 }
-                            }
-                        )
-                    }
-                )
+                            )
+                        }
+                    )
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                }
 
                 // Major filter section
-                FilterSection(
-                    title = "Jurusan",
-                    isExpanded = expandedMajor,
-                    onToggleExpand = { expandedMajor = !expandedMajor },
-                    content = {
-                        FilterOptionsGrid(
-                            options = viewModel.majorFilters,
-                            selectedFilters = selectedFilters,
-                            onFilterClick = { filter ->
-                                if (selectedFilters.contains(filter)) {
-                                    viewModel.removeFilter(filter)
-                                } else {
-                                    viewModel.addFilter(filter)
+                if (majorFilters.isNotEmpty()) {
+                    FilterSection(
+                        title = "Jurusan",
+                        isExpanded = expandedMajor,
+                        onToggleExpand = { expandedMajor = !expandedMajor },
+                        content = {
+                            FilterOptionsGrid(
+                                options = majorFilters,
+                                selectedFilters = selectedFilters,
+                                onFilterClick = { filter ->
+                                    if (selectedFilters.contains(filter)) {
+                                        viewModel.removeFilter(filter)
+                                    } else {
+                                        viewModel.addFilter(filter)
+                                    }
                                 }
-                            }
-                        )
-                    }
-                )
+                            )
+                        }
+                    )
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                }
 
                 // Skills filter section
-                FilterSection(
-                    title = "Keahlian",
-                    isExpanded = expandedSkill,
-                    onToggleExpand = { expandedSkill = !expandedSkill },
-                    content = {
-                        FilterOptionsGrid(
-                            options = viewModel.skillFilters,
-                            selectedFilters = selectedFilters,
-                            onFilterClick = { filter ->
-                                if (selectedFilters.contains(filter)) {
-                                    viewModel.removeFilter(filter)
-                                } else {
-                                    viewModel.addFilter(filter)
+                if (skillFilters.isNotEmpty()) {
+                    FilterSection(
+                        title = "Keahlian",
+                        isExpanded = expandedSkill,
+                        onToggleExpand = { expandedSkill = !expandedSkill },
+                        content = {
+                            FilterOptionsGrid(
+                                options = skillFilters,
+                                selectedFilters = selectedFilters,
+                                onFilterClick = { filter ->
+                                    if (selectedFilters.contains(filter)) {
+                                        viewModel.removeFilter(filter)
+                                    } else {
+                                        viewModel.addFilter(filter)
+                                    }
                                 }
-                            }
-                        )
-                    }
-                )
+                            )
+                        }
+                    )
+                }
 
                 // Apply button
                 Button(
@@ -424,15 +440,28 @@ fun MemberItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Profile image
-            Image(
-                painter = painterResource(id = member.imageResId),
-                contentDescription = "Profile picture",
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
+            // Profile image - handle both URL and resource
+            if (member.profilePictureUrl.isNotEmpty()) {
+                AsyncImage(
+                    model = member.profilePictureUrl,
+                    contentDescription = "Profile picture",
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(id = R.drawable.captain_icon), // Default placeholder
+                    error = painterResource(id = R.drawable.captain_icon) // Fallback image
+                )
+            } else {
+                Image(
+                    painter = painterResource(id = if (member.imageResId != 0) member.imageResId else R.drawable.captain_icon),
+                    contentDescription = "Profile picture",
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            }
 
             // Member info
             Column(
@@ -452,9 +481,25 @@ fun MemberItem(
                         color = Color.Gray
                     )
                 )
+                // Add university and major info
+                Text(
+                    text = "${member.university} • ${member.major}",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = Color.Gray
+                    )
+                )
+                // Add skills if available
+                if (member.skills.isNotEmpty()) {
+                    Text(
+                        text = member.skills.joinToString(", "),
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                }
             }
 
-            // Checkbox for selection instead of button
+            // Checkbox for selection
             Checkbox(
                 checked = member.isSelected,
                 onCheckedChange = { onToggleSelect() },
