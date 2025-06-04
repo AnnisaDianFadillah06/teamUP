@@ -34,12 +34,6 @@ fun StartSail(
             composable(Routes.Dashboard.routes) {
                 DashboardScreen()
             }
-            composable(Routes.TeamList.routes) {
-                TeamListScreen(navController = navController)
-            }
-            composable(Routes.AddTeam.routes) {
-                AddTeamScreen(navController = navController)
-            }
         }
     }
 }
