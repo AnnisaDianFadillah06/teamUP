@@ -23,12 +23,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +39,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -45,8 +51,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.teamup.common.theme.White2
+import com.example.teamup.data.viewmodels.CompetitionViewModel
+import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
+import com.example.teamup.di.Injection
 import com.example.teamup.presentation.components.SearchField
 import com.example.teamup.route.Routes
 import com.google.accompanist.pager.ExperimentalPagerApi
@@ -58,7 +68,14 @@ import com.google.accompanist.pager.rememberPagerState
 @Composable
 fun HomeScreenV5(
     paddingValues: PaddingValues,
-    navController: NavController
+    navController: NavController,
+    // Tambah CompetitionViewModel
+    competitionViewModel: CompetitionViewModel = viewModel(
+        factory = CompetitionViewModelFactory(
+            Injection.provideCompetitionRepository(),
+            Injection.provideCabangLombaRepository()
+        )
+    )
 ) {
     LazyColumn(
         modifier = Modifier
@@ -98,17 +115,19 @@ fun HomeScreenV5(
         item {
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Active Competitions Section
-            ActiveCompetitionsSection(navController = navController)
+            // Update Active Competitions Section jadi dinamis
+            ActiveCompetitionsSection(
+                navController = navController,
+                competitionViewModel = competitionViewModel
+            )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // My Teams Section
+            // My Teams tetap static dulu (sesuai request)
             MyTeamsSection(navController = navController)
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Recent Activities
             RecentActivitiesSection(navController = navController)
         }
     }
@@ -370,8 +389,15 @@ fun QuickAccessCard(
     }
 }
 
+// Update ActiveCompetitionsSection jadi dinamis
 @Composable
-fun ActiveCompetitionsSection(navController: NavController) {
+fun ActiveCompetitionsSection(
+    navController: NavController,
+    competitionViewModel: CompetitionViewModel
+) {
+    // Perbaiki collectAsState dan getValue
+    val uiState by competitionViewModel.uiState.collectAsState()
+
     Column(
         modifier = Modifier.padding(horizontal = 16.dp)
     ) {
@@ -395,22 +421,160 @@ fun ActiveCompetitionsSection(navController: NavController) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Mock competition cards
-        CompetitionCard(
-            title = "Programming Contest 2024",
-            subtitle = "Deadline: 3 days left",
-            participants = "120 teams",
-            onClick = { navController.navigate(Routes.Competition.routes) }
-        )
+        // Handle state dari CompetitionViewModel.CompetitionUiState
+        when {
+            uiState.isLoading -> {
+                // Trigger refresh data saat pertama kali load
+                LaunchedEffect(Unit) {
+                    competitionViewModel.refreshData()
+                }
 
-        Spacer(modifier = Modifier.height(8.dp))
+                // Loading indicator
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
 
-        CompetitionCard(
-            title = "UI/UX Design Challenge",
-            subtitle = "Deadline: 1 week left",
-            participants = "85 teams",
-            onClick = { navController.navigate(Routes.Competition.routes) }
+            uiState.errorMessage != null -> {
+                // Error state
+                ErrorCompetitionCard(
+                    onRetry = { competitionViewModel.refreshData() },
+                    onClick = { navController.navigate(Routes.Competition.routes) }
+                )
+            }
+
+            else -> {
+                // Success state
+                val competitions = uiState.competitions
+
+                if (competitions.isNotEmpty()) {
+                    // Ambil max 2 kompetisi terbaru untuk home screen
+                    competitions.take(2).forEach { competition ->
+                        CompetitionCard(
+                            title = competition.namaLomba ?: "Competition",
+                            subtitle = "Deadline: ${competition.tanggalPelaksanaan ?: "TBA"}",
+                            participants = "Competition available",
+                            onClick = {
+                                navController.navigate(Routes.Competition.routes)
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                } else {
+                    // Empty state
+                    EmptyCompetitionCard(
+                        onClick = { navController.navigate(Routes.Competition.routes) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+// Empty state card
+@Composable
+fun EmptyCompetitionCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
         )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                Icons.Default.EmojiEvents,
+                contentDescription = "No competitions",
+                tint = Color.Gray,
+                modifier = Modifier.size(32.dp)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "No active competitions yet",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.Gray
+            )
+
+            Text(
+                text = "Tap to create or join competitions",
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+        }
+    }
+}
+
+// Error state card
+@Composable
+fun ErrorCompetitionCard(
+    onRetry: () -> Unit,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Error,
+                contentDescription = "Error",
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(24.dp)
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Failed to load competitions",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "Tap to retry",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+            }
+
+            IconButton(onClick = onRetry) {
+                Icon(
+                    Icons.Default.Refresh,
+                    contentDescription = "Retry",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
     }
 }
 
