@@ -49,6 +49,7 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.teamup.common.theme.DodgerBlue
 import com.example.teamup.common.theme.White
+import com.example.teamup.data.model.Education
 import com.example.teamup.data.viewmodels.AuthViewModel
 import com.example.teamup.data.viewmodels.ProfileViewModel
 import com.example.teamup.route.Routes
@@ -263,15 +264,27 @@ fun CompleteProfileScreen(
                                         username = username,
                                         email = email,
                                         phone = phone,
-                                        university = university,
-                                        major = major,
                                         skills = skillList,
                                         imageUri = imageUri!!
-                                    ) { success ->
+                                    ){ success ->
                                         if (success) {
-                                            Toast.makeText(context, "Profile completed successfully!", Toast.LENGTH_SHORT).show()
-                                            navController.navigate(Routes.Dashboard.routes) {
-                                                popUpTo(Routes.CompleteProfile.routes) { inclusive = true }
+                                            // After saving basic profile, save education data
+                                            profileViewModel.saveCompleteProfile(
+                                                userId = uid,
+                                                school = university,
+                                                degree = "", // You can add a degree field if needed
+                                                fieldOfStudy = major,
+                                                skills = skillList,
+                                                imageUri = imageUri!!
+                                            ) { educationSuccess ->
+                                                if (educationSuccess) {
+                                                    Toast.makeText(context, "Profile completed successfully!", Toast.LENGTH_SHORT).show()
+                                                    navController.navigate(Routes.Dashboard.routes) {
+                                                        popUpTo(Routes.CompleteProfile.routes) { inclusive = true }
+                                                    }
+                                                } else {
+                                                    Toast.makeText(context, "Failed to save education data. Please try again.", Toast.LENGTH_SHORT).show()
+                                                }
                                             }
                                         } else {
                                             Toast.makeText(context, "Failed to save profile. Please try again.", Toast.LENGTH_SHORT).show()
@@ -281,8 +294,9 @@ fun CompleteProfileScreen(
                                     // If no registration data (e.g. coming from edit profile), just update the profile
                                     profileViewModel.saveCompleteProfile(
                                         userId = uid,
-                                        university = university,
-                                        major = major,
+                                        school = university,
+                                        degree = "", // You can add a degree field if needed
+                                        fieldOfStudy = major,
                                         skills = skillList,
                                         imageUri = imageUri!!
                                     ) { success ->

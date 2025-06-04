@@ -47,4 +47,15 @@ sealed class Routes(val routes: String) {
             "chat_group/$teamId/$teamName"
     }
     object InviteSelect : Routes("invite_select")
+
+    // Profile related routes - TAMBAHAN BARU
+    object CreatePost : Routes("create_post")
+    object AddExperience : Routes("add_experience")
+    object EditExperiences : Routes("edit_experiences")
+    object AddEducation : Routes("add_education")
+//    object EditEducation : Routes("edit_education")
+//    object AddSkills : Routes("add_skills")
+//    object EditSkills : Routes("edit_skills")
+//    object EditActivities : Routes("edit_activities")
+//    object AllActivities : Routes("all_activities")
 }
