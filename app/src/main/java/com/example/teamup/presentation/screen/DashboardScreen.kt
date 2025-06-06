@@ -3,8 +3,6 @@ package com.example.teamup.presentation.screen
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -13,17 +11,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.teamup.R
 import com.example.teamup.common.utils.BackPressHandler
-import com.example.teamup.data.model.ProfileModel
-import com.example.teamup.data.repositories.NotificationRepository
-import com.example.teamup.data.sources.remote.FirebaseNotificationDataSource
-import com.example.teamup.data.viewmodels.JoinTeamViewModel
-import com.example.teamup.di.ViewModelJoinFactory
 import com.example.teamup.data.viewmodels.CompetitionViewModel
-import com.example.teamup.data.viewmodels.NotificationViewModel
+import com.example.teamup.data.viewmodels.JoinTeamViewModel
 import com.example.teamup.data.viewmodels.SharedMemberViewModel
 import com.example.teamup.di.Injection
+import com.example.teamup.di.ViewModelJoinFactory
 import com.example.teamup.presentation.components.BottomNavigationBar
 import com.example.teamup.presentation.screen.competition.CompetitionScreen
 import com.example.teamup.presentation.screen.profile.ProfileScreen
@@ -56,7 +49,13 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
                 HomeScreenV5(
                     navController = navController,
                     paddingValues = paddingValues,
-                    competitionViewModel = competitionViewModel // Pass viewModel
+                    competitionViewModel = competitionViewModel, // Pass viewModel
+                    onHomeClick = {
+                        // Clear navigation stack dan balik ke home
+                        navController.navigate(Routes.Home.routes) {
+                            popUpTo(Routes.Home.routes) { inclusive = true }
+                        }
+                    }
                 )
             }
             composable(Routes.Search.routes) {

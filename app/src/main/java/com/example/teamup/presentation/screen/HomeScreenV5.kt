@@ -20,9 +20,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Group
@@ -31,6 +33,7 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -38,12 +41,15 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,7 +60,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -62,10 +70,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.teamup.common.theme.White2
+import com.example.teamup.data.model.CompetitionModel
 import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
 import com.example.teamup.di.Injection
-import com.example.teamup.presentation.components.SearchField
 import com.example.teamup.route.Routes
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
@@ -83,6 +91,7 @@ import kotlinx.coroutines.delay
 fun HomeScreenV5(
     paddingValues: PaddingValues,
     navController: NavController,
+    onHomeClick: () -> Unit = {}, // Tambah callback untuk home navigation
     // Tambah CompetitionViewModel
     competitionViewModel: CompetitionViewModel = viewModel(
         factory = CompetitionViewModelFactory(
@@ -93,6 +102,26 @@ fun HomeScreenV5(
 ) {
     val uiState by competitionViewModel.uiState.collectAsState()
     var isRefreshing by remember { mutableStateOf(false) }
+
+    // Search state
+    var searchQuery by remember { mutableStateOf("") }
+    var isSearchActive by remember { mutableStateOf(false) }
+
+    // Filter competitions dan teams berdasarkan search query - ✅ Fixed dengan toUpperCase()
+    val filteredCompetitions by remember {
+        derivedStateOf {
+            if (searchQuery.isBlank()) {
+                uiState.competitions
+            } else {
+                val query = searchQuery.lowercase()
+                uiState.competitions.filter { competition ->
+                    competition.namaLomba?.lowercase()?.contains(query) == true ||
+                            competition.deskripsiLomba?.lowercase()?.contains(query) == true
+                    // competition.cabangLomba?.lowercase()?.contains(query) == true  // ✅ Comment ini aja
+                }
+            }
+        }
+    }
 
     // Pull-to-refresh state dengan refresh yang lebih cepat
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing)
@@ -110,7 +139,7 @@ fun HomeScreenV5(
                 .background(color = White2),
             contentPadding = PaddingValues(
                 top = 0.dp,
-                bottom = paddingValues.calculateBottomPadding() + 16.dp // Tambah padding bottom
+                bottom = paddingValues.calculateBottomPadding() + 16.dp
             )
         ) {
             item {
@@ -119,51 +148,281 @@ fun HomeScreenV5(
                     WhatsAppStyleHeader(navController = navController)
 
                     Column(modifier = Modifier.padding(16.dp)) {
-                        // Search Field
-                        SearchField(
-                            placeholder = "Search competitions, teams...",
-                            enable = false,
-                            onClick = {
-                                navController.navigate(Routes.Search.routes)
+                        // Real Search Field dengan Firebase Data
+                        RealSearchField(
+                            searchQuery = searchQuery,
+                            onSearchQueryChange = {
+                                searchQuery = it
+                                isSearchActive = it.isNotBlank()
                             },
-                            value = ""
+                            onClearSearch = {
+                                searchQuery = ""
+                                isSearchActive = false
+                            }
                         )
 
                         Spacer(modifier = Modifier.height(20.dp))
 
-                        // Featured Banner Carousel with Auto-Slide + Loop
-                        FeaturedBannerSection()
+                        // Show search results atau normal content
+                        if (isSearchActive) {
+                            SearchResultsSection(
+                                searchQuery = searchQuery,
+                                filteredCompetitions = filteredCompetitions,
+                                navController = navController,
+                                isLoading = uiState.isLoading
+                            )
+                        } else {
+                            // Normal dashboard content
+                            // Featured Banner Carousel with Auto-Slide + Loop
+                            FeaturedBannerSection()
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                            Spacer(modifier = Modifier.height(24.dp))
 
-                        // Quick Access Menu dengan Create Competition dan Fix Text
-                        QuickAccessSection(navController = navController)
+                            // Quick Access Menu
+                            QuickAccessSection(navController = navController)
+                        }
                     }
                 }
             }
 
-            item {
-                Spacer(modifier = Modifier.height(20.dp))
+            // Only show when not searching
+            if (!isSearchActive) {
+                item {
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                // Update Active Competitions Section dengan refresh yang benar
-                ActiveCompetitionsSection(
-                    navController = navController,
-                    competitionViewModel = competitionViewModel,
-                    isRefreshing = isRefreshing,
-                    onRefreshComplete = { isRefreshing = false }
-                )
+                    // Update Active Competitions Section dengan refresh yang benar
+                    ActiveCompetitionsSection(
+                        navController = navController,
+                        competitionViewModel = competitionViewModel,
+                        isRefreshing = isRefreshing,
+                        onRefreshComplete = { isRefreshing = false }
+                    )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                // Comment My Teams Section sesuai request
-                // MyTeamsSection(navController = navController)
+                    // Comment My Teams Section sesuai request
+                    // MyTeamsSection(navController = navController)
 
-                // Ganti Recent Activities jadi Statistics Section
-                StatisticsSection(navController = navController)
+                    // Ganti Recent Activities jadi Statistics Section
+                    StatisticsSection(navController = navController)
 
-                // Tambah spacer untuk scroll yang proper
-                Spacer(modifier = Modifier.height(32.dp))
+                    // Tambah spacer untuk scroll yang proper
+                    Spacer(modifier = Modifier.height(32.dp))
+                }
             }
+        }
+    }
+}
+
+// Real Search Field Implementation
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RealSearchField(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onClearSearch: () -> Unit
+) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    OutlinedTextField(
+        value = searchQuery,
+        onValueChange = onSearchQueryChange,
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = {
+            Text(
+                text = "Search competitions, teams...",
+                color = Color.Gray
+            )
+        },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Search",
+                tint = Color.Gray
+            )
+        },
+        trailingIcon = {
+            if (searchQuery.isNotEmpty()) {
+                IconButton(onClick = onClearSearch) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Clear search",
+                        tint = Color.Gray
+                    )
+                }
+            }
+        },
+        shape = RoundedCornerShape(12.dp),
+        colors = TextFieldDefaults.outlinedTextFieldColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f)
+        ),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            imeAction = ImeAction.Search
+        ),
+        keyboardActions = KeyboardActions(
+            onSearch = {
+                keyboardController?.hide()
+            }
+        )
+    )
+}
+
+// Search Results Section
+@Composable
+fun SearchResultsSection(
+    searchQuery: String,
+    filteredCompetitions: List<CompetitionModel>,
+    navController: NavController,
+    isLoading: Boolean
+) {
+    Column {
+        Text(
+            text = "Search Results for \"$searchQuery\"",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(vertical = 16.dp)
+        )
+
+        when {
+            isLoading -> {
+                repeat(3) {
+                    CompetitionCardShimmer()
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+
+            filteredCompetitions.isEmpty() -> {
+                // Empty search results
+                EmptySearchResultCard()
+            }
+
+            else -> {
+                // Show search results
+                filteredCompetitions.forEach { competition ->
+                    SearchResultCard(
+                        competition = competition,
+                        searchQuery = searchQuery,
+                        onClick = {
+                            navController.navigate(Routes.Competition.routes)
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+}
+
+// ✅ Fixed Empty Search Result Card
+@Composable
+fun EmptySearchResultCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                Icons.Default.Search,
+                contentDescription = "No results",
+                tint = Color.Gray.copy(alpha = 0.6f),
+                modifier = Modifier.size(48.dp)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "No results found",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.Gray,
+                textAlign = TextAlign.Center
+            )
+
+            Text(
+                text = "Try different keywords or check your spelling",
+                fontSize = 12.sp,
+                color = Color.Gray.copy(alpha = 0.8f),
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+// Search Result Card
+@Composable
+fun SearchResultCard(
+    competition: CompetitionModel,
+    searchQuery: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        Color(0xFFE53935).copy(alpha = 0.1f),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.EmojiEvents,
+                    contentDescription = "Competition",
+                    tint = Color(0xFFE53935),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = competition.namaLomba ?: "Competition",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "Category: ${competition.cabangLomba ?: "General"}",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+                Text(
+                    text = "Deadline: ${competition.tanggalPelaksanaan ?: "TBA"}",
+                    fontSize = 10.sp,
+                    color = Color.Gray
+                )
+            }
+
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = "View",
+                tint = Color.Gray,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
@@ -343,7 +602,6 @@ fun BannerCard(
 
 @Composable
 fun QuickAccessSection(navController: NavController) {
-    // Tambah Create Competition + Fix text dengan maxLines dan overflow
     val menuItems = listOf(
         QuickAccessItem(
             title = "Competitions",
@@ -362,12 +620,6 @@ fun QuickAccessSection(navController: NavController) {
             icon = Icons.Default.PersonAdd,
             color = Color(0xFF43A047),
             route = Routes.JoinTeam.routes
-        ),
-        QuickAccessItem(
-            title = "Create",
-            icon = Icons.Default.Add,
-            color = Color(0xFF9C27B0),
-            route = Routes.Competition.routes // Navigate ke create competition
         )
     )
 
@@ -399,7 +651,7 @@ fun QuickAccessCard(
 ) {
     Card(
         modifier = Modifier
-            .width(85.dp) // Sedikit lebih lebar untuk teks yang lebih panjang
+            .width(85.dp)
             .height(100.dp)
             .clickable { navController.navigate(item.route) },
         shape = RoundedCornerShape(12.dp),
@@ -411,7 +663,7 @@ fun QuickAccessCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(10.dp), // Kurangi padding sedikit
+                .padding(10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -436,10 +688,10 @@ fun QuickAccessCard(
 
             Text(
                 text = item.title,
-                fontSize = 9.sp, // Kurangi font size sedikit
+                fontSize = 9.sp,
                 fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
-                maxLines = 2, // Allow 2 lines
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 10.sp
             )
@@ -447,7 +699,7 @@ fun QuickAccessCard(
     }
 }
 
-// Update ActiveCompetitionsSection dengan refresh yang benar
+// ActiveCompetitionsSection dan komponen lainnya tetap sama...
 @Composable
 fun ActiveCompetitionsSection(
     navController: NavController,
