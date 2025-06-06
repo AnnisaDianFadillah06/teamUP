@@ -21,17 +21,20 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,13 +45,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -63,8 +71,14 @@ import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.HorizontalPagerIndicator
 import com.google.accompanist.pager.rememberPagerState
+import com.google.accompanist.placeholder.PlaceholderHighlight
+import com.google.accompanist.placeholder.material.placeholder
+import com.google.accompanist.placeholder.material.shimmer
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import kotlinx.coroutines.delay
 
-@OptIn(ExperimentalPagerApi::class)
+@OptIn(ExperimentalPagerApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreenV5(
     paddingValues: PaddingValues,
@@ -77,64 +91,89 @@ fun HomeScreenV5(
         )
     )
 ) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(color = White2),
-        contentPadding = PaddingValues(bottom = paddingValues.calculateBottomPadding())
+    val uiState by competitionViewModel.uiState.collectAsState()
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    // Pull-to-refresh state dengan refresh yang lebih cepat
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing)
+
+    SwipeRefresh(
+        state = swipeRefreshState,
+        onRefresh = {
+            isRefreshing = true
+            competitionViewModel.refreshData()
+        }
     ) {
-        item {
-            Column {
-                // Custom Header (seperti WhatsApp style)
-                WhatsAppStyleHeader(navController = navController)
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(color = White2),
+            contentPadding = PaddingValues(
+                top = 0.dp,
+                bottom = paddingValues.calculateBottomPadding() + 16.dp // Tambah padding bottom
+            )
+        ) {
+            item {
+                Column {
+                    // Custom Header dengan Notification Badge (Red Dot Only)
+                    WhatsAppStyleHeader(navController = navController)
 
-                Column(modifier = Modifier.padding(16.dp)) {
-                    // Search Field
-                    SearchField(
-                        placeholder = "Search competitions, teams...",
-                        enable = false,
-                        onClick = {
-                            navController.navigate(Routes.Search.routes)
-                        },
-                        value = ""
-                    )
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        // Search Field
+                        SearchField(
+                            placeholder = "Search competitions, teams...",
+                            enable = false,
+                            onClick = {
+                                navController.navigate(Routes.Search.routes)
+                            },
+                            value = ""
+                        )
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
 
-                    // Featured Banner Carousel
-                    FeaturedBannerSection()
+                        // Featured Banner Carousel with Auto-Slide + Loop
+                        FeaturedBannerSection()
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
 
-                    // Quick Access Menu (tanpa Profile)
-                    QuickAccessSection(navController = navController)
+                        // Quick Access Menu dengan Create Competition dan Fix Text
+                        QuickAccessSection(navController = navController)
+                    }
                 }
             }
-        }
 
-        item {
-            Spacer(modifier = Modifier.height(20.dp))
+            item {
+                Spacer(modifier = Modifier.height(20.dp))
 
-            // Update Active Competitions Section jadi dinamis
-            ActiveCompetitionsSection(
-                navController = navController,
-                competitionViewModel = competitionViewModel
-            )
+                // Update Active Competitions Section dengan refresh yang benar
+                ActiveCompetitionsSection(
+                    navController = navController,
+                    competitionViewModel = competitionViewModel,
+                    isRefreshing = isRefreshing,
+                    onRefreshComplete = { isRefreshing = false }
+                )
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-            // My Teams tetap static dulu (sesuai request)
-            MyTeamsSection(navController = navController)
+                // Comment My Teams Section sesuai request
+                // MyTeamsSection(navController = navController)
 
-            Spacer(modifier = Modifier.height(20.dp))
+                // Ganti Recent Activities jadi Statistics Section
+                StatisticsSection(navController = navController)
 
-            RecentActivitiesSection(navController = navController)
+                // Tambah spacer untuk scroll yang proper
+                Spacer(modifier = Modifier.height(32.dp))
+            }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WhatsAppStyleHeader(navController: NavController) {
+    // Simple red dot notification (ganti badge number jadi red dot)
+    val hasNotifications = true // Mock - nanti bisa dari ViewModel
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.primary,
@@ -155,7 +194,7 @@ fun WhatsAppStyleHeader(navController: NavController) {
                 color = MaterialTheme.colorScheme.onPrimary
             )
 
-            // Notification Bell dengan Badge
+            // Notification Bell dengan Red Dot (bukan badge number)
             Box {
                 IconButton(
                     onClick = { navController.navigate(Routes.Notifications.routes) }
@@ -167,14 +206,17 @@ fun WhatsAppStyleHeader(navController: NavController) {
                         modifier = Modifier.size(24.dp)
                     )
                 }
-                // Badge notification
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(Color.Red, CircleShape)
-                        .align(Alignment.TopEnd)
-                        .offset(x = (-4).dp, y = 4.dp)
-                )
+
+                // Simple red dot
+                if (hasNotifications) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(Color.Red, CircleShape)
+                            .align(Alignment.TopEnd)
+                            .offset(x = (-4).dp, y = 4.dp)
+                    )
+                }
             }
         }
     }
@@ -205,6 +247,15 @@ fun FeaturedBannerSection() {
     )
 
     val pagerState = rememberPagerState()
+
+    // Auto-slide carousel dengan infinite loop
+    LaunchedEffect(pagerState) {
+        while (true) {
+            delay(3000) // 3 detik delay
+            val nextPage = (pagerState.currentPage + 1) % bannerItems.size
+            pagerState.animateScrollToPage(nextPage)
+        }
+    }
 
     Column {
         Text(
@@ -292,10 +343,10 @@ fun BannerCard(
 
 @Composable
 fun QuickAccessSection(navController: NavController) {
-    // Hapus Profile dari menu items
+    // Tambah Create Competition + Fix text dengan maxLines dan overflow
     val menuItems = listOf(
         QuickAccessItem(
-            title = "Competition",
+            title = "Competitions",
             icon = Icons.Default.EmojiEvents,
             color = Color(0xFFE53935),
             route = Routes.Competition.routes
@@ -311,8 +362,13 @@ fun QuickAccessSection(navController: NavController) {
             icon = Icons.Default.PersonAdd,
             color = Color(0xFF43A047),
             route = Routes.JoinTeam.routes
+        ),
+        QuickAccessItem(
+            title = "Create",
+            icon = Icons.Default.Add,
+            color = Color(0xFF9C27B0),
+            route = Routes.Competition.routes // Navigate ke create competition
         )
-        // Profile dihapus sesuai request
     )
 
     Column {
@@ -343,7 +399,7 @@ fun QuickAccessCard(
 ) {
     Card(
         modifier = Modifier
-            .width(80.dp)
+            .width(85.dp) // Sedikit lebih lebar untuk teks yang lebih panjang
             .height(100.dp)
             .clickable { navController.navigate(item.route) },
         shape = RoundedCornerShape(12.dp),
@@ -355,7 +411,7 @@ fun QuickAccessCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
+                .padding(10.dp), // Kurangi padding sedikit
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -376,27 +432,38 @@ fun QuickAccessCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             Text(
                 text = item.title,
-                fontSize = 10.sp,
+                fontSize = 9.sp, // Kurangi font size sedikit
                 fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
-                maxLines = 1
+                maxLines = 2, // Allow 2 lines
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 10.sp
             )
         }
     }
 }
 
-// Update ActiveCompetitionsSection jadi dinamis
+// Update ActiveCompetitionsSection dengan refresh yang benar
 @Composable
 fun ActiveCompetitionsSection(
     navController: NavController,
-    competitionViewModel: CompetitionViewModel
+    competitionViewModel: CompetitionViewModel,
+    isRefreshing: Boolean,
+    onRefreshComplete: () -> Unit
 ) {
-    // Perbaiki collectAsState dan getValue
     val uiState by competitionViewModel.uiState.collectAsState()
+
+    // Effect untuk handle refresh completion yang lebih responsive
+    LaunchedEffect(uiState.isLoading, isRefreshing) {
+        if (!uiState.isLoading && isRefreshing) {
+            delay(500) // Small delay untuk UX yang smooth
+            onRefreshComplete()
+        }
+    }
 
     Column(
         modifier = Modifier.padding(horizontal = 16.dp)
@@ -421,37 +488,31 @@ fun ActiveCompetitionsSection(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Handle state dari CompetitionViewModel.CompetitionUiState
+        // Handle state dengan loading yang lebih responsive
         when {
-            uiState.isLoading -> {
+            uiState.isLoading && !isRefreshing -> {
                 // Trigger refresh data saat pertama kali load
                 LaunchedEffect(Unit) {
                     competitionViewModel.refreshData()
                 }
 
-                // Loading indicator
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                // Shimmer loading cards
+                repeat(2) {
+                    CompetitionCardShimmer()
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
 
             uiState.errorMessage != null -> {
-                // Error state
                 ErrorCompetitionCard(
-                    onRetry = { competitionViewModel.refreshData() },
+                    onRetry = {
+                        competitionViewModel.refreshData()
+                    },
                     onClick = { navController.navigate(Routes.Competition.routes) }
                 )
             }
 
             else -> {
-                // Success state
                 val competitions = uiState.competitions
 
                 if (competitions.isNotEmpty()) {
@@ -479,6 +540,85 @@ fun ActiveCompetitionsSection(
     }
 }
 
+// Shimmer Loading Card untuk Competition
+@Composable
+fun CompetitionCardShimmer() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Shimmer circle
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .placeholder(
+                        visible = true,
+                        highlight = PlaceholderHighlight.shimmer()
+                    )
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                // Shimmer title
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.7f)
+                        .height(16.dp)
+                        .placeholder(
+                            visible = true,
+                            highlight = PlaceholderHighlight.shimmer()
+                        )
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Shimmer subtitle
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.5f)
+                        .height(12.dp)
+                        .placeholder(
+                            visible = true,
+                            highlight = PlaceholderHighlight.shimmer()
+                        )
+                )
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                // Shimmer participants
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.3f)
+                        .height(10.dp)
+                        .placeholder(
+                            visible = true,
+                            highlight = PlaceholderHighlight.shimmer()
+                        )
+                )
+            }
+
+            // Shimmer chevron
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .placeholder(
+                        visible = true,
+                        highlight = PlaceholderHighlight.shimmer()
+                    )
+            )
+        }
+    }
+}
+
 // Empty state card
 @Composable
 fun EmptyCompetitionCard(onClick: () -> Unit) {
@@ -495,29 +635,33 @@ fun EmptyCompetitionCard(onClick: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
+                .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 Icons.Default.EmojiEvents,
                 contentDescription = "No competitions",
-                tint = Color.Gray,
-                modifier = Modifier.size(32.dp)
+                tint = Color.Gray.copy(alpha = 0.6f),
+                modifier = Modifier.size(48.dp)
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
                 text = "No active competitions yet",
-                fontSize = 14.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color.Gray
+                color = Color.Gray,
+                textAlign = TextAlign.Center
             )
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             Text(
                 text = "Tap to create or join competitions",
                 fontSize = 12.sp,
-                color = Color.Gray
+                color = Color.Gray.copy(alpha = 0.8f),
+                textAlign = TextAlign.Center
             )
         }
     }
@@ -578,79 +722,142 @@ fun ErrorCompetitionCard(
     }
 }
 
+// Statistics Section dengan padding bottom yang cukup
 @Composable
-fun MyTeamsSection(navController: NavController) {
-    Column(
-        modifier = Modifier.padding(horizontal = 16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "My Teams",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            TextButton(onClick = {
-                navController.navigate(Routes.TeamManagement.routes)
-            }) {
-                Text("See All")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Mock team cards
-        TeamCard(
-            teamName = "Code Warriors",
-            memberCount = "4/5 members",
-            status = "Active",
-            onClick = { navController.navigate(Routes.TeamManagement.routes) }
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        TeamCard(
-            teamName = "Design Masters",
-            memberCount = "3/4 members",
-            status = "Recruiting",
-            onClick = { navController.navigate(Routes.TeamManagement.routes) }
-        )
-    }
-}
-
-@Composable
-fun RecentActivitiesSection(navController: NavController) {
+fun StatisticsSection(navController: NavController) {
     Column(
         modifier = Modifier.padding(horizontal = 16.dp)
     ) {
         Text(
-            text = "Recent Activities",
+            text = "Platform Statistics",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 12.dp)
         )
 
-        ActivityCard(
-            title = "New team invitation",
-            subtitle = "From Code Warriors team",
-            icon = Icons.Default.Group,
-            iconColor = Color(0xFF4CAF50),
-            onClick = { navController.navigate(Routes.Notifications.routes) }
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Total Universities
+            StatisticCard(
+                title = "Universities",
+                value = "50+",
+                subtitle = "Registered",
+                icon = Icons.Default.School,
+                iconColor = Color(0xFF4CAF50),
+                modifier = Modifier.weight(1f),
+                onClick = { navController.navigate(Routes.Competition.routes) }
+            )
 
-        Spacer(modifier = Modifier.height(8.dp))
+            // Total Members
+            StatisticCard(
+                title = "Members",
+                value = "1.2K+",
+                subtitle = "Active users",
+                icon = Icons.Default.People,
+                iconColor = Color(0xFF2196F3),
+                modifier = Modifier.weight(1f),
+                onClick = { navController.navigate(Routes.TeamManagement.routes) }
+            )
+        }
 
-        ActivityCard(
-            title = "Competition reminder",
-            subtitle = "Programming contest deadline approaching",
-            icon = Icons.Default.NotificationsActive,
-            iconColor = Color(0xFFFF9800),
-            onClick = { navController.navigate(Routes.Competition.routes) }
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Active Competitions
+            StatisticCard(
+                title = "Competitions",
+                value = "25",
+                subtitle = "This month",
+                icon = Icons.Default.EmojiEvents,
+                iconColor = Color(0xFFFF9800),
+                modifier = Modifier.weight(1f),
+                onClick = { navController.navigate(Routes.Competition.routes) }
+            )
+
+            // Success Rate
+            StatisticCard(
+                title = "Success Rate",
+                value = "85%",
+                subtitle = "Team formation",
+                icon = Icons.Default.TrendingUp,
+                iconColor = Color(0xFF9C27B0),
+                modifier = Modifier.weight(1f),
+                onClick = { navController.navigate(Routes.TeamManagement.routes) }
+            )
+        }
+    }
+}
+
+@Composable
+fun StatisticCard(
+    title: String,
+    value: String,
+    subtitle: String,
+    icon: ImageVector,
+    iconColor: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = modifier
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
         )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        iconColor.copy(alpha = 0.1f),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    tint = iconColor,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = value,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Text(
+                text = title,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Text(
+                text = subtitle,
+                fontSize = 10.sp,
+                color = Color.Gray,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 
@@ -716,136 +923,6 @@ fun CompetitionCard(
                 contentDescription = "View",
                 tint = Color.Gray,
                 modifier = Modifier.size(20.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun TeamCard(
-    teamName: String,
-    memberCount: String,
-    status: String,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        Color(0xFF1E88E5).copy(alpha = 0.1f),
-                        CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Group,
-                    contentDescription = "Team",
-                    tint = Color(0xFF1E88E5),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = teamName,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = memberCount,
-                    fontSize = 12.sp,
-                    color = Color.Gray
-                )
-                Text(
-                    text = status,
-                    fontSize = 10.sp,
-                    color = if (status == "Active") Color(0xFF4CAF50) else Color(0xFFFF9800)
-                )
-            }
-
-            Icon(
-                Icons.Default.ChevronRight,
-                contentDescription = "View",
-                tint = Color.Gray,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun ActivityCard(
-    title: String,
-    subtitle: String,
-    icon: ImageVector,
-    iconColor: Color,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .background(
-                        iconColor.copy(alpha = 0.1f),
-                        CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    tint = iconColor,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = subtitle,
-                    fontSize = 10.sp,
-                    color = Color.Gray
-                )
-            }
-
-            Icon(
-                Icons.Default.ChevronRight,
-                contentDescription = "View",
-                tint = Color.Gray,
-                modifier = Modifier.size(16.dp)
             )
         }
     }
