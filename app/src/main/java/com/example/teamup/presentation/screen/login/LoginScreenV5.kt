@@ -1,4 +1,4 @@
-package com.example.teamup.presentation.screen
+package com.example.teamup.presentation.screen.login
 
 import android.content.Context
 import android.widget.Toast

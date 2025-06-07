@@ -34,6 +34,11 @@ class CompetitionViewModel(
         getAllCompetitions()
     }
 
+    // Fungsi untuk me-refresh data kompetisi
+    fun refreshData() {
+        getAllCompetitions()
+    }
+
     private fun getAllCompetitions() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -133,7 +138,6 @@ class CompetitionViewModel(
                     deskripsiLomba = deskripsiLomba,
                     imageUrl = imageUrl,
                     fileUrl = fileUrl,
-//                    jumlahTim = jumlahTim,
                     visibilityStatus = visibilityStatus,
                     activityStatus = activityStatus,
                     tanggalTutupPendaftaran = deadlineTimestamp,
@@ -161,6 +165,9 @@ class CompetitionViewModel(
                         isSuccess = true
                     )
                 }
+
+                // Refresh data setelah menambahkan kompetisi baru
+                refreshData()
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -181,7 +188,6 @@ class CompetitionViewModel(
         deskripsiLomba: String,
         imageUrl: String? = null,
         fileUrl: String? = null,
-//        jumlahTim: Int = 0,
         visibilityStatus: String = CompetitionVisibilityStatus.PUBLISHED.value,
         activityStatus: String = CompetitionActivityStatus.ACTIVE.value,
         tanggalTutupPendaftaran: String? = null,
@@ -202,7 +208,6 @@ class CompetitionViewModel(
                 updates["namaLomba"] = namaLomba
                 updates["tanggalPelaksanaan"] = tanggalPelaksanaan
                 updates["deskripsiLomba"] = deskripsiLomba
-//                updates["jumlahTim"] = jumlahTim
                 updates["visibilityStatus"] = visibilityStatus
                 updates["activityStatus"] = activityStatus
                 updates["tanggalTutupPendaftaran"] = deadlineTimestamp
@@ -228,6 +233,9 @@ class CompetitionViewModel(
                         isSuccess = true
                     )
                 }
+
+                // Refresh data setelah update kompetisi
+                refreshData()
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -265,7 +273,7 @@ class CompetitionViewModel(
                 )
 
                 // Refresh competitions list
-                getAllCompetitions()
+                refreshData()
 
                 _uiState.update {
                     it.copy(isLoading = false, isSuccess = true)

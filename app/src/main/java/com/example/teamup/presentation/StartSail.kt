@@ -8,26 +8,29 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.teamup.common.utils.BackPressHandler
 import com.example.teamup.common.utils.SessionManager
 import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
 import com.example.teamup.di.Injection
-import com.example.teamup.presentation.screen.AddTeamScreen
 import com.example.teamup.presentation.screen.DashboardScreen
-import com.example.teamup.presentation.screen.FingerprintLoginScreen
+import com.example.teamup.presentation.screen.login.FingerprintLoginScreen
 import com.example.teamup.presentation.screen.ForgotPasswordScreen
-import com.example.teamup.presentation.screen.LoginScreenV5
-import com.example.teamup.presentation.screen.ProfileScreen
-import com.example.teamup.presentation.screen.RegisterScreen
-import com.example.teamup.presentation.screen.RegisterSuccessScreen
+import com.example.teamup.presentation.screen.login.LoginScreenV5
+import com.example.teamup.presentation.screen.register.RegisterScreen
+import com.example.teamup.presentation.screen.register.RegisterSuccessScreen
 import com.example.teamup.presentation.screen.ResetPasswordScreen
 import com.example.teamup.presentation.screen.SplashScreen
-import com.example.teamup.presentation.screen.TeamListScreen
-import com.example.teamup.presentation.screen.VerificationScreen
+import com.example.teamup.presentation.screen.profile.CompleteProfileScreen
+import com.example.teamup.presentation.screen.profile.ProfileSettingsScreen
+import com.example.teamup.presentation.screen.register.CekEmailScreen
+import com.example.teamup.presentation.screen.register.VerificationScreen
+import com.example.teamup.data.viewmodels.ProfileViewModel
 import com.example.teamup.route.Routes
 
 @Composable
@@ -36,6 +39,8 @@ fun StartSail(
     navController: NavHostController = rememberNavController(),
     competitionViewModel: CompetitionViewModel
 ) {
+    val profileViewModel: ProfileViewModel = viewModel()
+
     BackPressHandler(navController)
 
     Scaffold { paddingValues ->
@@ -72,12 +77,6 @@ fun StartSail(
             composable(Routes.Dashboard.routes) {
                 DashboardScreen(competitionViewModel = competitionViewModel)
             }
-            composable(Routes.TeamList.routes) {
-                TeamListScreen(navController = navController)
-            }
-            composable(Routes.AddTeam.routes) {
-                AddTeamScreen(navController = navController)
-            }
             composable(Routes.Verification.routes) {
                 VerificationScreen(navController = navController)
             }
@@ -90,10 +89,25 @@ fun StartSail(
             composable(Routes.ResetPassword.routes) {
                 ResetPasswordScreen(navController = navController)
             }
-            composable(Routes.Profile.routes) {
-                ProfileScreen(navController = navController)
+
+
+            composable(Routes.CompleteProfile.routes) {
+                CompleteProfileScreen(navController, profileViewModel)
             }
-            // Tambahkan destination lain sesuai kebutuhan
+
+
+            composable(
+                route = Routes.CekEmail.routes,
+                arguments = listOf(
+                    navArgument("email") {
+                        type = NavType.StringType
+                    }
+                )
+            ) { backStackEntry ->
+                val email = backStackEntry.arguments?.getString("email") ?: ""
+                CekEmailScreen(navController, email = email)
+            }
+
         }
     }
 }

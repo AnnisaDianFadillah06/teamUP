@@ -1,4 +1,4 @@
-package com.example.teamup.presentation.components
+package com.example.teamup.presentation.components.competition
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement

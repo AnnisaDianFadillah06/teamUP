@@ -1,4 +1,4 @@
-package com.example.teamup.presentation.screen
+package com.example.teamup.presentation.screen.competition
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.padding
@@ -29,10 +29,10 @@ import com.example.teamup.data.viewmodels.CabangLombaViewModelFactory
 import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
 import com.example.teamup.di.Injection
-import com.example.teamup.presentation.components.AddCompetitionForm
+import com.example.teamup.presentation.components.competition.AddCompetitionForm
 import com.example.teamup.presentation.components.BottomNavigationBar
 import com.example.teamup.presentation.components.CustomBottomNavigationBar
-import com.example.teamup.presentation.components.EditCompetitionForm
+import com.example.teamup.presentation.components.competition.EditCompetitionForm
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,8 +52,8 @@ fun CompetitionScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddForm by remember { mutableStateOf(false) }
-    var showEditForm by remember { mutableStateOf(false) } // Tambahkan state untuk mode edit
-    var selectedCompetition by remember { mutableStateOf<CompetitionModel?>(null) } // Tambahkan state untuk menyimpan kompetisi yang dipilih
+    var showEditForm by remember { mutableStateOf(false) }
+    var selectedCompetition by remember { mutableStateOf<CompetitionModel?>(null) }
 
     // Handle hardware back button
     BackHandler(enabled = showAddForm || showEditForm) {
@@ -146,11 +146,11 @@ fun CompetitionScreen(
                         selectedCompetition = competition
                         showEditForm = true
                     },
-                    cabangLombaViewModel = cabangLombaViewModel,  // Add this line
+                    cabangLombaViewModel = cabangLombaViewModel,
+                    viewModel = viewModel,  // Passing viewModel untuk akses fungsi refresh
                     modifier = Modifier.padding(paddingValues)
                 )
             }
         }
     }
 }
-

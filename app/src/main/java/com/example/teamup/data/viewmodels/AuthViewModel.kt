@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.teamup.data.model.RegistrationData
 import com.example.teamup.data.repositories.AuthRepository
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
@@ -31,17 +32,18 @@ sealed class AuthUiState {
     data class LoginSuccess(val user: FirebaseUser) : AuthUiState()
 }
 
-data class RegistrationData(
-    val fullName: String,
-    val username: String,
-    val email: String,
-    val phone: String,
-    val password: String
-)
+//data class RegistrationData(
+//    val fullName: String,
+//    val username: String,
+//    val email: String,
+//    val phone: String,
+//    val password: String
+//)
 
 class AuthViewModel(
     private val repository: AuthRepository = AuthRepository()
 ) : ViewModel() {
+
 
     // Google Sign-In Properties
     private var googleSignInClient: GoogleSignInClient? = null
@@ -60,6 +62,11 @@ class AuthViewModel(
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState: StateFlow<AuthUiState> = _uiState
 
+//    fun setRegistrationData(fullName: String, username: String, email: String, phone: String, password: String) {
+//        registrationData = RegistrationData(fullName, username, email, phone, password)
+//    }
+
+    // Set registration data
     // NEW GOOGLE LOGIN METHODS ================
 
     fun initGoogleSignIn(context: Context) {
@@ -166,10 +173,19 @@ class AuthViewModel(
     // ================ EXISTING METHODS - SEMUA TETAP SAMA ================
 
     fun setRegistrationData(fullName: String, username: String, email: String, phone: String, password: String) {
-        registrationData = RegistrationData(fullName, username, email, phone, password)
+        registrationData = RegistrationData(
+            fullName = fullName,
+            username = username,
+            email = email,
+            phone = phone,
+            password = password
+        )
     }
 
-    // Delegasi ke repository
+
+
+
+        // Delegasi ke repository
     suspend fun isUsernameTaken(username: String): Boolean {
         return try {
             repository.isUsernameTaken(username)
@@ -218,6 +234,21 @@ class AuthViewModel(
         }
     }
 
+    // Fungsi baru untuk mengirim ulang email verifikasi
+    fun resendEmailVerification(onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.Loading
+            try {
+                repository.sendEmailVerification()
+                _uiState.value = AuthUiState.Success("Email verifikasi terkirim ulang")
+                onResult(true, null)
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error(e.message ?: "Gagal mengirim ulang email verifikasi")
+                onResult(false, e.message)
+            }
+        }
+    }
+
     // 2. Kirim OTP phone, dengan callback
     fun sendPhoneOtp(
         phone: String,
@@ -253,6 +284,8 @@ class AuthViewModel(
         }
     }
 
+
+    // Fungsi yang telah ada untuk memeriksa status verifikasi user
     fun reloadCurrentUser(onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             try {

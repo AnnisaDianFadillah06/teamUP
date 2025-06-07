@@ -7,7 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.teamup.data.viewmodels.CabangLombaViewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModel
-import com.example.teamup.presentation.screen.CompetitionEditStatusScreen
+import com.example.teamup.presentation.screen.competition.CompetitionEditStatusScreen
 
 // Navigation routes
 object CompetitionRoutes {

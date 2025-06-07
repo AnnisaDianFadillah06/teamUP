@@ -1,136 +1,219 @@
 package com.example.teamup.data.viewmodels
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.teamup.R
 import com.example.teamup.data.model.TeamModel
 import com.example.teamup.data.repositories.TeamRepository
-import com.example.teamup.data.sources.remote.FirebaseStorageHelper
+import com.example.teamup.data.sources.remote.GoogleDriveHelper
 import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class TeamUiState(
-    val isLoading: Boolean = false,
-    val isSuccess: Boolean = false,
-    val errorMessage: String? = null
-)
-
 class TeamViewModel(
     private val repository: TeamRepository,
-    private val storageHelper: FirebaseStorageHelper = FirebaseStorageHelper()
+    private val driveHelper: GoogleDriveHelper
 ) : ViewModel() {
-
-    private val _uiState = MutableStateFlow(TeamUiState())
-    val uiState: StateFlow<TeamUiState> = _uiState
 
     private val _teams = MutableStateFlow<List<TeamModel>>(emptyList())
     val teams: StateFlow<List<TeamModel>> = _teams
 
+    private val _userTeams = MutableStateFlow<List<TeamModel>>(emptyList())
+    val userTeams: StateFlow<List<TeamModel>> = _userTeams
+
+    private val _selectedTeam = MutableStateFlow<TeamModel?>(null)
+    val selectedTeam: StateFlow<TeamModel?> = _selectedTeam
+
+    private val _uiState = MutableStateFlow(TeamUiState())
+    val uiState: StateFlow<TeamUiState> = _uiState.asStateFlow()
+
+
     init {
-        getAllTeams()
+        viewModelScope.launch {
+            try {
+                repository.initialize() // Inisialisasi Google Drive Service
+                getAllTeams()
+                loadUserTeams() // Muat tim yang diikuti pengguna saat ini
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Failed to initialize: ${e.message}") }
+            }
+        }
     }
 
-    fun addTeam(name: String, description: String, category: String, avatarUri: String) {
+    fun addTeam(
+        name: String,
+        description: String,
+        category: String,
+        avatarResId: Int = R.drawable.captain_icon,
+        imageUri: Uri?,
+        maxMembers: Int,
+        isPrivate: Boolean,
+        onSuccess: (String) -> Unit,
+        onFailure: (Throwable) -> Unit
+    ) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-
             try {
-                // Default avatar resource ID
-                val defaultAvatarResId = R.drawable.captain_icon
+                _uiState.update { it.copy(isLoading = true) }
 
-                // If it's a URI, upload to Firebase Storage
-                val imageUrl = if (avatarUri != "default_avatar") {
-                    try {
-                        // Parse the URI
-                        val uri = Uri.parse(avatarUri)
-                        // Upload and get download URL
-                        storageHelper.uploadImage(uri)
-                    } catch (e: Exception) {
-                        // If upload fails, use default and continue
-                        println("DEBUG: Failed to upload image: ${e.message}")
-                        null
-                    }
-                } else null
+                val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+                val members = if (currentUserId != null) listOf(currentUserId) else emptyList()
 
-                // Create team with either the uploaded URL or default resource ID
                 val team = TeamModel(
                     name = name,
                     description = description,
                     category = category,
-                    avatarResId = defaultAvatarResId, // Always include a default resource ID
-                    imageUrl = imageUrl, // Add this field to your TeamModel
-                    createdAt = Timestamp.now()
+                    avatarResId = avatarResId,
+                    imageUrl = null,
+                    driveFileId = null,
+                    createdAt = Timestamp.now(),
+                    members = members,
+                    maxMembers = maxMembers,
+                    isPrivate = isPrivate,
+                    memberCount = members.size,
+                    captainId = currentUserId ?: ""
                 )
 
-                val teamId = repository.addTeam(team)
+                val teamId = repository.addTeam(team, imageUri)
                 if (teamId != null) {
-                    _uiState.update { it.copy(isLoading = false, isSuccess = true) }
-                    getAllTeams() // Refresh the team list after adding a new team
+                    // Reload teams
+                    getAllTeams()
+                    loadUserTeams()
+                    onSuccess(teamId)
                 } else {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = "Failed to create team"
-                        )
-                    }
+                    onFailure(Exception("Failed to add team"))
                 }
             } catch (e: Exception) {
-                println("DEBUG: Error in addTeam: ${e.message}")
-                e.printStackTrace()
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = e.message ?: "An unknown error occurred"
-                    )
-                }
+                onFailure(e)
+            } finally {
+                _uiState.update { it.copy(isLoading = false) }
             }
         }
     }
 
-    fun resetSuccess() {
-        _uiState.update { it.copy(isSuccess = false) }
-    }
-
-    // Function to get all teams
     fun getAllTeams() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
             try {
-                println("DEBUG: Starting to fetch teams...")
-                val teamsList = repository.getAllTeams()
-                println("DEBUG: Teams loaded: ${teamsList.size}")
-                teamsList.forEach {
-                    println("DEBUG: Team: ${it.name}, ID: ${it.id}, Category: ${it.category}, ImageUrl: ${it.imageUrl}")
-                }
-                _teams.value = teamsList
-                _uiState.update { it.copy(isLoading = false) }
+                val fetchedTeams = repository.getAllTeams()
+                _teams.value = fetchedTeams
+                _uiState.update { it.copy(teams = fetchedTeams) }
             } catch (e: Exception) {
-                println("DEBUG: Error loading teams: ${e.message}")
-                e.printStackTrace()
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = e.message ?: "Failed to load teams"
-                    )
+                _uiState.update { it.copy(errorMessage = "Error fetching teams: ${e.message}") }
+            } finally {
+                _uiState.update { it.copy(isLoading = false) }
+            }
+        }
+    }
+
+    fun getTeamById(teamId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
+            try {
+                val team = repository.getTeamById(teamId)
+                _selectedTeam.value = team
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Error fetching team: ${e.message}") }
+            } finally {
+                _uiState.update { it.copy(isLoading = false) }
+            }
+        }
+    }
+
+    private fun loadUserTeams() {
+        viewModelScope.launch {
+            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+
+            if (currentUserId != null) {
+                try {
+                    val userTeams = repository.getTeamsByUserId(currentUserId)
+                    _userTeams.value = userTeams
+                } catch (e: Exception) {
+                    _uiState.update { it.copy(errorMessage = "Error fetching your teams: ${e.message}") }
                 }
             }
         }
     }
+
+    fun joinTeam(teamId: String, onSuccess: () -> Unit, onFailure: (String) -> Unit) {
+        viewModelScope.launch {
+            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+
+            if (currentUserId != null) {
+                _uiState.update { it.copy(isLoading = true) }
+
+                try {
+                    val success = repository.joinTeam(teamId, currentUserId)
+                    if (success) {
+                        // Reload data
+                        getAllTeams()
+                        loadUserTeams()
+                        onSuccess()
+                    } else {
+                        onFailure("Failed to join the team")
+                    }
+                } catch (e: Exception) {
+                    onFailure("Error: ${e.message}")
+                } finally {
+                    _uiState.update { it.copy(isLoading = false) }
+                }
+            } else {
+                onFailure("You need to be logged in to join a team")
+            }
+        }
+    }
+
+    fun leaveTeam(teamId: String, onSuccess: () -> Unit, onFailure: (String) -> Unit) {
+        viewModelScope.launch {
+            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+
+            if (currentUserId != null) {
+                _uiState.update { it.copy(isLoading = true) }
+
+                try {
+                    val success = repository.leaveTeam(teamId, currentUserId)
+                    if (success) {
+                        // Reload data
+                        getAllTeams()
+                        loadUserTeams()
+                        onSuccess()
+                    } else {
+                        onFailure("Failed to leave the team")
+                    }
+                } catch (e: Exception) {
+                    onFailure("Error: ${e.message}")
+                } finally {
+                    _uiState.update { it.copy(isLoading = false) }
+                }
+            } else {
+                onFailure("You need to be logged in to leave a team")
+            }
+        }
+    }
+
+    data class TeamUiState(
+        val isLoading: Boolean = false,
+        val teams: List<TeamModel> = emptyList(),
+        val errorMessage: String? = null
+    )
 }
 
 class TeamViewModelFactory(
     private val repository: TeamRepository,
-    private val storageHelper: FirebaseStorageHelper = FirebaseStorageHelper()
+    private val driveHelper: GoogleDriveHelper
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(TeamViewModel::class.java)) {
-            return TeamViewModel(repository, storageHelper) as T
+            return TeamViewModel(repository, driveHelper) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }

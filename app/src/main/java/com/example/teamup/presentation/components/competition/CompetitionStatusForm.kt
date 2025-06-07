@@ -1,4 +1,4 @@
-package com.example.teamup.presentation.components
+package com.example.teamup.presentation.components.competition
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
