@@ -29,10 +29,11 @@ import com.example.teamup.data.viewmodels.CabangLombaViewModelFactory
 import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
 import com.example.teamup.di.Injection
-import com.example.teamup.presentation.components.competition.AddCompetitionForm
 import com.example.teamup.presentation.components.BottomNavigationBar
 import com.example.teamup.presentation.components.CustomBottomNavigationBar
+import com.example.teamup.presentation.components.competition.AddCompetitionForm
 import com.example.teamup.presentation.components.competition.EditCompetitionForm
+import com.example.teamup.route.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -146,8 +147,12 @@ fun CompetitionScreen(
                         selectedCompetition = competition
                         showEditForm = true
                     },
+                    onDetailClick = { competition ->
+                        // ✅ Navigate to detail screen
+                        navController.navigate(Routes.CompetitionDetail.createRoute(competition.id))
+                    },
                     cabangLombaViewModel = cabangLombaViewModel,
-                    viewModel = viewModel,  // Passing viewModel untuk akses fungsi refresh
+                    viewModel = viewModel,
                     modifier = Modifier.padding(paddingValues)
                 )
             }
