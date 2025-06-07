@@ -1,6 +1,7 @@
 package com.example.teamup.presentation.screen
 
 import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -25,33 +26,50 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import com.example.teamup.R
 import com.example.teamup.common.theme.*
-import com.example.teamup.data.model.TeamModel
+import com.example.teamup.data.model.CompetitionActivityStatus
+import com.example.teamup.data.model.CompetitionModel
+import com.example.teamup.data.viewmodels.CompetitionViewModel
+import com.example.teamup.data.viewmodels.CabangLombaViewModel
+import com.example.teamup.data.viewmodels.CabangLombaViewModelFactory
+import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
 import com.example.teamup.data.viewmodels.TeamViewModel
 import com.example.teamup.data.viewmodels.TeamViewModelFactory
 import com.example.teamup.di.Injection
-import com.google.firebase.Timestamp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FormCreateTeamScreen(
     navController: NavController,
-    viewModel: TeamViewModel = viewModel(
+    teamViewModel: TeamViewModel = viewModel(
         factory = TeamViewModelFactory(
-            Injection.provideTeamRepository()
+            Injection.provideTeamRepository(),
+            Injection.provideGoogleDriveHelper()
+        )
+    ),
+    competitionViewModel: CompetitionViewModel = viewModel(
+        factory = CompetitionViewModelFactory(
+            Injection.provideCompetitionRepository(),
+            Injection.provideCabangLombaRepository()
+        )
+    ),
+    cabangLombaViewModel: CabangLombaViewModel = viewModel(
+        factory = CabangLombaViewModelFactory(
+            Injection.provideCabangLombaRepository()
         )
     )
-){
+) {
     var teamName by remember { mutableStateOf("") }
     var teamDescription by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("") }
+    var selectedCompetitionId by remember { mutableStateOf("") }
+    var selectedCompetitionName by remember { mutableStateOf("") }
     var showCategoryDropdown by remember { mutableStateOf(false) }
     var selectedBranch by remember { mutableStateOf("") }
     var showBranchDropdown by remember { mutableStateOf(false) }
@@ -70,10 +88,21 @@ fun FormCreateTeamScreen(
         selectedImageUri = uri
     }
 
+    // Collect UI state from viewmodels
+    val competitionUiState by competitionViewModel.uiState.collectAsState()
+    val cabangLombaUiState by cabangLombaViewModel.uiState.collectAsState()
 
-    // List options for dropdowns
-    val categoryOptions = listOf("Teknologi", "Sains", "Desain", "Bisnis", "Olahraga", "Edukasi", "Lainnya")
-    val branchOptions = listOf("Web Development", "Mobile App", "UI/UX Design", "Data Science", "IoT", "AI", "Robotik", "Game Development")
+    // Filter active competitions for the category dropdown
+    val activeCompetitions = competitionUiState.competitions.filter {
+        it.activityStatus == CompetitionActivityStatus.ACTIVE.value
+    }
+
+    // Load cabang lomba when competition is selected
+    LaunchedEffect(selectedCompetitionId) {
+        if (selectedCompetitionId.isNotEmpty()) {
+            cabangLombaViewModel.getCabangLombaByCompetitionId(selectedCompetitionId)
+        }
+    }
 
     val scrollState = rememberScrollState()
 
@@ -126,7 +155,8 @@ fun FormCreateTeamScreen(
             )
 
             Spacer(modifier = Modifier.height(24.dp))
-// Team Avatar Selection
+
+            // Team Avatar Selection
             Box(
                 modifier = Modifier
                     .size(120.dp)
@@ -180,7 +210,7 @@ fun FormCreateTeamScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Category dropdown
+            // Competition category dropdown
             Text(
                 text = "Kategori Lomba",
                 style = MaterialTheme.typography.bodyMedium.copy(
@@ -190,56 +220,69 @@ fun FormCreateTeamScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Box {
+            if (competitionUiState.isLoading) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(
-                            color = Color(0xFFF5F5F5),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .clickable { showCategoryDropdown = true }
-                        .padding(16.dp)
+                        .height(56.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = if (selectedCategory.isEmpty()) "Kategori Lomba" else selectedCategory,
-                            color = if (selectedCategory.isEmpty()) SoftGray2 else Color.Black
-                        )
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Dropdown",
-                            tint = SoftGray2
-                        )
-                    }
+                    CircularProgressIndicator()
                 }
+            } else {
+                Box {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                color = Color(0xFFF5F5F5),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .clickable { showCategoryDropdown = true }
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (selectedCompetitionName.isEmpty()) "Pilih Kategori Lomba" else selectedCompetitionName,
+                                color = if (selectedCompetitionName.isEmpty()) SoftGray2 else Color.Black
+                            )
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = "Dropdown",
+                                tint = SoftGray2
+                            )
+                        }
+                    }
 
-                DropdownMenu(
-                    expanded = showCategoryDropdown,
-                    onDismissRequest = { showCategoryDropdown = false },
-                    modifier = Modifier
-                        .fillMaxWidth(0.9f)
-                        .background(Color.White)
-                ) {
-                    categoryOptions.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(text = option) },
-                            onClick = {
-                                selectedCategory = option
-                                showCategoryDropdown = false
-                            }
-                        )
+                    DropdownMenu(
+                        expanded = showCategoryDropdown,
+                        onDismissRequest = { showCategoryDropdown = false },
+                        modifier = Modifier
+                            .fillMaxWidth(0.9f)
+                            .background(Color.White)
+                    ) {
+                        activeCompetitions.forEach { competition ->
+                            DropdownMenuItem(
+                                text = { Text(text = competition.namaLomba) },
+                                onClick = {
+                                    selectedCompetitionId = competition.id
+                                    selectedCompetitionName = competition.namaLomba
+                                    selectedBranch = "" // Reset branch selection
+                                    showCategoryDropdown = false
+                                }
+                            )
+                        }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Branch dropdown
+            // Branch dropdown (Cabang Lomba)
             Text(
                 text = "Cabang Lomba",
                 style = MaterialTheme.typography.bodyMedium.copy(
@@ -249,49 +292,82 @@ fun FormCreateTeamScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Box {
+            if (selectedCompetitionId.isEmpty()) {
+                // If no competition is selected, show disabled state
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
-                            color = Color(0xFFF5F5F5),
+                            color = Color(0xFFE0E0E0),
                             shape = RoundedCornerShape(8.dp)
                         )
-                        .clickable { showBranchDropdown = true }
                         .padding(16.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = if (selectedBranch.isEmpty()) "Cabang Lomba" else selectedBranch,
-                            color = if (selectedBranch.isEmpty()) SoftGray2 else Color.Black
-                        )
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Dropdown",
-                            tint = SoftGray2
-                        )
-                    }
+                    Text(
+                        text = "Pilih Kategori Lomba terlebih dahulu",
+                        color = SoftGray2
+                    )
                 }
-
-                DropdownMenu(
-                    expanded = showBranchDropdown,
-                    onDismissRequest = { showBranchDropdown = false },
+            } else if (cabangLombaUiState.isLoading) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.9f)
-                        .background(Color.White)
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    branchOptions.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(text = option) },
-                            onClick = {
-                                selectedBranch = option
-                                showBranchDropdown = false
+                    CircularProgressIndicator()
+                }
+            } else {
+                Box {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                color = Color(0xFFF5F5F5),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .clickable {
+                                if (cabangLombaUiState.cabangList.isNotEmpty()) {
+                                    showBranchDropdown = true
+                                }
                             }
-                        )
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (selectedBranch.isEmpty()) {
+                                    if (cabangLombaUiState.cabangList.isEmpty()) "Tidak ada cabang lomba tersedia" else "Pilih Cabang Lomba"
+                                } else selectedBranch,
+                                color = if (selectedBranch.isEmpty()) SoftGray2 else Color.Black
+                            )
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = "Dropdown",
+                                tint = SoftGray2
+                            )
+                        }
+                    }
+
+                    DropdownMenu(
+                        expanded = showBranchDropdown,
+                        onDismissRequest = { showBranchDropdown = false },
+                        modifier = Modifier
+                            .fillMaxWidth(0.9f)
+                            .background(Color.White)
+                    ) {
+                        cabangLombaUiState.cabangList.forEach { cabangLomba ->
+                            DropdownMenuItem(
+                                text = { Text(text = cabangLomba.namaCabang) },
+                                onClick = {
+                                    selectedBranch = cabangLomba.namaCabang
+                                    showBranchDropdown = false
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -463,15 +539,39 @@ fun FormCreateTeamScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Submit button
+            // Show errors if any
+            if (competitionUiState.errorMessage != null) {
+                Text(
+                    text = competitionUiState.errorMessage ?: "Error occurred",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+// Submit button
             Button(
                 onClick = {
-                    val avatarResId = selectedImageUri?.toString() ?: "default_avatar"
-                    viewModel.addTeam(teamName, teamDescription, "$selectedCategory - $selectedBranch", avatarResId)
+                    val categoryText = selectedCompetitionName
+                    val branchText = selectedBranch
+                    val categoryBranch = "$categoryText - $branchText"
+                    val maxMembersInt = maxMembers.toIntOrNull() ?: 5
 
-
-                    // Navigate back or to team detail on success
-                    navController.popBackStack()
+                    teamViewModel.addTeam(
+                        name = teamName,
+                        description = teamDescription,
+                        category = categoryBranch,
+                        avatarResId = R.drawable.captain_icon, // default avatar dari resources
+                        imageUri = selectedImageUri,
+                        maxMembers = maxMembersInt,
+                        isPrivate = isPrivate,
+                        onSuccess = {
+                            navController.popBackStack()
+                        },
+                        onFailure = {
+                            Log.e("AddTeam", "Failed to add team: ${it.message}")
+                        }
+                    )
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -480,15 +580,25 @@ fun FormCreateTeamScreen(
                     containerColor = DodgerBlue
                 ),
                 shape = RoundedCornerShape(8.dp),
-                enabled = teamName.isNotEmpty() && selectedCategory.isNotEmpty() && selectedBranch.isNotEmpty()
+                enabled = teamName.isNotEmpty() &&
+                        selectedCompetitionId.isNotEmpty() &&
+                        selectedBranch.isNotEmpty() &&
+                        !competitionUiState.isLoading
             ) {
-                Text(
-                    text = "Completed",
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                if (competitionUiState.isLoading) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(24.dp)
                     )
-                )
+                } else {
+                    Text(
+                        text = "Completed",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))

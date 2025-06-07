@@ -5,10 +5,11 @@ sealed class Routes(val routes: String) {
     object TeamManagement : Routes("team_management")
     object FormAddTeam : Routes("form_add_team")
     object JoinTeam : Routes("join_team")
-    object TeamDetail : Routes("team_detail")
     object CategoryTeams : Routes("category_team")
     object TeamList : Routes("team_list") //contoh firebase
     object AddTeam : Routes("add_team") //contoh firebase
+    object TeamListCategory : Routes("team_list")
+    object Notifications : Routes("notification")
 
     data object Login : Routes("login")
     data object Register : Routes("register")
@@ -18,8 +19,11 @@ sealed class Routes(val routes: String) {
 
     // Dashboard routes
     data object Home : Routes("home")
+    data object HomeV5 : Routes("homev5")
     data object Search : Routes("search")
     data object Profile : Routes("profile")
+    object CompleteProfile : Routes("complete_profile")
+    object ProfileSettings : Routes("profile_settings") // Pastikan nama route sesuai
     data object Competition : Routes("competition")
     data object Wishlist : Routes("wishlist")
     data object Cart : Routes("cart")
@@ -28,6 +32,9 @@ sealed class Routes(val routes: String) {
         fun createRoute(id: Int) = "detail/$id"
     }
     object Verification : Routes("verification")
+    object CekEmail : Routes("cek_email/{email}") {
+        fun createRoute(email: String) = "cek_email/$email"
+    }
     object RegisterSuccess : Routes("register_success")
     object ForgotPassword : Routes("forgot_password")
     object ResetPassword : Routes("reset_password")
@@ -41,4 +48,5 @@ sealed class Routes(val routes: String) {
             "chat_group/$teamId/$teamName"
     }
     object InviteSelect : Routes("invite_select")
+    object DraftSelectMember : Routes("draft_select_member")
 }

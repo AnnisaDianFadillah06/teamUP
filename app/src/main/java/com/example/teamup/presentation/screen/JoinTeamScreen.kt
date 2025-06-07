@@ -1,5 +1,6 @@
 package com.example.teamup.presentation.screen
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -28,7 +30,11 @@ import androidx.navigation.NavController
 import com.example.teamup.R
 import com.example.teamup.data.model.CompetitionModelDummy
 import com.example.teamup.data.model.TeamModel
+import com.example.teamup.data.repositories.NotificationRepository
+import com.example.teamup.data.sources.remote.FirebaseNotificationDataSource
 import com.example.teamup.data.viewmodels.JoinTeamViewModel
+import com.example.teamup.data.viewmodels.NotificationViewModel
+import com.example.teamup.presentation.components.NotificationIcon
 import com.example.teamup.route.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,13 +43,22 @@ fun JoinTeamScreen(
     navController: NavController,
     viewModel: JoinTeamViewModel
 ) {
+    val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     val categories by viewModel.categories.collectAsState()
     val popularTeams by viewModel.popularTeams.collectAsState()
 
+    // Get NotificationViewModel to display unread count
+    val notificationRepository = NotificationRepository.getInstance(
+        FirebaseNotificationDataSource(context)
+    )
+    val notificationViewModel = NotificationViewModel.getInstance(notificationRepository)
+    val unreadCount by notificationViewModel.unreadCount.collectAsState()
+
     LaunchedEffect(key1 = Unit) {
         viewModel.loadCategories()
         viewModel.loadPopularTeams()
+        notificationViewModel.loadNotifications()
     }
 
     Scaffold(
@@ -57,6 +72,12 @@ fun JoinTeamScreen(
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
+                },
+                actions = {
+                    NotificationIcon(
+                        count = unreadCount,
+                        onClick = { navController.navigate(Routes.Notifications.routes) }
+                    )
                 }
             )
         }
@@ -105,8 +126,7 @@ fun JoinTeamScreen(
                     items(categories) { category ->
                         CategoryCard(
                             category = category,
-                            onClick = {
-                                navController.navigate(Routes.CategoryTeams.routes.replace("{categoryId}", category.id))
+                            onClick = { navController.navigate(Routes.TeamListCategory.routes)
                             }
                         )
                     }
@@ -168,7 +188,7 @@ fun CategoryCard(
             modifier = Modifier
                 .size(64.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(Color.White),
             contentAlignment = Alignment.Center
         ) {
             Image(
@@ -217,7 +237,8 @@ fun TeamCard(
                 )
             },
         shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Row(
             modifier = Modifier
