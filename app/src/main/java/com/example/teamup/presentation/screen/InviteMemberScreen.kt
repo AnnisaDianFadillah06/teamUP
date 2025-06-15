@@ -22,6 +22,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -29,13 +30,11 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.teamup.R
 import com.example.teamup.common.theme.DodgerBlue
-import com.example.teamup.data.model.MemberInviteModel
 import com.example.teamup.data.model.MemberInviteModelV2
 import com.example.teamup.data.repositories.InviteMemberRepositoryV2
 import com.example.teamup.data.repositories.NotificationRepositoryV2
 import com.example.teamup.data.sources.remote.FirebaseNotificationDataSourceV2
 import com.example.teamup.data.viewmodels.InviteMemberViewModel
-import com.example.teamup.data.viewmodels.NotificationViewModelV2
 import com.example.teamup.route.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,15 +56,29 @@ fun InviteMemberScreen(
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Permintaan", "Menunggu")
 
+    // Show success dialog for accepted invitation
+    var showSuccessDialog by remember { mutableStateOf(false) }
+    var successMessage by remember { mutableStateOf("") }
+
     // Handle action state changes
     LaunchedEffect(actionState) {
         when (actionState) {
             is InviteMemberViewModel.ActionState.Success -> {
-                // Show success message (could use SnackBar)
+                val successState = actionState as InviteMemberViewModel.ActionState.Success
+                if (successState.message.contains("Undangan diterima")) {
+                    showSuccessDialog = true
+                    successMessage = "Member baru telah masuk"
+                }
                 inviteMemberViewModel.resetActionState()
             }
             is InviteMemberViewModel.ActionState.Error -> {
-                // Show error message (could use SnackBar)
+                val snackbarHostState = SnackbarHostState()
+                val errorState = actionState as InviteMemberViewModel.ActionState.Error
+                snackbarHostState.showSnackbar(
+                    message = errorState.message,
+                    actionLabel = "Tutup",
+                    duration = SnackbarDuration.Long
+                )
                 inviteMemberViewModel.resetActionState()
             }
             else -> {}
@@ -115,6 +128,17 @@ fun InviteMemberScreen(
                         fontWeight = FontWeight.Medium
                     )
                 }
+            }
+        },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = remember { SnackbarHostState() }
+            ) { snackbarData ->
+                Snackbar(
+                    snackbarData = snackbarData,
+                    containerColor = Color.Red.copy(alpha = 0.9f),
+                    contentColor = Color.White
+                )
             }
         }
     ) { paddingValues ->
@@ -168,9 +192,7 @@ fun InviteMemberScreen(
                 // Tab Content
                 when (selectedTabIndex) {
                     0 -> {
-                        // Permintaan Tab (Invitations received by current user)
                         if (pendingInvitations.isEmpty()) {
-                            // Show empty state
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
@@ -202,9 +224,7 @@ fun InviteMemberScreen(
                         }
                     }
                     1 -> {
-                        // Menunggu Tab (Invitations sent by current user)
                         if (waitingInvitations.isEmpty()) {
-                            // Show empty state
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
@@ -234,6 +254,26 @@ fun InviteMemberScreen(
                 }
             }
         }
+    }
+
+    // Success dialog for accepted invitation
+    if (showSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showSuccessDialog = false
+                inviteMemberViewModel.resetActionState()
+            },
+            title = { Text("Member Baru Bergabung") },
+            text = { Text(successMessage, textAlign = TextAlign.Center) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showSuccessDialog = false
+                        inviteMemberViewModel.resetActionState()
+                    }
+                ) { Text("OK") }
+            }
+        )
     }
 }
 
@@ -288,7 +328,6 @@ fun MemberRequestItemV2(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Member Avatar
         if (member.profileImageUrl.isNotEmpty()) {
             AsyncImage(
                 model = member.profileImageUrl,
@@ -313,7 +352,6 @@ fun MemberRequestItemV2(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // Member Info
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = member.name,
@@ -330,7 +368,6 @@ fun MemberRequestItemV2(
             )
         }
 
-        // Action buttons
         if (showActionButtons) {
             Button(
                 onClick = { onAccept(member.id) },

@@ -25,6 +25,15 @@ class InviteMemberRepositoryV2 private constructor() {
         }
     }
 
+    suspend fun getInvitationById(inviteId: String): MemberInviteModelV2? {
+        return try {
+            val doc = firestore.collection("invitations").document(inviteId).get().await()
+            doc.toObject(MemberInviteModelV2::class.java)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     suspend fun getPendingInvitations(): List<MemberInviteModelV2> {
         return try {
             val currentUserId = auth.currentUser?.uid ?: return emptyList()
@@ -145,7 +154,12 @@ class InviteMemberRepositoryV2 private constructor() {
 
     suspend fun acceptInvitation(inviteId: String): Boolean {
         return try {
-            val currentUserId = auth.currentUser?.uid ?: return false
+            val invitationDoc = firestore.collection("invitations").document(inviteId).get().await()
+            if (!invitationDoc.exists()) return false
+
+            val invitationData = invitationDoc.data ?: return false
+            val teamId = invitationData["teamId"] as? String ?: return false
+            val senderId = invitationData["senderId"] as? String ?: return false
 
             // Update invitation status
             firestore.collection("invitations").document(inviteId)
@@ -154,20 +168,22 @@ class InviteMemberRepositoryV2 private constructor() {
                         "status" to "ACCEPTED",
                         "updatedAt" to FieldValue.serverTimestamp()
                     )
-                ).await()
+                )
+                .await()
 
-            // Get invitation details to add user to team
-            val inviteDoc = firestore.collection("invitations").document(inviteId).get().await()
-            val teamId = inviteDoc.getString("teamId") ?: return false
-
-            // Add user to team members
+            // Update team: increment memberCount and add senderId to members
             firestore.collection("teams").document(teamId)
-                .update("memberIds", FieldValue.arrayUnion(currentUserId))
+                .update(
+                    mapOf(
+                        "memberCount" to FieldValue.increment(1),
+                        "members" to FieldValue.arrayUnion(senderId),
+                        "isFull" to FieldValue.serverTimestamp() // Optional: Update isFull if needed
+                    )
+                )
                 .await()
 
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Error accepting invitation: ${e.message}")
             false
         }
     }

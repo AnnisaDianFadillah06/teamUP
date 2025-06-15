@@ -70,25 +70,6 @@ class InviteMemberViewModel(
         }
     }
 
-    fun acceptInvitation(inviteId: String) {
-        viewModelScope.launch {
-            try {
-                _actionState.value = ActionState.Loading
-
-                val success = inviteMemberRepository.acceptInvitation(inviteId)
-
-                if (success) {
-                    _actionState.value = ActionState.Success("Undangan diterima")
-                    loadInvitations()
-                } else {
-                    _actionState.value = ActionState.Error("Gagal menerima undangan")
-                }
-            } catch (e: Exception) {
-                _actionState.value = ActionState.Error(e.message ?: "Terjadi kesalahan")
-            }
-        }
-    }
-
     fun rejectInvitation(inviteId: String) {
         viewModelScope.launch {
             try {
@@ -129,6 +110,23 @@ class InviteMemberViewModel(
                 return InviteMemberViewModel(inviteMemberRepository, notificationRepository) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
+        }
+    }
+
+    fun acceptInvitation(inviteId: String) {
+        viewModelScope.launch {
+            try {
+                _actionState.value = ActionState.Loading
+                val success = inviteMemberRepository.acceptInvitation(inviteId)
+                if (success) {
+                    _actionState.value = ActionState.Success("Undangan diterima")
+                    loadInvitations()
+                } else {
+                    _actionState.value = ActionState.Error("Gagal menerima undangan")
+                }
+            } catch (e: Exception) {
+                _actionState.value = ActionState.Error(e.message ?: "Terjadi kesalahan")
+            }
         }
     }
 }
