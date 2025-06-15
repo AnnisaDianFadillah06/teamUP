@@ -42,7 +42,7 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
     BackPressHandler(navController)
 
     Scaffold(bottomBar = {
-        if (currentRoute != Routes.DraftSelectMember.routes && currentRoute != Routes.Invite.routes && currentRoute != Routes.InviteSelect.routes && currentRoute != Routes.Detail.routes && currentRoute != Routes.ChatGroup.routes && currentRoute != Routes.FormAddTeam.routes && currentRoute != Routes.Cart.routes && currentRoute != Routes.Search.routes) {
+        if (currentRoute != Routes.TeamDetailGrup.routes && currentRoute != Routes.DraftSelectMember.routes && currentRoute != Routes.Invite.routes && currentRoute != Routes.InviteSelect.routes && currentRoute != Routes.Detail.routes && currentRoute != Routes.ChatGroup.routes && currentRoute != Routes.FormAddTeam.routes && currentRoute != Routes.Cart.routes && currentRoute != Routes.Search.routes) {
             BottomNavigationBar(navController)
         }
     }) { paddingValues ->
