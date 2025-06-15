@@ -1,8 +1,10 @@
 package com.example.teamup.presentation.screen
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,12 +20,17 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.teamup.R
 import com.example.teamup.common.theme.DodgerBlue
 import com.example.teamup.data.model.ChatMessageModel
+import com.example.teamup.data.viewmodels.ChatViewModel
+import com.example.teamup.data.viewmodels.ChatViewModelFactory
+import com.example.teamup.di.Injection
+import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -31,32 +38,35 @@ import java.util.*
 @Composable
 fun ChatGroupScreen(
     navController: NavController,
-    teamId: String = "1",
-    teamName: String = "Al Fath"
+    teamId: String,
+    teamName: String,
+    viewModel: ChatViewModel = viewModel(
+        factory = ChatViewModelFactory(Injection.provideChatRepository())
+    )
 ) {
-    // Sample chat messages - in a real app, these would come from a ViewModel
-    val messages = remember {
-        mutableStateListOf(
-            ChatMessageModel(
-                id = "1",
-                senderId = "1234",
-                senderName = "Annisa Dian",
-                content = "Halo semua, bagaimana perkembangan proyek kita?",
-                timestamp = System.currentTimeMillis() - 3600000,
-                isCurrentUser = false
-            ),
-            ChatMessageModel(
-                id = "2",
-                senderId = "5678",
-                senderName = "Alya Narina",
-                content = "Saya sudah menyelesaikan desain UI untuk halaman utama.",
-                timestamp = System.currentTimeMillis() - 1800000,
-                isCurrentUser = true
-            )
-        )
+    val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsState()
+    var messageText by remember { mutableStateOf("") }
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(teamId) {
+        viewModel.loadMessages(teamId)
     }
 
-    var messageText by remember { mutableStateOf("") }
+    // Auto-scroll to the latest message when messages change
+    LaunchedEffect(uiState.messages) {
+        if (uiState.messages.isNotEmpty()) {
+            listState.animateScrollToItem(uiState.messages.size - 1)
+        }
+    }
+
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            viewModel.clearError()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -130,16 +140,11 @@ fun ChatGroupScreen(
 
                     FloatingActionButton(
                         onClick = {
-                            if (messageText.isNotBlank()) {
-                                messages.add(
-                                    ChatMessageModel(
-                                        id = UUID.randomUUID().toString(),
-                                        senderId = "5678",
-                                        senderName = "Alya Narina",
-                                        content = messageText,
-                                        timestamp = System.currentTimeMillis(),
-                                        isCurrentUser = true
-                                    )
+                            if (messageText.isNotBlank() && currentUser != null) {
+                                viewModel.sendMessage(
+                                    teamId = teamId,
+                                    content = messageText,
+                                    senderName = currentUser.displayName ?: "Anonymous"
                                 )
                                 messageText = ""
                             }
@@ -157,16 +162,27 @@ fun ChatGroupScreen(
             }
         }
     ) { paddingValues ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-            reverseLayout = true
         ) {
-            items(messages.reversed()) { message ->
-                ChatMessageItem(message)
-                Spacer(modifier = Modifier.height(8.dp))
+            if (uiState.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    state = listState
+                ) {
+                    items(uiState.messages) { message ->
+                        ChatMessageItem(message)
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
             }
         }
     }
@@ -178,7 +194,7 @@ fun ChatMessageItem(message: ChatMessageModel) {
     val backgroundColor = if (message.isCurrentUser) DodgerBlue else Color(0xFFF1F1F1)
     val textColor = if (message.isCurrentUser) Color.White else Color.Black
     val dateFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-    val timeString = dateFormatter.format(Date(message.timestamp))
+    val timeString = dateFormatter.format(message.timestamp.toDate())
 
     Column(
         horizontalAlignment = alignment,
