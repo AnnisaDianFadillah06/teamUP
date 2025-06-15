@@ -26,6 +26,7 @@ sealed class Routes(val routes: String) {
     data object CompetitionDetail : Routes("competition_detail/{competitionId}") {
         fun createRoute(competitionId: String) = "competition_detail/$competitionId"
     }
+
     data object ProfileSettings : Routes("profile_settings") // Pastikan nama route sesuai
     data object Competition : Routes("competition")
     data object Wishlist : Routes("wishlist")

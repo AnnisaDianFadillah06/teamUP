@@ -3,6 +3,7 @@ package com.example.teamup.presentation.screen
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -14,11 +15,10 @@ import androidx.navigation.navArgument
 import com.example.teamup.common.utils.BackPressHandler
 import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.data.viewmodels.JoinTeamViewModel
-import com.example.teamup.data.viewmodels.SharedMemberViewModel
 import com.example.teamup.di.Injection
 import com.example.teamup.di.ViewModelJoinFactory
 import com.example.teamup.presentation.components.BottomNavigationBar
-import com.example.teamup.presentation.screen.competition.CompetitionDetailScreen // ✅ Use Dynamic version
+import com.example.teamup.presentation.screen.competition.CompetitionDetailScreen
 import com.example.teamup.presentation.screen.competition.CompetitionScreen
 import com.example.teamup.presentation.screen.profile.ProfileScreen
 import com.example.teamup.presentation.screen.profile.ProfileSettingsScreen
@@ -28,23 +28,29 @@ import com.example.teamup.route.Routes
 fun DashboardScreen(navController: NavHostController = rememberNavController(), competitionViewModel: CompetitionViewModel) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val sharedMemberViewModel: SharedMemberViewModel = viewModel()
 
     BackPressHandler(navController)
 
-    Scaffold(bottomBar = {
-        if (currentRoute != "draft_invitation/{selectedIds}" &&
-            currentRoute != Routes.Invite.routes &&
-            currentRoute != Routes.InviteSelect.routes &&
-            currentRoute != Routes.Detail.routes &&
-            currentRoute != Routes.ChatGroup.routes &&
-            currentRoute != Routes.FormAddTeam.routes &&
-            currentRoute != Routes.Cart.routes &&
-            currentRoute != Routes.Search.routes &&
-            currentRoute != "competition_detail/{competitionId}") {
-            BottomNavigationBar(navController)
+    // ✅ STABLE: Better bottom bar logic
+    val shouldShowBottomBar = remember(currentRoute) {
+        when {
+            currentRoute?.contains("competition_detail") == true -> false
+            currentRoute?.contains("chat_group") == true -> false
+            currentRoute?.contains("draft_invitation") == true -> false
+            currentRoute == Routes.Search.routes -> false
+            currentRoute == Routes.Cart.routes -> false
+            currentRoute == Routes.ProfileSettings.routes -> false
+            else -> true
         }
-    }) { paddingValues ->
+    }
+
+    Scaffold(
+        bottomBar = {
+            if (shouldShowBottomBar) {
+                BottomNavigationBar(navController = navController)
+            }
+        }
+    ) { paddingValues ->
         NavHost(
             navController = navController,
             startDestination = Routes.HomeV5.routes
@@ -55,23 +61,25 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
                     paddingValues = paddingValues,
                     competitionViewModel = competitionViewModel,
                     onHomeClick = {
-                        navController.navigate(Routes.Home.routes) {
-                            popUpTo(Routes.Home.routes) { inclusive = true }
+                        navController.navigate(Routes.HomeV5.routes) {
+                            popUpTo(Routes.HomeV5.routes) { inclusive = true }
                         }
                     }
                 )
             }
+
             composable(Routes.Search.routes) {
-                SearchScreen(navController = navController)
+                EnhancedSearchScreen(navController = navController)
             }
+
             composable(Routes.Profile.routes) {
                 ProfileScreen(navController = navController)
             }
+
             composable(Routes.Competition.routes) {
                 CompetitionScreen(navController = navController)
             }
 
-            // ✅ Fixed CompetitionDetail composable
             composable(
                 route = Routes.CompetitionDetail.routes,
                 arguments = listOf(
@@ -80,11 +88,10 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
             ) { backStackEntry ->
                 val competitionId = backStackEntry.arguments?.getString("competitionId") ?: ""
 
-                // ✅ Use DynamicCompetitionDetailScreen with correct parameters
                 CompetitionDetailScreen(
                     navController = navController,
                     competitionId = competitionId,
-                    competitionViewModel = competitionViewModel,
+                    competitionViewModel = competitionViewModel
                 )
             }
 
@@ -103,7 +110,8 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
             }
 
             composable(Routes.TeamManagement.routes) {
-                TeamManagementScreen(navController = navController)
+                // ✅ Keep original TeamManagementScreen intact - hanya ubah nama parameter
+                TeamManagementScreen(navController = navController, teamName = "Tim Lomba")
             }
             composable(Routes.FormAddTeam.routes) {
                 FormCreateTeamScreen(navController = navController)
@@ -114,14 +122,14 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
             composable(Routes.InviteSelect.routes) {
                 InviteSelectMemberScreen(
                     navController = navController,
-                    sharedViewModel = sharedMemberViewModel
+                    sharedViewModel = viewModel()
                 )
             }
 
             composable(Routes.DraftSelectMember.routes) {
                 DraftInviteSelectMemberScreen(
                     navController = navController,
-                    sharedViewModel = sharedMemberViewModel
+                    sharedViewModel = viewModel()
                 )
             }
 
@@ -180,7 +188,6 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
                 )
             }
 
-            // ✅ Remove duplicate Profile composable (it's already defined above)
             composable(Routes.ProfileSettings.routes) {
                 ProfileSettingsScreen(navController)
             }

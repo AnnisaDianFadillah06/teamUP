@@ -91,8 +91,7 @@ import kotlinx.coroutines.delay
 fun HomeScreenV5(
     paddingValues: PaddingValues,
     navController: NavController,
-    onHomeClick: () -> Unit = {}, // Tambah callback untuk home navigation
-    // Tambah CompetitionViewModel
+    onHomeClick: () -> Unit = {},
     competitionViewModel: CompetitionViewModel = viewModel(
         factory = CompetitionViewModelFactory(
             Injection.provideCompetitionRepository(),
@@ -102,12 +101,9 @@ fun HomeScreenV5(
 ) {
     val uiState by competitionViewModel.uiState.collectAsState()
     var isRefreshing by remember { mutableStateOf(false) }
-
-    // Search state
     var searchQuery by remember { mutableStateOf("") }
     var isSearchActive by remember { mutableStateOf(false) }
 
-    // Filter competitions dan teams berdasarkan search query - ✅ Fixed dengan toUpperCase()
     val filteredCompetitions by remember {
         derivedStateOf {
             if (searchQuery.isBlank()) {
@@ -117,13 +113,11 @@ fun HomeScreenV5(
                 uiState.competitions.filter { competition ->
                     competition.namaLomba?.lowercase()?.contains(query) == true ||
                             competition.deskripsiLomba?.lowercase()?.contains(query) == true
-                    // competition.cabangLomba?.lowercase()?.contains(query) == true  // ✅ Comment ini aja
                 }
             }
         }
     }
 
-    // Pull-to-refresh state dengan refresh yang lebih cepat
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing)
 
     SwipeRefresh(
@@ -137,18 +131,19 @@ fun HomeScreenV5(
             modifier = Modifier
                 .fillMaxSize()
                 .background(color = White2),
+            // ✅ FIXED: Remove top padding yang causing white space
             contentPadding = PaddingValues(
-                top = 0.dp,
+                top = 0.dp, // ✅ Ubah dari paddingValues.calculateTopPadding() ke 0.dp
                 bottom = paddingValues.calculateBottomPadding() + 16.dp
             )
         ) {
             item {
                 Column {
-                    // Custom Header dengan Notification Badge (Red Dot Only)
+                    // ✅ Custom Header tanpa extra padding
                     WhatsAppStyleHeader(navController = navController)
 
                     Column(modifier = Modifier.padding(16.dp)) {
-                        // Real Search Field dengan Firebase Data
+                        // Search field dan content lainnya...
                         RealSearchField(
                             searchQuery = searchQuery,
                             onSearchQueryChange = {
@@ -163,7 +158,6 @@ fun HomeScreenV5(
 
                         Spacer(modifier = Modifier.height(20.dp))
 
-                        // Show search results atau normal content
                         if (isSearchActive) {
                             SearchResultsSection(
                                 searchQuery = searchQuery,
@@ -172,41 +166,25 @@ fun HomeScreenV5(
                                 isLoading = uiState.isLoading
                             )
                         } else {
-                            // Normal dashboard content
-                            // Featured Banner Carousel with Auto-Slide + Loop
                             FeaturedBannerSection()
-
                             Spacer(modifier = Modifier.height(24.dp))
-
-                            // Quick Access Menu
                             QuickAccessSection(navController = navController)
                         }
                     }
                 }
             }
 
-            // Only show when not searching
             if (!isSearchActive) {
                 item {
                     Spacer(modifier = Modifier.height(20.dp))
-
-                    // Update Active Competitions Section dengan refresh yang benar
                     ActiveCompetitionsSection(
                         navController = navController,
                         competitionViewModel = competitionViewModel,
                         isRefreshing = isRefreshing,
                         onRefreshComplete = { isRefreshing = false }
                     )
-
                     Spacer(modifier = Modifier.height(20.dp))
-
-                    // Comment My Teams Section sesuai request
-                    // MyTeamsSection(navController = navController)
-
-                    // Ganti Recent Activities jadi Statistics Section
                     StatisticsSection(navController = navController)
-
-                    // Tambah spacer untuk scroll yang proper
                     Spacer(modifier = Modifier.height(32.dp))
                 }
             }
@@ -300,13 +278,14 @@ fun SearchResultsSection(
             }
 
             else -> {
-                // Show search results
+                // ✅ FIXED: Show search results dengan navigation ke detail
                 filteredCompetitions.forEach { competition ->
                     SearchResultCard(
                         competition = competition,
                         searchQuery = searchQuery,
                         onClick = {
-                            navController.navigate(Routes.Competition.routes)
+                            // ✅ Navigate to competition detail instead of competition list
+                            navController.navigate(Routes.CompetitionDetail.createRoute(competition.id))
                         }
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -401,28 +380,37 @@ fun SearchResultCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = competition.namaLomba ?: "Competition",
+                    text = competition.namaLomba,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "Category: ${competition.cabangLomba ?: "General"}",
+                    text = competition.deskripsiLomba.take(50) + "...",
                     fontSize = 12.sp,
-                    color = Color.Gray
+                    color = Color.Gray,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "Deadline: ${competition.tanggalPelaksanaan ?: "TBA"}",
+                    text = "Deadline: ${competition.tanggalPelaksanaan}",
                     fontSize = 10.sp,
                     color = Color.Gray
                 )
             }
 
-            Icon(
-                Icons.Default.ChevronRight,
-                contentDescription = "View",
-                tint = Color.Gray,
-                modifier = Modifier.size(20.dp)
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = "View",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "Tap to view",
+                    fontSize = 8.sp,
+                    color = Color.Gray
+                )
+            }
         }
     }
 }
@@ -768,14 +756,13 @@ fun ActiveCompetitionsSection(
                 val competitions = uiState.competitions
 
                 if (competitions.isNotEmpty()) {
-                    // Ambil max 2 kompetisi terbaru untuk home screen
+                    // ✅ FIXED: Ambil max 2 kompetisi terbaru untuk home screen dengan navigation ke detail
                     competitions.take(2).forEach { competition ->
-                        CompetitionCard(
-                            title = competition.namaLomba ?: "Competition",
-                            subtitle = "Deadline: ${competition.tanggalPelaksanaan ?: "TBA"}",
-                            participants = "Competition available",
+                        EnhancedCompetitionHomeCard(
+                            competition = competition,
                             onClick = {
-                                navController.navigate(Routes.Competition.routes)
+                                // ✅ Navigate directly to competition detail
+                                navController.navigate(Routes.CompetitionDetail.createRoute(competition.id))
                             }
                         )
 
@@ -788,6 +775,107 @@ fun ActiveCompetitionsSection(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun EnhancedCompetitionHomeCard(
+    competition: CompetitionModel,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        Color(0xFFE53935).copy(alpha = 0.1f),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.EmojiEvents,
+                    contentDescription = "Competition",
+                    tint = Color(0xFFE53935),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = competition.namaLomba,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "Deadline: ${competition.tanggalPelaksanaan}",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+
+                // ✅ Show status badges
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    Text(
+                        text = competition.visibilityStatus,
+                        fontSize = 10.sp,
+                        color = Color.White,
+                        modifier = Modifier
+                            .background(
+                                when(competition.visibilityStatus) {
+                                    "Published" -> Color(0xFF4CAF50)
+                                    "Draft" -> Color(0xFFFF9800)
+                                    "Cancelled" -> Color(0xFFF44336)
+                                    else -> Color.Gray
+                                },
+                                RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+
+                    Text(
+                        text = competition.activityStatus,
+                        fontSize = 10.sp,
+                        color = Color.White,
+                        modifier = Modifier
+                            .background(
+                                when(competition.activityStatus) {
+                                    "Active" -> Color(0xFF2196F3)
+                                    "Inactive" -> Color(0xFF9E9E9E)
+                                    else -> Color.Gray
+                                },
+                                RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = "View Detail",
+                tint = Color.Gray,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }

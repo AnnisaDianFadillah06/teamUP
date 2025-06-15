@@ -19,7 +19,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,7 +27,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -42,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.teamup.R
 import com.example.teamup.data.model.CompetitionActivityStatus
@@ -49,7 +48,8 @@ import com.example.teamup.data.model.CompetitionModel
 import com.example.teamup.data.model.CompetitionVisibilityStatus
 import com.example.teamup.data.viewmodels.CabangLombaViewModel
 import com.example.teamup.data.viewmodels.CompetitionViewModel
-import com.example.teamup.route.Routes
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,7 +57,7 @@ fun CompetitionListContent(
     uiState: CompetitionViewModel.CompetitionUiState,
     onAddClick: () -> Unit,
     onEditClick: (CompetitionModel) -> Unit,
-    onDetailClick: (CompetitionModel) -> Unit = {}, // ✅ Add detail click
+    onDetailClick: (CompetitionModel) -> Unit = {},
     cabangLombaViewModel: CabangLombaViewModel,
     viewModel: CompetitionViewModel,
     modifier: Modifier = Modifier
@@ -68,11 +68,13 @@ fun CompetitionListContent(
     var showCabangMenu by remember { mutableStateOf(false) }
     var selectedCabang by remember { mutableStateOf("Semua Cabang Lomba") }
 
-    // ✅ Simple refresh state without pull-to-refresh for now
+    // ✅ NEW: SwipeRefresh state
     var isRefreshing by remember { mutableStateOf(false) }
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing)
 
+    // ✅ Handle refresh completion
     LaunchedEffect(uiState.isLoading) {
-        if (!uiState.isLoading) {
+        if (!uiState.isLoading && isRefreshing) {
             isRefreshing = false
         }
     }
@@ -125,178 +127,170 @@ fun CompetitionListContent(
         matchesSearch && matchesFilter && matchesCabang
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        // ✅ Refresh button
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+    // ✅ REPLACED: SwipeRefresh instead of manual refresh
+    SwipeRefresh(
+        state = swipeRefreshState,
+        onRefresh = {
+            isRefreshing = true
+            viewModel.refreshData()
+            cabangLombaViewModel.getAllCabangLomba()
+        },
+        modifier = modifier.fillMaxSize()
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // ✅ OPTION 1: Keep but make it more subtle
             Text(
                 text = "Kompetisi (${filteredCompetitions.size})",
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold, // ✅ Less bold
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f), // ✅ Slightly faded
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
             )
 
-            IconButton(
-                onClick = {
-                    isRefreshing = true
-                    viewModel.refreshData()
-                    cabangLombaViewModel.getAllCabangLomba()
-                }
+            // Search bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                placeholder = { Text("Cari kompetisi di sini") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                singleLine = true,
+                shape = RoundedCornerShape(8.dp)
+            )
+
+            // Filter chips
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    Icons.Default.Refresh,
-                    contentDescription = "Refresh",
-                    tint = if (isRefreshing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-
-        // Search bar
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            placeholder = { Text("Cari kompetisi di sini") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-            singleLine = true,
-            shape = RoundedCornerShape(8.dp)
-        )
-
-        // Filter chips
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Status Filter chip
-            Box {
-                FilterChip(
-                    selected = false,
-                    onClick = { showFilterMenu = !showFilterMenu },
-                    label = { Text(selectedFilter) },
-                    trailingIcon = {
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = "Status Filter")
-                    }
-                )
-                DropdownMenu(
-                    expanded = showFilterMenu,
-                    onDismissRequest = { showFilterMenu = false }
-                ) {
-                    filterOptions.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(option) },
-                            onClick = {
-                                selectedFilter = option
-                                showFilterMenu = false
-                            }
-                        )
-                    }
-                }
-            }
-
-            // Cabang chip
-            Box {
-                FilterChip(
-                    selected = false,
-                    onClick = { showCabangMenu = !showCabangMenu },
-                    label = { Text(selectedCabang) },
-                    trailingIcon = {
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = "Cabang Filter")
-                    }
-                )
-                DropdownMenu(
-                    expanded = showCabangMenu,
-                    onDismissRequest = { showCabangMenu = false }
-                ) {
-                    val cabangOptions = listOf("Semua Cabang Lomba") + allUniqueCabang
-                    cabangOptions.forEach { cabang ->
-                        DropdownMenuItem(
-                            text = { Text(cabang) },
-                            onClick = {
-                                selectedCabang = cabang
-                                showCabangMenu = false
-                            }
-                        )
-                    }
-                }
-            }
-        }
-
-        when {
-            uiState.isLoading && uiState.competitions.isEmpty() -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            }
-
-            filteredCompetitions.isEmpty() -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.task2),
-                        contentDescription = "No Competition",
-                        modifier = Modifier.size(200.dp)
+                // Status Filter chip
+                Box {
+                    FilterChip(
+                        selected = false,
+                        onClick = { showFilterMenu = !showFilterMenu },
+                        label = { Text(selectedFilter) },
+                        trailingIcon = {
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = "Status Filter")
+                        }
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = if (searchQuery.isNotEmpty() || selectedFilter != "Semua Status" || selectedCabang != "Semua Cabang Lomba")
-                            "Tidak ada kompetisi yang sesuai dengan filter"
-                        else
-                            "Belum ada kompetisi tersedia",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = onAddClick,
-                        modifier = Modifier.fillMaxWidth(0.8f)
+                    DropdownMenu(
+                        expanded = showFilterMenu,
+                        onDismissRequest = { showFilterMenu = false }
                     ) {
-                        Text("Buat Kompetisi")
+                        filterOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    selectedFilter = option
+                                    showFilterMenu = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Cabang chip
+                Box {
+                    FilterChip(
+                        selected = false,
+                        onClick = { showCabangMenu = !showCabangMenu },
+                        label = { Text(selectedCabang) },
+                        trailingIcon = {
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = "Cabang Filter")
+                        }
+                    )
+                    DropdownMenu(
+                        expanded = showCabangMenu,
+                        onDismissRequest = { showCabangMenu = false }
+                    ) {
+                        val cabangOptions = listOf("Semua Cabang Lomba") + allUniqueCabang
+                        cabangOptions.forEach { cabang ->
+                            DropdownMenuItem(
+                                text = { Text(cabang) },
+                                onClick = {
+                                    selectedCabang = cabang
+                                    showCabangMenu = false
+                                }
+                            )
+                        }
                     }
                 }
             }
 
-            else -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(filteredCompetitions) { competition ->
-                        val associatedCabangList = cabangByCompetitionId[competition.id] ?: emptyList()
+            when {
+                uiState.isLoading && uiState.competitions.isEmpty() -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
 
-                        // ✅ Enhanced CompetitionCard with detail click
-                        EnhancedCompetitionCard(
-                            competition = competition,
-                            associatedCabangList = associatedCabangList,
-                            onEditClick = onEditClick,
-                            onDetailClick = { selectedCompetition ->
-                                // ✅ Navigate to detail screen with competition ID
-                                onDetailClick(selectedCompetition)
-                            }
+                filteredCompetitions.isEmpty() -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.task2),
+                            contentDescription = "No Competition",
+                            modifier = Modifier.size(200.dp)
                         )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = if (searchQuery.isNotEmpty() || selectedFilter != "Semua Status" || selectedCabang != "Semua Cabang Lomba")
+                                "Tidak ada kompetisi yang sesuai dengan filter"
+                            else
+                                "Belum ada kompetisi tersedia",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = onAddClick,
+                            modifier = Modifier.fillMaxWidth(0.8f)
+                        ) {
+                            Text("Buat Kompetisi")
+                        }
+                    }
+                }
+
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(filteredCompetitions) { competition ->
+                            val associatedCabangList = cabangByCompetitionId[competition.id] ?: emptyList()
+
+                            // ✅ Enhanced CompetitionCard with detail click
+                            EnhancedCompetitionCard(
+                                competition = competition,
+                                associatedCabangList = associatedCabangList,
+                                onEditClick = onEditClick,
+                                onDetailClick = { selectedCompetition ->
+                                    // ✅ Navigate to detail screen with competition ID
+                                    onDetailClick(selectedCompetition)
+                                }
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        uiState.errorMessage?.let { error ->
-            Text(
-                text = error,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(16.dp)
-            )
+            uiState.errorMessage?.let { error ->
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
         }
     }
 }
