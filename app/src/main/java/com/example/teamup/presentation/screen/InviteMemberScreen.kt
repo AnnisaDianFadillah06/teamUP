@@ -1,5 +1,6 @@
 package com.example.teamup.presentation.screen
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,48 +20,57 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.teamup.R
 import com.example.teamup.common.theme.DodgerBlue
 import com.example.teamup.data.model.MemberInviteModel
+import com.example.teamup.data.model.MemberInviteModelV2
+import com.example.teamup.data.repositories.InviteMemberRepositoryV2
+import com.example.teamup.data.repositories.NotificationRepositoryV2
+import com.example.teamup.data.sources.remote.FirebaseNotificationDataSourceV2
+import com.example.teamup.data.viewmodels.InviteMemberViewModel
+import com.example.teamup.data.viewmodels.NotificationViewModelV2
 import com.example.teamup.route.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InviteMemberScreen(
-    navController: NavController
+    navController: NavController,
+    inviteMemberViewModel: InviteMemberViewModel = viewModel(
+        factory = InviteMemberViewModel.Factory(
+            InviteMemberRepositoryV2.getInstance(),
+            NotificationRepositoryV2.getInstance(FirebaseNotificationDataSourceV2.getInstance())
+        )
+    )
 ) {
-    // Sample data for both tabs
-    val pendingMembers = remember {
-        listOf(
-            MemberInviteModel(
-                id = "1",
-                name = "Annisa Dian",
-                email = "annisadian01@gmail.com",
-                profileImage = R.drawable.captain_icon,
-                status = "PENDING"
-            )
-        )
-    }
-
-    val waitingMembers = remember {
-        listOf(
-            MemberInviteModel(
-                id = "2",
-                name = "Annisa Dian",
-                email = "annisadian01@gmail.com",
-                profileImage = R.drawable.captain_icon,
-                status = "WAITING"
-            )
-        )
-    }
+    val pendingInvitations by inviteMemberViewModel.pendingInvitations.collectAsState()
+    val waitingInvitations by inviteMemberViewModel.waitingInvitations.collectAsState()
+    val isLoading by inviteMemberViewModel.isLoading.collectAsState()
+    val actionState by inviteMemberViewModel.actionState.collectAsState()
 
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Permintaan", "Menunggu")
+
+    // Handle action state changes
+    LaunchedEffect(actionState) {
+        when (actionState) {
+            is InviteMemberViewModel.ActionState.Success -> {
+                // Show success message (could use SnackBar)
+                inviteMemberViewModel.resetActionState()
+            }
+            is InviteMemberViewModel.ActionState.Error -> {
+                // Show error message (could use SnackBar)
+                inviteMemberViewModel.resetActionState()
+            }
+            else -> {}
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -146,28 +156,80 @@ fun InviteMemberScreen(
                 }
             }
 
-            // Tab Content
-            when (selectedTabIndex) {
-                0 -> {
-                    // Permintaan Tab
-                    if (pendingMembers.isEmpty()) {
-                        EmptyStateMessage("Tidak ada permintaan bergabung")
-                    } else {
-                        MemberRequestsList(
-                            members = pendingMembers,
-                            showActionButtons = true
-                        )
-                    }
+            // Loading indicator
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = DodgerBlue)
                 }
-                1 -> {
-                    // Menunggu Tab
-                    if (waitingMembers.isEmpty()) {
-                        EmptyStateMessage("Tidak ada undangan yang menunggu")
-                    } else {
-                        MemberRequestsList(
-                            members = waitingMembers,
-                            showActionButtons = false
-                        )
+            } else {
+                // Tab Content
+                when (selectedTabIndex) {
+                    0 -> {
+                        // Permintaan Tab (Invitations received by current user)
+                        if (pendingInvitations.isEmpty()) {
+                            // Show empty state
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "Tidak ada permintaan bergabung",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+                        } else {
+                            MemberRequestsListV2(
+                                members = pendingInvitations,
+                                showActionButtons = true,
+                                onAccept = { inviteId ->
+                                    inviteMemberViewModel.acceptInvitation(inviteId)
+                                },
+                                onReject = { inviteId ->
+                                    inviteMemberViewModel.rejectInvitation(inviteId)
+                                },
+                                isActionLoading = actionState is InviteMemberViewModel.ActionState.Loading
+                            )
+                        }
+                    }
+                    1 -> {
+                        // Menunggu Tab (Invitations sent by current user)
+                        if (waitingInvitations.isEmpty()) {
+                            // Show empty state
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "Tidak ada undangan yang menunggu",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+                        } else {
+                            MemberRequestsListV2(
+                                members = waitingInvitations,
+                                showActionButtons = false,
+                                onAccept = { },
+                                onReject = { },
+                                isActionLoading = false
+                            )
+                        }
                     }
                 }
             }
@@ -176,9 +238,12 @@ fun InviteMemberScreen(
 }
 
 @Composable
-fun MemberRequestsList(
-    members: List<MemberInviteModel>,
-    showActionButtons: Boolean
+fun MemberRequestsListV2(
+    members: List<MemberInviteModelV2>,
+    showActionButtons: Boolean,
+    onAccept: (String) -> Unit,
+    onReject: (String) -> Unit,
+    isActionLoading: Boolean
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         if (showActionButtons) {
@@ -197,16 +262,25 @@ fun MemberRequestsList(
 
         LazyColumn {
             items(members) { member ->
-                MemberRequestItem(member = member, showActionButtons = showActionButtons)
+                MemberRequestItemV2(
+                    member = member,
+                    showActionButtons = showActionButtons,
+                    onAccept = onAccept,
+                    onReject = onReject,
+                    isActionLoading = isActionLoading
+                )
             }
         }
     }
 }
 
 @Composable
-fun MemberRequestItem(
-    member: MemberInviteModel,
-    showActionButtons: Boolean
+fun MemberRequestItemV2(
+    member: MemberInviteModelV2,
+    showActionButtons: Boolean,
+    onAccept: (String) -> Unit,
+    onReject: (String) -> Unit,
+    isActionLoading: Boolean
 ) {
     Row(
         modifier = Modifier
@@ -215,17 +289,27 @@ fun MemberRequestItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Member Avatar
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(member.profileImage)
-                .crossfade(true)
-                .build(),
-            contentDescription = "Member Avatar",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-        )
+        if (member.profileImageUrl.isNotEmpty()) {
+            AsyncImage(
+                model = member.profileImageUrl,
+                contentDescription = "Member Avatar",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape),
+                placeholder = painterResource(id = R.drawable.captain_icon),
+                error = painterResource(id = R.drawable.captain_icon)
+            )
+        } else {
+            Image(
+                painter = painterResource(id = if (member.profileImageRes != 0) member.profileImageRes else R.drawable.captain_icon),
+                contentDescription = "Member Avatar",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+            )
+        }
 
         Spacer(modifier = Modifier.width(12.dp))
 
@@ -249,7 +333,7 @@ fun MemberRequestItem(
         // Action buttons
         if (showActionButtons) {
             Button(
-                onClick = { /* Handle accept */ },
+                onClick = { onAccept(member.id) },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF27AE60)
                 ),
@@ -257,13 +341,21 @@ fun MemberRequestItem(
                     .padding(horizontal = 4.dp)
                     .height(32.dp),
                 shape = RoundedCornerShape(8.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp)
+                contentPadding = PaddingValues(horizontal = 12.dp),
+                enabled = !isActionLoading
             ) {
-                Text("Setuju")
+                if (isActionLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = Color.White
+                    )
+                } else {
+                    Text("Setuju")
+                }
             }
 
             Button(
-                onClick = { /* Handle reject */ },
+                onClick = { onReject(member.id) },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFEB5757)
                 ),
@@ -271,9 +363,17 @@ fun MemberRequestItem(
                     .padding(horizontal = 4.dp)
                     .height(32.dp),
                 shape = RoundedCornerShape(8.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp)
+                contentPadding = PaddingValues(horizontal = 12.dp),
+                enabled = !isActionLoading
             ) {
-                Text("Tolak")
+                if (isActionLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = Color.White
+                    )
+                } else {
+                    Text("Tolak")
+                }
             }
         } else {
             Text(
@@ -282,19 +382,5 @@ fun MemberRequestItem(
                 color = Color.Gray
             )
         }
-    }
-}
-
-@Composable
-fun EmptyStateMessage(message: String) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color.Gray
-        )
     }
 }

@@ -35,13 +35,14 @@ import com.example.teamup.route.Routes
 fun DashboardScreen(navController: NavHostController = rememberNavController(),  competitionViewModel: CompetitionViewModel) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    // Initialize SharedMemberViewModel with proper factory
     val sharedMemberViewModel: SharedMemberViewModel = viewModel()
 
     // Tambahkan BackPressHandler
     BackPressHandler(navController)
 
     Scaffold(bottomBar = {
-        if (currentRoute != "draft_invitation/{selectedIds}" && currentRoute != Routes.Invite.routes && currentRoute != Routes.InviteSelect.routes && currentRoute != Routes.Detail.routes && currentRoute != Routes.ChatGroup.routes && currentRoute != Routes.FormAddTeam.routes && currentRoute != Routes.Cart.routes && currentRoute != Routes.Search.routes) {
+        if (currentRoute != Routes.DraftSelectMember.routes && currentRoute != Routes.Invite.routes && currentRoute != Routes.InviteSelect.routes && currentRoute != Routes.Detail.routes && currentRoute != Routes.ChatGroup.routes && currentRoute != Routes.FormAddTeam.routes && currentRoute != Routes.Cart.routes && currentRoute != Routes.Search.routes) {
             BottomNavigationBar(navController)
         }
     }) { paddingValues ->
@@ -121,10 +122,22 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
             }
 
 // Update composable untuk draft screen - hapus parameter selectedIds
-            composable(Routes.DraftSelectMember.routes) {
+            // Updated composable for draft screen with parameters
+            composable(
+                route = Routes.DraftSelectMember.routes,
+                arguments = listOf(
+                    navArgument("teamId") { type = NavType.StringType },
+                    navArgument("teamName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val teamId = backStackEntry.arguments?.getString("teamId") ?: "default_team_id"
+                val teamName = backStackEntry.arguments?.getString("teamName") ?: "Tim Saya"
+
                 DraftInviteSelectMemberScreen(
                     navController = navController,
-                    sharedViewModel = sharedMemberViewModel
+                    sharedViewModel = sharedMemberViewModel,
+                    teamId = teamId,
+                    teamName = teamName
                 )
             }
 
