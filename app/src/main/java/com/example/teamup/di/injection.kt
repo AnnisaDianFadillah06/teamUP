@@ -3,6 +3,8 @@ package com.example.teamup.di
 import android.content.Context
 import com.example.teamup.data.repositories.CabangLombaRepository
 import com.example.teamup.data.repositories.CartRepository
+import com.example.teamup.data.repositories.ChatRepository
+import com.example.teamup.data.repositories.ChatRepositoryImpl
 import com.example.teamup.data.repositories.CompetitionRepository
 import com.example.teamup.data.repositories.ContentRepository
 import com.example.teamup.data.repositories.CoursesRepository
@@ -11,11 +13,13 @@ import com.example.teamup.data.repositories.MyCoursesRepository
 import com.example.teamup.data.repositories.NotificationRepository
 import com.example.teamup.data.repositories.TeamRepository
 import com.example.teamup.data.repositories.WishlistRepository
+import com.example.teamup.data.sources.remote.FirebaseChatDataSource
 import com.example.teamup.data.sources.remote.FirebaseCompetitionDataSource
 import com.example.teamup.data.sources.remote.FirebaseNotificationDataSource
 import com.example.teamup.data.sources.remote.GoogleDriveHelper
 import com.example.teamup.data.sources.remote.GoogleDriveTeamDataSource
 import com.example.teamup.data.viewmodels.NotificationViewModel
+import com.google.firebase.firestore.FirebaseFirestore
 
 object Injection {
     // Add context property to the Injection object
@@ -30,6 +34,17 @@ object Injection {
         return appContext ?: throw IllegalStateException(
             "Application context not initialized. Call Injection.initialize() first."
         )
+    }
+    fun provideFirebaseFirestore(): FirebaseFirestore {
+        return FirebaseFirestore.getInstance() // Ensure Firebase is initialized in Application
+    }
+
+    fun provideFirebaseChatDataSource(): FirebaseChatDataSource {
+        return FirebaseChatDataSource(provideFirebaseFirestore())
+    }
+
+    fun provideChatRepository(): ChatRepository {
+        return ChatRepositoryImpl(provideFirebaseChatDataSource())
     }
 
     fun provideCourseRepository(): CoursesRepository {

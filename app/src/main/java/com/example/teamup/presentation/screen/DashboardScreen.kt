@@ -3,7 +3,6 @@ package com.example.teamup.presentation.screen
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -15,6 +14,7 @@ import androidx.navigation.navArgument
 import com.example.teamup.common.utils.BackPressHandler
 import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.data.viewmodels.JoinTeamViewModel
+import com.example.teamup.data.viewmodels.SharedMemberViewModel
 import com.example.teamup.di.Injection
 import com.example.teamup.di.ViewModelJoinFactory
 import com.example.teamup.presentation.components.BottomNavigationBar
@@ -28,33 +28,24 @@ import com.example.teamup.route.Routes
 fun DashboardScreen(navController: NavHostController = rememberNavController(), competitionViewModel: CompetitionViewModel) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    // Initialize SharedMemberViewModel with proper factory
+    val sharedMemberViewModel: SharedMemberViewModel = viewModel()
 
+    // Tambahkan BackPressHandler
     BackPressHandler(navController)
 
-    // ✅ STABLE: Better bottom bar logic
-    val shouldShowBottomBar = remember(currentRoute) {
-        when {
-            currentRoute?.contains("competition_detail") == true -> false
-            currentRoute?.contains("chat_group") == true -> false
-            currentRoute?.contains("draft_invitation") == true -> false
-            currentRoute == Routes.Search.routes -> false
-            currentRoute == Routes.Cart.routes -> false
-            currentRoute == Routes.ProfileSettings.routes -> false
-            else -> true
+    Scaffold(bottomBar = {
+        if (currentRoute != Routes.TeamDetailGrup.routes && currentRoute != Routes.DraftSelectMember.routes && currentRoute != Routes.Invite.routes && currentRoute != Routes.InviteSelect.routes && currentRoute != Routes.Detail.routes && currentRoute != Routes.ChatGroup.routes && currentRoute != Routes.FormAddTeam.routes && currentRoute != Routes.Cart.routes && currentRoute != Routes.Search.routes) {
+            BottomNavigationBar(navController)
         }
-    }
-
-    Scaffold(
-        bottomBar = {
-            if (shouldShowBottomBar) {
-                BottomNavigationBar(navController = navController)
-            }
-        }
-    ) { paddingValues ->
+    }) { paddingValues ->
         NavHost(
             navController = navController,
             startDestination = Routes.HomeV5.routes
         ) {
+//            composable(Routes.Home.routes) {
+//                HomeScreen(navController = navController, paddingValues = paddingValues)
+//            }
             composable(Routes.HomeV5.routes) {
                 HomeScreenV5(
                     navController = navController,
@@ -109,6 +100,28 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
                 DetailScreen(navController, courseId)
             }
 
+//            composable(Routes.AddCompetition.routes) {
+//                AddCompetitionScreen(
+//                    navController = navController,
+//                    viewModel = competitionViewModel
+//                )
+//            }
+//            composable(Routes.AddCompetition.routes) {
+//                AddCompetitionForm(
+//                    viewModel = competitionViewModel,
+//                    onSuccess = { navController.popBackStack() } // Navigasi balik setelah sukses
+//                )
+//            }
+//            composable(Routes.CompetitionList.routes) {
+//                CompetitionListScreen(navController)
+//            }
+//            composable(
+//                Routes.Detail.routes,
+//                arguments = listOf(navArgument("id") { type = NavType.IntType })
+//            ) {
+//                val id = it.arguments?.getInt("id") ?: 0
+//                DetailScreen(navController = navController, id = id)
+//            }
             composable(Routes.TeamManagement.routes) {
                 // ✅ Keep original TeamManagementScreen intact - hanya ubah nama parameter
                 TeamManagementScreen(navController = navController, teamName = "Tim Lomba")
@@ -122,14 +135,27 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
             composable(Routes.InviteSelect.routes) {
                 InviteSelectMemberScreen(
                     navController = navController,
-                    sharedViewModel = viewModel()
+                    sharedViewModel = sharedMemberViewModel
                 )
             }
 
-            composable(Routes.DraftSelectMember.routes) {
+// Update composable untuk draft screen - hapus parameter selectedIds
+            // Updated composable for draft screen with parameters
+            composable(
+                route = Routes.DraftSelectMember.routes,
+                arguments = listOf(
+                    navArgument("teamId") { type = NavType.StringType },
+                    navArgument("teamName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val teamId = backStackEntry.arguments?.getString("teamId") ?: "default_team_id"
+                val teamName = backStackEntry.arguments?.getString("teamName") ?: "Tim Saya"
+
                 DraftInviteSelectMemberScreen(
                     navController = navController,
-                    sharedViewModel = viewModel()
+                    sharedViewModel = sharedMemberViewModel,
+                    teamId = teamId,
+                    teamName = teamName
                 )
             }
 
@@ -188,6 +214,10 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
                 )
             }
 
+            composable(Routes.Profile.routes) {
+                ProfileScreen(navController)
+            }
+            // >>> tambahkan ini <<<
             composable(Routes.ProfileSettings.routes) {
                 ProfileSettingsScreen(navController)
             }

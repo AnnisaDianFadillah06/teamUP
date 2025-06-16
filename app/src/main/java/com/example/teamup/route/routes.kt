@@ -52,5 +52,10 @@ sealed class Routes(val routes: String) {
             "chat_group/$teamId/$teamName"
     }
     object InviteSelect : Routes("invite_select")
-    object DraftSelectMember : Routes("draft_select_member")
+    object DraftSelectMember {
+        const val routes = "draft_select_member/{teamId}/{teamName}"
+        fun createRoute(teamId: String, teamName: String): String {
+            return "draft_select_member/$teamId/$teamName"
+        }
+    }
 }

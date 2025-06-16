@@ -29,6 +29,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
@@ -86,33 +87,32 @@ fun DetailTeamScreen(
         }
     }
 
-    // PERBAIKAN: Logika untuk menampilkan semua anggota
+    // Show join request success dialog
+    if (uiState.joinRequestSuccess) {
+        AlertDialog(
+            onDismissRequest = {
+                viewModel.clearJoinRequestSuccess()
+            },
+            title = { Text("Permintaan Terkirim") },
+            text = { Text("Permintaan Anda untuk bergabung dengan tim \"${team?.name}\" telah terkirim dan menunggu persetujuan kapten tim.", textAlign = TextAlign.Center) },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.clearJoinRequestSuccess() }
+                ) { Text("OK") }
+            }
+        )
+    }
+
+    // All team members
     val allTeamMembers = remember(teamMembers, teamAdmin) {
-        println("DEBUG: Creating allTeamMembers")
-        println("DEBUG: teamMembers size = ${teamMembers.size}")
-        println("DEBUG: teamAdmin = ${teamAdmin?.fullName}")
-
         val adminUserId = teamAdmin?.userId
-
-        // Buat list dari semua teamMembers, tandai yang mana admin
         val membersList = teamMembers.map { member ->
-            val isAdmin = adminUserId != null && member.userId == adminUserId
-            println("DEBUG: Member ${member.fullName} - isAdmin: $isAdmin")
-            Pair(member, isAdmin)
+            Pair(member, adminUserId != null && member.userId == adminUserId)
         }
-
-        // Sort: admin dulu, kemudian alphabetical
-        val sortedList = membersList.sortedWith(
+        membersList.sortedWith(
             compareByDescending<Pair<UserProfileData, Boolean>> { it.second }
                 .thenBy { it.first.fullName }
         )
-
-        println("DEBUG: Final allTeamMembers size = ${sortedList.size}")
-        sortedList.forEach { (member, isAdmin) ->
-            println("DEBUG: Final list - ${member.fullName} (Admin: $isAdmin)")
-        }
-
-        sortedList
     }
 
     // Filtering members based on search query
@@ -225,7 +225,7 @@ fun DetailTeamScreen(
 
                             if (!isUserInTeam) {
                                 Button(
-                                    onClick = { /* Handle join team */ },
+                                    onClick = { viewModel.requestToJoinTeam(teamId, team?.name ?: "Team") },
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(48.dp),
@@ -332,14 +332,6 @@ fun DetailTeamScreen(
                                     .padding(vertical = 8.dp)
                             )
 
-                            // Debug info (hapus di production)
-                            Text(
-                                text = "Debug: Found ${teamMembers.size} members, Admin: ${teamAdmin?.fullName ?: "None"}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.Gray,
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            )
-
                             if (filteredAllMembers.isEmpty() && searchQuery.isNotEmpty()) {
                                 Text(
                                     text = "No members matching '$searchQuery'",
@@ -363,9 +355,7 @@ fun DetailTeamScreen(
                         TeamMemberItem(
                             member = member,
                             isAdmin = isAdmin,
-                            onChatClick = {
-                                // Navigate to chat with member
-                            }
+                            onChatClick = { /* Navigate to chat with member */ }
                         )
                     }
                 }
@@ -415,7 +405,6 @@ fun TeamMemberItem(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Member Avatar
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(member.profilePictureUrl.ifEmpty { R.drawable.captain_icon })
@@ -430,7 +419,6 @@ fun TeamMemberItem(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // Member Info
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -480,7 +468,6 @@ fun TeamMemberItem(
             }
         }
 
-        // Chat Icon
         IconButton(onClick = onChatClick) {
             Icon(
                 painter = painterResource(id = R.drawable.comments),
