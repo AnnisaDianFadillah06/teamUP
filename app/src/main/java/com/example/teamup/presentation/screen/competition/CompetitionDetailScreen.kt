@@ -3,6 +3,7 @@ package com.example.teamup.presentation.screen.competition
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,10 +28,10 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -42,12 +43,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -58,6 +61,7 @@ import com.example.teamup.data.model.CompetitionActivityStatus
 import com.example.teamup.data.model.CompetitionModel
 import com.example.teamup.data.model.CompetitionVisibilityStatus
 import com.example.teamup.data.viewmodels.CompetitionViewModel
+import com.example.teamup.route.Routes
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -73,10 +77,6 @@ fun CompetitionDetailScreen(
 
     // Find competition from ViewModel state
     val competition = uiState.competitions.find { it.id == competitionId }
-
-    // Mock user authentication - in real app, get from AuthViewModel
-    val currentUserId = "alyanis" // Your current login
-    val isOwner = true // Mock: assume user owns all competitions for demo
 
     LaunchedEffect(competitionId) {
         // Refresh data if competition not found
@@ -126,11 +126,7 @@ fun CompetitionDetailScreen(
             CompetitionDetailContent(
                 navController = navController,
                 competition = competition,
-                isOwner = isOwner,
-                onEditClick = {
-                    // Navigate to edit or show edit dialog
-                    Toast.makeText(context, "Edit feature coming soon!", Toast.LENGTH_SHORT).show()
-                }
+                competitionViewModel = competitionViewModel
             )
         }
     }
@@ -141,25 +137,45 @@ fun CompetitionDetailScreen(
 private fun CompetitionDetailContent(
     navController: NavController,
     competition: CompetitionModel,
-    isOwner: Boolean,
-    onEditClick: () -> Unit
+    competitionViewModel: CompetitionViewModel
 ) {
     val context = LocalContext.current
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Detail Kompetisi") },
+                title = {
+                    Text(
+                        "Detail Kompetisi",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 },
                 actions = {
-                    if (isOwner) {
-                        IconButton(onClick = onEditClick) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit")
+                    // ✅ Edit button for everyone
+                    IconButton(
+                        onClick = {
+                            // Navigate to edit competition form
+                            competitionViewModel.selectCompetitionForEdit(competition)
+                            navController.navigate(Routes.Competition.routes) {
+                                popUpTo(Routes.Competition.routes) { inclusive = true }
+                            }
                         }
+                    ) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
 
                     // Share button
@@ -172,16 +188,28 @@ private fun CompetitionDetailContent(
                         }
                         context.startActivity(Intent.createChooser(shareIntent, "Bagikan Kompetisi"))
                     }) {
-                        Icon(Icons.Default.Share, contentDescription = "Share")
+                        Icon(
+                            Icons.Default.Share,
+                            contentDescription = "Share",
+                            tint = MaterialTheme.colorScheme.secondary
+                        )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         },
         bottomBar = {
             CompetitionDetailBottomBar(
                 competition = competition,
-                isOwner = isOwner,
-                onEditClick = onEditClick,
+                onEditClick = {
+                    // Navigate to edit form
+                    competitionViewModel.selectCompetitionForEdit(competition)
+                    navController.navigate(Routes.Competition.routes) {
+                        popUpTo(Routes.Competition.routes) { inclusive = true }
+                    }
+                },
                 onDownloadClick = {
                     if (competition.fileUrl.isNotBlank()) {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(competition.fileUrl))
@@ -200,17 +228,20 @@ private fun CompetitionDetailContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
+                .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+
             item {
-                // ✅ Competition Image (Dynamic)
+                // ✅ BEAUTIFUL: Competition Image with overlay
                 if (competition.imageUrl.isNotBlank()) {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(200.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
                         Box {
                             AsyncImage(
@@ -220,30 +251,21 @@ private fun CompetitionDetailContent(
                                 contentScale = ContentScale.Crop
                             )
 
-                            // Status badge overlay
+                            // Status badges overlay
                             Row(
                                 modifier = Modifier
                                     .padding(12.dp)
                                     .align(Alignment.TopEnd),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                // Visibility status
-                                AssistChip(
-                                    onClick = { },
-                                    label = {
-                                        Text(
-                                            text = competition.visibilityStatus,
-                                            style = MaterialTheme.typography.labelSmall
-                                        )
-                                    },
-                                    colors = AssistChipDefaults.assistChipColors(
-                                        containerColor = when(competition.visibilityStatus) {
-                                            CompetitionVisibilityStatus.PUBLISHED.value -> MaterialTheme.colorScheme.primaryContainer
-                                            CompetitionVisibilityStatus.DRAFT.value -> MaterialTheme.colorScheme.secondaryContainer
-                                            CompetitionVisibilityStatus.CANCELLED.value -> MaterialTheme.colorScheme.errorContainer
-                                            else -> MaterialTheme.colorScheme.surfaceVariant
-                                        }
-                                    )
+                                StatusBadge(
+                                    text = competition.visibilityStatus,
+                                    backgroundColor = when(competition.visibilityStatus) {
+                                        CompetitionVisibilityStatus.PUBLISHED.value -> Color(0xFF4CAF50)
+                                        CompetitionVisibilityStatus.DRAFT.value -> Color(0xFFFF9800)
+                                        CompetitionVisibilityStatus.CANCELLED.value -> Color(0xFFF44336)
+                                        else -> Color(0xFF9E9E9E)
+                                    }
                                 )
                             }
                         }
@@ -252,120 +274,143 @@ private fun CompetitionDetailContent(
             }
 
             item {
-                // ✅ Title and Status (Dynamic)
-                Column {
-                    Text(
-                        text = competition.namaLomba,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                // ✅ BEAUTIFUL: Title and Status
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = competition.namaLomba,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AssistChip(
-                            onClick = { },
-                            label = { Text(competition.visibilityStatus) },
-                            colors = AssistChipDefaults.assistChipColors(
-                                containerColor = when(competition.visibilityStatus) {
-                                    CompetitionVisibilityStatus.PUBLISHED.value -> MaterialTheme.colorScheme.primaryContainer
-                                    CompetitionVisibilityStatus.DRAFT.value -> MaterialTheme.colorScheme.secondaryContainer
-                                    CompetitionVisibilityStatus.CANCELLED.value -> MaterialTheme.colorScheme.errorContainer
-                                    else -> MaterialTheme.colorScheme.surfaceVariant
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            StatusBadge(
+                                text = competition.visibilityStatus,
+                                backgroundColor = when(competition.visibilityStatus) {
+                                    CompetitionVisibilityStatus.PUBLISHED.value -> Color(0xFF4CAF50)
+                                    CompetitionVisibilityStatus.DRAFT.value -> Color(0xFFFF9800)
+                                    CompetitionVisibilityStatus.CANCELLED.value -> Color(0xFFF44336)
+                                    else -> Color(0xFF9E9E9E)
                                 }
                             )
-                        )
-                        AssistChip(
-                            onClick = { },
-                            label = { Text(competition.activityStatus) },
-                            colors = AssistChipDefaults.assistChipColors(
-                                containerColor = when(competition.activityStatus) {
-                                    CompetitionActivityStatus.ACTIVE.value -> MaterialTheme.colorScheme.primaryContainer
-                                    CompetitionActivityStatus.INACTIVE.value -> MaterialTheme.colorScheme.errorContainer
-                                    else -> MaterialTheme.colorScheme.surfaceVariant
+                            StatusBadge(
+                                text = competition.activityStatus,
+                                backgroundColor = when(competition.activityStatus) {
+                                    CompetitionActivityStatus.ACTIVE.value -> Color(0xFF2196F3)
+                                    CompetitionActivityStatus.INACTIVE.value -> Color(0xFF9E9E9E)
+                                    else -> Color(0xFF9E9E9E)
                                 }
                             )
-                        )
+                        }
                     }
                 }
             }
 
             item {
-                // ✅ Competition Info (Dynamic)
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                // ✅ BEAUTIFUL: Competition Information
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
                         Text(
                             text = "Informasi Kompetisi",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         )
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         // Execution date
                         DetailInfoRow(
                             icon = Icons.Default.Event,
                             label = "Tanggal Pelaksanaan",
-                            value = competition.tanggalPelaksanaan
+                            value = competition.tanggalPelaksanaan,
+                            iconColor = MaterialTheme.colorScheme.primary
                         )
 
-                        // Registration deadline (Dynamic)
+                        // Registration deadline
                         competition.tanggalTutupPendaftaran?.let { deadline ->
                             val dateFormat = SimpleDateFormat("dd MMMM yyyy, HH:mm", Locale.getDefault())
                             val formattedDeadline = dateFormat.format(deadline.toDate())
 
+                            Spacer(modifier = Modifier.height(12.dp))
                             DetailInfoRow(
                                 icon = Icons.Default.AccessTime,
                                 label = "Batas Pendaftaran",
-                                value = "$formattedDeadline${if (competition.autoCloseEnabled) " (Otomatis)" else ""}"
+                                value = "$formattedDeadline${if (competition.autoCloseEnabled) " (Otomatis)" else ""}",
+                                iconColor = MaterialTheme.colorScheme.secondary
                             )
                         }
 
-                        // Creation date (Dynamic)
+                        // Creation date
                         val creationFormat = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault())
                         val createdDate = creationFormat.format(competition.createdAt.toDate())
 
+                        Spacer(modifier = Modifier.height(12.dp))
                         DetailInfoRow(
                             icon = Icons.Default.DateRange,
                             label = "Dibuat pada",
-                            value = createdDate
+                            value = createdDate,
+                            iconColor = MaterialTheme.colorScheme.tertiary
                         )
                     }
                 }
             }
 
             item {
-                // ✅ Description (Dynamic)
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                // ✅ BEAUTIFUL: Description
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
                         Text(
                             text = "Deskripsi",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         Text(
                             text = competition.deskripsiLomba,
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyLarge,
+                            lineHeight = MaterialTheme.typography.bodyLarge.lineHeight,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
             }
 
             item {
-                // ✅ Files (Dynamic)
+                // ✅ BEAUTIFUL: File Attachments
                 if (competition.fileUrl.isNotBlank()) {
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(20.dp)) {
                             Text(
                                 text = "File Lampiran",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
                             )
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -376,10 +421,15 @@ private fun CompetitionDetailContent(
                                     Icon(
                                         Icons.Default.AttachFile,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Panduan Lomba")
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        "Panduan Lomba",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 }
 
                                 TextButton(
@@ -388,15 +438,24 @@ private fun CompetitionDetailContent(
                                         context.startActivity(intent)
                                     }
                                 ) {
-                                    Icon(Icons.Default.Download, contentDescription = null)
+                                    Icon(
+                                        Icons.Default.Download,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Download")
+                                    Text(
+                                        "Download",
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
                             }
                         }
                     }
                 }
             }
+
+            item { Spacer(modifier = Modifier.height(80.dp)) } // Bottom spacing
         }
     }
 }
@@ -405,47 +464,71 @@ private fun CompetitionDetailContent(
 private fun DetailInfoRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
-    value: String
+    value: String,
+    iconColor: Color
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.primary
+            modifier = Modifier.size(24.dp),
+            tint = iconColor
         )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column {
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium
             )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }
 }
 
 @Composable
+private fun StatusBadge(
+    text: String,
+    backgroundColor: Color
+) {
+    Box(
+        modifier = Modifier
+            .background(
+                backgroundColor,
+                RoundedCornerShape(12.dp)
+            )
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
 private fun CompetitionDetailBottomBar(
     competition: CompetitionModel,
-    isOwner: Boolean,
     onEditClick: () -> Unit,
     onDownloadClick: () -> Unit,
     onJoinClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shadowElevation = 8.dp
+        shadowElevation = 8.dp,
+        color = MaterialTheme.colorScheme.surface
     ) {
         Row(
             modifier = Modifier
@@ -453,49 +536,64 @@ private fun CompetitionDetailBottomBar(
                 .padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // ✅ SIMPLIFIED: Edit button for everyone + Join/Download based on status
             when {
-                isOwner -> {
-                    // ✅ Owner actions
-                    if (competition.fileUrl.isNotBlank()) {
-                        OutlinedButton(
-                            onClick = onDownloadClick,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Download, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Download")
-                        }
-                    }
-
-                    Button(
+                competition.activityStatus == CompetitionActivityStatus.ACTIVE.value &&
+                        competition.visibilityStatus == CompetitionVisibilityStatus.PUBLISHED.value -> {
+                    // Active competition - show Edit + Join
+                    OutlinedButton(
                         onClick = onEditClick,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.secondary
+                        )
                     ) {
                         Icon(Icons.Default.Edit, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Edit")
                     }
-                }
-                competition.activityStatus == CompetitionActivityStatus.ACTIVE.value &&
-                        competition.visibilityStatus == CompetitionVisibilityStatus.PUBLISHED.value -> {
-                    // ✅ User can join
+
                     Button(
                         onClick = onJoinClick,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.weight(1f)
                     ) {
                         Icon(Icons.Default.PersonAdd, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Daftar Kompetisi")
+                        Text("Daftar")
+                    }
+                }
+                competition.fileUrl.isNotBlank() -> {
+                    // Has file - show Edit + Download
+                    OutlinedButton(
+                        onClick = onEditClick,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.secondary
+                        )
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Edit")
+                    }
+
+                    Button(
+                        onClick = onDownloadClick,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Download, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Download")
                     }
                 }
                 else -> {
-                    // ✅ Competition closed
+                    // Default - just edit button
                     Button(
-                        onClick = { },
-                        enabled = false,
+                        onClick = onEditClick,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Kompetisi Ditutup")
+                        Icon(Icons.Default.Edit, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Edit Kompetisi")
                     }
                 }
             }
