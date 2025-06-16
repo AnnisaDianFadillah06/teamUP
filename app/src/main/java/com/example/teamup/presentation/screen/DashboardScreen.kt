@@ -19,12 +19,17 @@ import com.example.teamup.data.viewmodels.JoinTeamViewModel
 import com.example.teamup.di.ViewModelJoinFactory
 import com.example.teamup.data.viewmodels.CompetitionViewModel
 import com.example.teamup.presentation.components.BottomNavigationBar
+import com.example.teamup.presentation.screen.notif.NotificationsScreen
 import com.example.teamup.presentation.screen.profile.ProfileScreen
 import com.example.teamup.presentation.screen.profile.ProfileSettingsScreen
 import com.example.teamup.presentation.screen.profile.CreatePostScreen
 import com.example.teamup.presentation.screen.profile.AddEditExperienceScreen
 import com.example.teamup.presentation.screen.profile.EditExperiencesScreen
 import com.example.teamup.presentation.screen.profile.AddEditEducationScreen
+import com.example.teamup.presentation.screen.profile.AddEditSkillScreen
+import com.example.teamup.presentation.screen.profile.EditActivityScreen
+import com.example.teamup.presentation.screen.profile.EditEducationsScreen
+import com.example.teamup.presentation.screen.profile.EditSkillsScreen
 import com.example.teamup.route.Routes
 
 
@@ -185,28 +190,91 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
             }
 
             // TAMBAHAN ROUTES BARU UNTUK PROFILE
-            composable(Routes.CreatePost.routes) {
-                CreatePostScreen(navController = navController)
+            composable(
+                route = Routes.CreatePost.routes,
+                arguments = listOf(
+                    navArgument("userId") { type = NavType.StringType },
+                    navArgument("activityId") {
+                        type = NavType.StringType
+                        defaultValue = "new"
+                    }
+                )
+            ) { backStackEntry ->
+                val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                val activityId = backStackEntry.arguments?.getString("activityId") ?: "new"
+                CreatePostScreen(
+                    navController = navController,
+                    userId = userId,
+                    activityId = if (activityId == "new") "" else activityId
+                )
             }
 
-            composable(Routes.AddExperience.routes) {
-                AddEditExperienceScreen(navController = navController)
+            composable(Routes.EditSkills.routes) {
+                EditSkillsScreen(navController = navController)
             }
+
+// Tambahkan composable untuk EditActivities
+            composable(Routes.EditActivities.routes) {
+                EditActivityScreen(navController = navController)
+            }
+
+            // Ganti composable AddSkill yang lama dengan yang baru
+            composable(
+                route = Routes.AddSkill.routes,
+                arguments = listOf(navArgument("skillId") {
+                    type = NavType.StringType
+                    defaultValue = "new"
+                })
+            ) { backStackEntry ->
+                val skillId = backStackEntry.arguments?.getString("skillId") ?: "new"
+                AddEditSkillScreen(
+                    navController = navController,
+                    skillId = if (skillId == "new") "" else skillId
+                )
+            }
+
+
+            composable(
+                route = Routes.AddEducation.routes,
+                arguments = listOf(navArgument("educationId") {
+                    type = NavType.StringType
+                    defaultValue = "new" // Ubah default value dari "" ke "new"
+                })
+            ) { backStackEntry ->
+                val educationId = backStackEntry.arguments?.getString("educationId") ?: "new"
+                AddEditEducationScreen(
+                    navController = navController,
+                    educationId = if (educationId == "new") "" else educationId // Convert kembali ke empty string jika "new"
+                )
+            }
+
+            composable(
+                route = Routes.AddExperience.routes,
+                arguments = listOf(navArgument("experienceId") {
+                    type = NavType.StringType
+                    defaultValue = "new" // Ubah default value dari "" ke "new"
+                })
+            ) { backStackEntry ->
+                val experienceId = backStackEntry.arguments?.getString("experienceId") ?: "new"
+                AddEditExperienceScreen(
+                    navController = navController,
+                    experienceId = if (experienceId == "new") "" else experienceId // Convert kembali ke empty string jika "new"
+                )
+            }
+
+            // Edit Education & Experience Screens
+            composable(Routes.EditEducations.routes) {
+                EditEducationsScreen(navController = navController)
+            }
+
             composable(Routes.EditExperiences.routes) {
                 EditExperiencesScreen(navController = navController)
             }
-            composable(Routes.AddEducation.routes) {
-                AddEditEducationScreen(navController = navController)
+
+            composable("notifications") {
+                NotificationsScreen(navController)
             }
-//            composable(Routes.EditEducation.routes) {
-//                EditEducationScreen(navController = navController)
-//            }
-//            composable(Routes.AddSkills.routes) {
-//                AddSkillsScreen(navController = navController)
-//            }
-//            composable(Routes.EditSkills.routes) {
-//                EditSkillsScreen(navController = navController)
-//            }
+
 
         }
     }

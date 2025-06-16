@@ -58,6 +58,9 @@ import com.example.teamup.common.utils.SessionManager
 import com.example.teamup.route.Routes
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreenV5(navController: NavController) {
@@ -106,30 +109,55 @@ fun LoginScreenV5(navController: NavController) {
             // Login with email
             auth.signInWithEmailAndPassword(emailOrPhone, password)
                 .addOnCompleteListener { task ->
-                    isLoading = false
                     if (task.isSuccessful) {
-                        // Login berhasil
-                        Toast.makeText(context, "Login successful", Toast.LENGTH_SHORT).show()
+                        // Login berhasil - create/update user document and set online status
+                        SessionManager.createOrUpdateUserDocument { documentSuccess ->
+                            if (documentSuccess) {
+                                // Set user as logged in and update online status
+                                SessionManager.setLoggedIn(context, true) { statusSuccess ->
+                                    isLoading = false
 
-                        // Simpan kredensial jika "Remember me" dicentang
-                        if (rememberMe) {
-                            val editor = sharedPrefs.edit()
-                            editor.putString("saved_email", emailOrPhone)
-                            editor.putString("saved_password", password)
-                            editor.apply()
-                        }
+                                    if (statusSuccess) {
+                                        Toast.makeText(context, "Login successful", Toast.LENGTH_SHORT).show()
 
-                        // Set user as logged in in SessionManager
-                        SessionManager.setLoggedIn(context, true)
+                                        // Simpan kredensial jika "Remember me" dicentang
+                                        if (rememberMe) {
+                                            val editor = sharedPrefs.edit()
+                                            editor.putString("saved_email", emailOrPhone)
+                                            editor.putString("saved_password", password)
+                                            editor.apply()
+                                        }
 
-                        // Navigasi ke dashboard
-                        navController.navigate(Routes.Dashboard.routes) {
-                            popUpTo(Routes.LoginV5.routes) {
-                                inclusive = true
+                                        // Navigasi ke dashboard
+                                        navController.navigate(Routes.Dashboard.routes) {
+                                            popUpTo(Routes.LoginV5.routes) {
+                                                inclusive = true
+                                            }
+                                        }
+                                    } else {
+                                        Toast.makeText(context, "Login successful but failed to update status", Toast.LENGTH_SHORT).show()
+                                        // Still navigate to dashboard even if status update fails
+                                        navController.navigate(Routes.Dashboard.routes) {
+                                            popUpTo(Routes.LoginV5.routes) {
+                                                inclusive = true
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                isLoading = false
+                                Toast.makeText(context, "Login successful but failed to create user profile", Toast.LENGTH_SHORT).show()
+                                // Still navigate to dashboard
+                                navController.navigate(Routes.Dashboard.routes) {
+                                    popUpTo(Routes.LoginV5.routes) {
+                                        inclusive = true
+                                    }
+                                }
                             }
                         }
                     } else {
                         // Login gagal
+                        isLoading = false
                         Toast.makeText(context, "Login failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -147,16 +175,30 @@ fun LoginScreenV5(navController: NavController) {
             return
         }
 
-        // Hapus pengecekan hasSavedCredentials untuk memungkinkan quick login langsung
-
         // Use the enhanced BiometricAuthUtil for quick login
         fragmentActivity?.let {
             BiometricAuthUtil.performQuickLogin(
                 activity = it,
                 navController = navController,
                 onSuccess = {
-                    // Set user as logged in in SessionManager
-                    SessionManager.setLoggedIn(context, true)
+                    // Create/update user document and set online status
+                    SessionManager.createOrUpdateUserDocument { documentSuccess ->
+//                        SessionManager.setLoggedIn(context, true) { statusSuccess ->
+//                            if (statusSuccess) {
+//                                Toast.makeText(context, "Biometric login successful", Toast.LENGTH_SHORT).show()
+//                            }
+//                        }
+                        SessionManager.setLoggedIn(context, true) { success ->
+                            // Pindah ke Main thread untuk Toast
+                            CoroutineScope(Dispatchers.Main).launch {
+                                if (success) {
+                                    Toast.makeText(context, "Login successful", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "Failed to update status", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    }
                 },
                 onError = { message ->
                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()

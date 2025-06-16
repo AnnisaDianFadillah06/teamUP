@@ -13,10 +13,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,22 +28,30 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.example.teamup.common.theme.DodgerBlue
 import com.example.teamup.common.theme.White
 import com.example.teamup.common.theme.White2
-import com.example.teamup.data.viewmodels.ProfileViewModel
+import com.example.teamup.data.viewmodels.user.ExperienceViewModel
+import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditExperienceScreen(
     navController: NavController,
     experienceId: String? = null,
-    profileViewModel: ProfileViewModel = viewModel()
+    experienceViewModel: ExperienceViewModel = viewModel()
 ) {
     val isEditing = experienceId != null
+    val currentUser = FirebaseAuth.getInstance().currentUser
+
+    // Observe ViewModel states
+    val currentExperience by experienceViewModel.currentExperience.collectAsState()
+    val isLoading by experienceViewModel.isLoading.collectAsState()
+    val errorMessage by experienceViewModel.errorMessage.collectAsState()
 
     // Form states
     var position by remember { mutableStateOf("") }
@@ -54,11 +63,17 @@ fun AddEditExperienceScreen(
     var location by remember { mutableStateOf("") }
     var locationType by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var skills by remember { mutableStateOf("") }
+    var skills by remember { mutableStateOf<List<String>>(emptyList()) }
     var mediaUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
 
     var showJobTypeDropdown by remember { mutableStateOf(false) }
     var showLocationTypeDropdown by remember { mutableStateOf(false) }
+    var showSkillsDialog by remember { mutableStateOf(false) }
+    var skillsText by remember { mutableStateOf("") }
+
+    // For showing save success/error messages
+    var showSnackbar by remember { mutableStateOf(false) }
+    var snackbarMessage by remember { mutableStateOf("") }
 
     val jobTypes = listOf("Full-time", "Part-time", "Contract", "Freelance", "Internship")
     val locationTypes = listOf("On-site", "Remote", "Hybrid")
@@ -72,9 +87,82 @@ fun AddEditExperienceScreen(
 
     // Load existing data if editing
     LaunchedEffect(experienceId) {
-        if (isEditing && experienceId != null) {
-            // Load experience data by ID from ViewModel
-            // This would need to be implemented in ProfileViewModel
+        if (isEditing && experienceId != null && currentUser?.uid != null) {
+            experienceViewModel.loadExperience(currentUser.uid, experienceId)
+        }
+    }
+
+    // Populate form when data is loaded
+    LaunchedEffect(currentExperience) {
+        currentExperience?.let { exp ->
+            position = exp.position
+            jobType = exp.jobType
+            company = exp.company
+            isCurrentRole = exp.isCurrentRole
+            startDate = exp.startDate
+            endDate = exp.endDate
+            location = exp.location
+            locationType = exp.locationType
+            description = exp.description
+            skills = exp.skills
+            skillsText = exp.skills.joinToString(", ")
+        }
+    }
+
+    // Show error message
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let {
+            snackbarMessage = it
+            showSnackbar = true
+            experienceViewModel.clearError()
+        }
+    }
+
+    // Check if form is valid for saving
+    val isFormValid = position.isNotEmpty() &&
+            company.isNotEmpty() &&
+            startDate.isNotEmpty() &&
+            (isCurrentRole || endDate.isNotEmpty()) && // perbaiki logika ini
+            currentUser?.uid != null
+
+
+    // Save function
+    val saveExperience = {
+        currentUser?.uid?.let { userId ->
+            // Pastikan ID experience ada saat editing
+            val finalExperienceId = if (isEditing) {
+                experienceId ?: currentExperience?.id
+            } else {
+                null // null untuk experience baru
+            }
+
+            experienceViewModel.saveExperience(
+                userId = userId,
+                position = position,
+                jobType = jobType,
+                company = company,
+                startDate = startDate,
+                endDate = if (isCurrentRole) "" else endDate,
+                isCurrentRole = isCurrentRole,
+                location = location,
+                locationType = locationType,
+                description = description,
+                skills = skills,
+                mediaUris = mediaUris,
+                experienceId = finalExperienceId // gunakan finalExperienceId
+            ) { success ->
+                if (success) {
+                    snackbarMessage = if (isEditing) "Pengalaman berhasil diperbarui" else "Pengalaman berhasil ditambahkan"
+                    showSnackbar = true
+                    navController.popBackStack()
+                } else {
+                    snackbarMessage = "Gagal menyimpan pengalaman"
+                    showSnackbar = true
+                }
+            }
+        } ?: run {
+            snackbarMessage = "Error: User tidak terautentikasi"
+            showSnackbar = true
         }
     }
 
@@ -86,7 +174,30 @@ fun AddEditExperienceScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = White)
+                    }
+                },
+                actions = {
+                    // Save button in top bar
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .padding(end = 16.dp),
+                            color = White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        IconButton(
+                            onClick = saveExperience,
+                            enabled = isFormValid
+                        ) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = if (isEditing) "Update" else "Save",
+                                tint = if (isFormValid) White else White.copy(alpha = 0.5f)
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -94,6 +205,19 @@ fun AddEditExperienceScreen(
                     titleContentColor = White
                 )
             )
+        },
+        snackbarHost = {
+            if (showSnackbar) {
+                Snackbar(
+                    action = {
+                        TextButton(onClick = { showSnackbar = false }) {
+                            Text("OK")
+                        }
+                    }
+                ) {
+                    Text(snackbarMessage)
+                }
+            }
         }
     ) { paddingValues ->
         Column(
@@ -105,6 +229,43 @@ fun AddEditExperienceScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Form validation message (moved to top)
+            if (!isFormValid && !isLoading) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.Red.copy(alpha = 0.1f))
+                ) {
+                    Text(
+                        text = when {
+                            currentUser?.uid == null -> "Error: User tidak terautentikasi"
+                            position.isEmpty() -> "Posisi harus diisi"
+                            company.isEmpty() -> "Perusahaan harus diisi"
+                            startDate.isEmpty() -> "Tanggal mulai harus diisi"
+                            !isCurrentRole && endDate.isEmpty() -> "Tanggal berakhir harus diisi"
+                            else -> "Mohon lengkapi semua field yang wajib"
+                        },
+                        modifier = Modifier.padding(12.dp),
+                        fontSize = 12.sp,
+                        color = Color.Red
+                    )
+                }
+            }
+
+            // Current User Info (for debugging - remove in production)
+            if (currentUser != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.Green.copy(alpha = 0.1f))
+                ) {
+                    Text(
+                        text = "User: ${currentUser.email ?: "Unknown"}\nUID: ${currentUser.uid}",
+                        modifier = Modifier.padding(8.dp),
+                        fontSize = 12.sp,
+                        color = Color.Green
+                    )
+                }
+            }
+
             // Position Field
             Column {
                 Text(
@@ -123,7 +284,8 @@ fun AddEditExperienceScreen(
                             }
                         }
                     },
-                    supportingText = { Text("${position.length}/100") }
+                    supportingText = { Text("${position.length}/100") },
+                    isError = position.isEmpty()
                 )
             }
 
@@ -198,13 +360,14 @@ fun AddEditExperienceScreen(
                                     Icon(Icons.Default.Clear, contentDescription = "Clear")
                                 }
                             }
-                        }
+                        },
+                        isError = company.isEmpty()
                     )
                 }
                 Text(
                     "${company.length}/100",
                     fontSize = 12.sp,
-                    color = Color.Gray,
+                    color = if (company.isEmpty()) Color.Red else Color.Gray,
                     modifier = Modifier.padding(start = 48.dp, top = 4.dp)
                 )
             }
@@ -236,7 +399,8 @@ fun AddEditExperienceScreen(
                     placeholder = { Text("Agustus 2023") },
                     trailingIcon = {
                         Icon(Icons.Default.DateRange, contentDescription = "Date")
-                    }
+                    },
+                    isError = startDate.isEmpty()
                 )
             }
 
@@ -252,10 +416,11 @@ fun AddEditExperienceScreen(
                         value = endDate,
                         onValueChange = { endDate = it },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Saat ini") },
+                        placeholder = { Text("Desember 2023") },
                         trailingIcon = {
                             Icon(Icons.Default.DateRange, contentDescription = "Date")
-                        }
+                        },
+                        isError = !isCurrentRole && endDate.isEmpty()
                     )
                 }
             }
@@ -336,25 +501,7 @@ fun AddEditExperienceScreen(
                 )
             }
 
-            // Professional Profile Motto
-            Column {
-                Text(
-                    "Motto profesional profil",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-                OutlinedTextField(
-                    value = skills,
-                    onValueChange = { if (it.length <= 220) skills = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Siswa di Politeknik Negeri Bandung") },
-                    supportingText = {
-                        Text("Ditampilkan di bawah nama Anda di bagian atas profil ${skills.length}/220")
-                    }
-                )
-            }
-
-            // Skills Section
+            // Skills Section with Popup
             Column {
                 Text(
                     "Keahlian",
@@ -362,13 +509,16 @@ fun AddEditExperienceScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "Sebaiknya tambahkan 5 paling banyak yang digunakan di posisi ini. Akan ditampilkan juga di bagian Keahlian.",
+                    "Tambahkan keahlian yang relevan dengan posisi ini",
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
 
                 Button(
-                    onClick = { /* Handle add skills */ },
+                    onClick = {
+                        skillsText = skills.joinToString(", ")
+                        showSkillsDialog = true
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = DodgerBlue.copy(alpha = 0.1f),
                         contentColor = DodgerBlue
@@ -376,7 +526,17 @@ fun AddEditExperienceScreen(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Add")
                     Spacer(Modifier.width(8.dp))
-                    Text("Tambahkan keahlian")
+                    Text(if (skills.isEmpty()) "Tambah keahlian" else "Edit keahlian (${skills.size})")
+                }
+
+                // Display current skills
+                if (skills.isNotEmpty()) {
+                    Text(
+                        text = skills.joinToString(", "),
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                 }
             }
 
@@ -440,30 +600,96 @@ fun AddEditExperienceScreen(
             // Delete Experience Button (only when editing)
             if (isEditing) {
                 Button(
-                    onClick = { /* Handle delete */ },
+                    onClick = {
+                        currentUser?.uid?.let { userId ->
+                            experienceId?.let { expId ->
+                                experienceViewModel.deleteExperience(userId, expId) { success ->
+                                    if (success) {
+                                        snackbarMessage = "Pengalaman berhasil dihapus"
+                                        showSnackbar = true
+                                        navController.popBackStack()
+                                    } else {
+                                        snackbarMessage = "Gagal menghapus pengalaman"
+                                        showSnackbar = true
+                                    }
+                                }
+                            }
+                        }
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.Red.copy(alpha = 0.1f),
                         contentColor = Color.Red
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading
                 ) {
                     Text("Hapus pengalaman")
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            // Add some bottom padding to ensure content is not cut off
+            Spacer(Modifier.height(32.dp))
+        }
 
-            // Save Button
-            Button(
-                onClick = {
-                    // Handle save experience
-                    navController.popBackStack()
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = DodgerBlue),
-                modifier = Modifier.fillMaxWidth(),
-                enabled = position.isNotEmpty() && company.isNotEmpty() && startDate.isNotEmpty()
-            ) {
-                Text("Simpan", color = White)
+        // Skills Dialog
+        if (showSkillsDialog) {
+            Dialog(onDismissRequest = { showSkillsDialog = false }) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            text = "Tambah Keahlian",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            text = "Pisahkan setiap keahlian dengan koma (,)",
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+
+                        OutlinedTextField(
+                            value = skillsText,
+                            onValueChange = { skillsText = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp),
+                            placeholder = { Text("Contoh: Kotlin, Android Development, Firebase") },
+                            maxLines = 5
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            TextButton(
+                                onClick = { showSkillsDialog = false }
+                            ) {
+                                Text("Batal")
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    skills = skillsText.split(",")
+                                        .map { it.trim() }
+                                        .filter { it.isNotEmpty() }
+                                    showSkillsDialog = false
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = DodgerBlue)
+                            ) {
+                                Text("Simpan", color = White)
+                            }
+                        }
+                    }
+                }
             }
         }
     }

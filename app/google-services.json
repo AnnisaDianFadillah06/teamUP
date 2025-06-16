@@ -12,7 +12,20 @@
           "package_name": "com.example.teamup"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1034394758478-mf4blrupgjdipk0ocdvr9ajkqm3n47k1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.teamup",
+            "certificate_hash": "23f1c19d32e6360a7dd89d20d616a407d0cfb096"
+          }
+        },
+        {
+          "client_id": "1034394758478-e03r1jc6cqkfj60el39o4vh8pv01e37g.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAbcC_O32NyWaLJAtfpSi4ugjTtumCgXik"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1034394758478-e03r1jc6cqkfj60el39o4vh8pv01e37g.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

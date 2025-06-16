@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -40,12 +41,15 @@ import com.example.teamup.common.theme.DodgerBlue
 import com.example.teamup.common.theme.SoftGray2
 import com.example.teamup.common.theme.White
 import com.example.teamup.common.theme.White2
-import com.example.teamup.data.model.Activity
-import com.example.teamup.data.model.Experience
-import com.example.teamup.data.model.UserProfileData
-import com.example.teamup.data.viewmodels.ProfileViewModel
+import com.example.teamup.data.model.user.Activity
+import com.example.teamup.data.model.user.Experience
+import com.example.teamup.data.model.user.Education
+import com.example.teamup.data.model.user.UserProfileData
+import com.example.teamup.data.viewmodels.user.ProfileViewModel
 import com.example.teamup.route.Routes
 import com.google.firebase.auth.FirebaseAuth
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -55,12 +59,30 @@ fun ProfileScreen(
 ) {
     val context = LocalContext.current
     val currentUser = FirebaseAuth.getInstance().currentUser
+    // Collect education data
+    val userEducations by profileViewModel.userEducations.collectAsState()
+
+    // Get current education data (sama seperti di ProfileSettingsScreen)
+    val currentEducation = userEducations.firstOrNull { it.isCurrentlyStudying }
+        ?: userEducations.maxByOrNull { it.createdAt }
 
     LaunchedEffect(currentUser?.uid) {
-        currentUser?.uid?.let { profileViewModel.getUserData(it) }
+        currentUser?.uid?.let { userId ->
+            // Load all profile data separately
+            profileViewModel.getUserData(userId)
+            profileViewModel.loadUserActivities(userId)
+            profileViewModel.loadUserExperiences(userId)
+            profileViewModel.loadUserEducations(userId)
+            profileViewModel.loadUserSkills(userId)
+        }
     }
 
+    // Collect state from ViewModel
     val userData by profileViewModel.userData.collectAsState()
+    val activities by profileViewModel.activities.collectAsState()
+    val experiences by profileViewModel.experiences.collectAsState()
+    val educations by profileViewModel.educations.collectAsState()
+    val skills by profileViewModel.skills.collectAsState()
     val isLoading by profileViewModel.isLoading.collectAsState()
 
     Scaffold(
@@ -101,26 +123,52 @@ fun ProfileScreen(
             } else {
                 userData?.let { profile ->
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        item { ProfileHeader(profile) }
+                        item {
+                            ProfileHeader(
+                                profile = profile,
+                                skills = skills.take(2), // Show first 2 skills in header
+                                currentEducation = currentEducation // Tambahkan parameter ini
+                            )
+                        }
 
-                        // Activities Section
+                        // Activities Section - Now using separate activities list
                         item {
                             ProfileSectionWithActions(
                                 title = "Aktivitas",
-                                itemCount = profile.activities.size,
+                                itemCount = activities.size,
                                 onAddClick = {
-                                    navController.navigate("create_post")
-                                },
+                                    try {
+                                        Log.d("ProfileNavigation", "Navigating to: ${Routes.CreatePost.routes}")
+                                        val userId = FirebaseAuth.getInstance().currentUser?.uid
+                                        if (userId != null) {
+                                            navController.navigate(Routes.CreatePost.createRoute(userId))
+                                        } else {
+                                            Log.e("Navigation", "User ID is null, can't navigate to CreatePost")
+                                            // Bisa tampilkan snackbar, dialog, dll.
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e("ProfileNavigation", "Navigation error: ${e.message}", e)
+                                        Toast.makeText(context, "Tidak dapat membuka halaman: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }                                },
                                 onEditClick = {
-                                    navController.navigate("edit_activities")
+                                    try {
+                                        Log.d("ProfileNavigation", "Navigating to: ${Routes.EditActivities.routes}")
+                                        navController.navigate(Routes.EditActivities.routes)
+                                    } catch (e: Exception) {
+                                        Log.e("ProfileNavigation", "Navigation error: ${e.message}", e)
+                                        Toast.makeText(context, "Tidak dapat membuka halaman: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             ) {
-                                if (profile.activities.isNotEmpty()) {
-                                    profile.activities.take(3).forEach { activity ->
+                                if (activities.isNotEmpty()) {
+                                    activities.take(5).forEachIndexed { index, activity ->
                                         ActivityItem(activity = activity)
-                                        Spacer(Modifier.height(8.dp))
+                                        if (index < activities.take(5).size - 1) {
+                                            Spacer(Modifier.height(8.dp))
+                                        }
                                     }
-                                    if (profile.activities.size > 3) {
+                                    if (activities.size > 5) {
+                                        Spacer(Modifier.height(8.dp))
                                         TextButton(onClick = {
                                             navController.navigate("all_activities")
                                         }) {
@@ -137,22 +185,44 @@ fun ProfileScreen(
                             }
                         }
 
-                        // Experience Section
+                        // Experience Section - PERBAIKAN NAVIGASI
                         item {
                             ProfileSectionWithActions(
                                 title = "Pengalaman",
-                                itemCount = profile.experiences.size,
+                                itemCount = experiences.size,
                                 onAddClick = {
-                                    navController.navigate("add_experience")
+                                    try {
+                                        Log.d("ProfileNavigation", "Navigating to: ${Routes.AddExperience.createRoute("")}")
+                                        navController.navigate(Routes.AddExperience.createRoute(""))
+                                    } catch (e: Exception) {
+                                        Log.e("ProfileNavigation", "Navigation error: ${e.message}", e)
+                                        Toast.makeText(context, "Tidak dapat membuka halaman: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
                                 },
                                 onEditClick = {
-                                    navController.navigate("edit_experiences")
+                                    try {
+                                        Log.d("ProfileNavigation", "Navigating to: ${Routes.EditExperiences.routes}")
+                                        navController.navigate(Routes.EditExperiences.routes)
+                                    } catch (e: Exception) {
+                                        Log.e("ProfileNavigation", "Navigation error: ${e.message}", e)
+                                        Toast.makeText(context, "Tidak dapat membuka halaman: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             ) {
-                                if (profile.experiences.isNotEmpty()) {
-                                    profile.experiences.forEach { experience ->
+                                if (experiences.isNotEmpty()) {
+                                    experiences.take(5).forEachIndexed { index, experience ->
                                         ExperienceItem(experience = experience)
-                                        Spacer(Modifier.height(12.dp))
+                                        if (index < experiences.take(5).size - 1) {
+                                            Spacer(Modifier.height(8.dp))
+                                        }
+                                    }
+                                    if (experiences.size > 5) {
+                                        Spacer(Modifier.height(8.dp))
+                                        TextButton(onClick = {
+                                            // Navigate to all experiences
+                                        }) {
+                                            Text("Tampilkan semua pengalaman →")
+                                        }
                                     }
                                 } else {
                                     Text(
@@ -164,25 +234,45 @@ fun ProfileScreen(
                             }
                         }
 
-                        // Education Section (Updated)
+                        // Education Section - PERBAIKAN NAVIGASI
                         item {
                             ProfileSectionWithActions(
                                 title = "Pendidikan",
-                                itemCount = if ((profile.education?.school ?: "").isNotEmpty()) 1 else 0,
+                                itemCount = educations.size,
                                 onAddClick = {
-                                    navController.navigate("add_education")
+                                    try {
+                                        Log.d("ProfileNavigation", "Navigating to: ${Routes.AddEducation.createRoute("")}")
+                                        navController.navigate(Routes.AddEducation.createRoute(""))
+                                    } catch (e: Exception) {
+                                        Log.e("ProfileNavigation", "Navigation error: ${e.message}", e)
+                                        Toast.makeText(context, "Tidak dapat membuka halaman: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
                                 },
                                 onEditClick = {
-                                    navController.navigate("edit_education")
+                                    try {
+                                        Log.d("ProfileNavigation", "Navigating to: ${Routes.EditEducations.routes}")
+                                        navController.navigate(Routes.EditEducations.routes)
+                                    } catch (e: Exception) {
+                                        Log.e("ProfileNavigation", "Navigation error: ${e.message}", e)
+                                        Toast.makeText(context, "Tidak dapat membuka halaman: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             ) {
-                                val school = profile.education?.school.orEmpty()
-                                val field = profile.education?.fieldOfStudy.orEmpty()
-
-                                if (school.isNotEmpty() && field.isNotEmpty()) {
-                                    Text(school, fontWeight = FontWeight.SemiBold)
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(field)
+                                if (educations.isNotEmpty()) {
+                                    educations.take(5).forEachIndexed { index, education ->
+                                        EducationItem(education = education)
+                                        if (index < educations.take(5).size - 1) {
+                                            Spacer(Modifier.height(8.dp))
+                                        }
+                                    }
+                                    if (educations.size > 5) {
+                                        Spacer(Modifier.height(8.dp))
+                                        TextButton(onClick = {
+                                            // Navigate to all educations
+                                        }) {
+                                            Text("Tampilkan semua pendidikan →")
+                                        }
+                                    }
                                 } else {
                                     Text(
                                         "Belum ada informasi pendidikan",
@@ -191,31 +281,48 @@ fun ProfileScreen(
                                     )
                                 }
                             }
-
                         }
 
-                        // Skills Section (Updated)
+                        // Skills Section - Now using separate skills list
                         item {
                             ProfileSectionWithActions(
                                 title = "Keahlian",
-                                itemCount = profile.skills.size,
+                                itemCount = skills.size,
                                 onAddClick = {
-                                    navController.navigate("add_skills")
+                                    try {
+                                        Log.d("ProfileNavigation", "Navigating to: ${Routes.AddSkill.routes}")
+                                        navController.navigate(Routes.AddSkill.routes)
+                                    } catch (e: Exception) {
+                                        Log.e("ProfileNavigation", "Navigation error: ${e.message}", e)
+                                        Toast.makeText(context, "Tidak dapat membuka halaman: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
                                 },
                                 onEditClick = {
-                                    navController.navigate("edit_skills")
+                                    try {
+                                        Log.d("ProfileNavigation", "Navigating to: ${Routes.EditSkills.routes}")
+                                        navController.navigate(Routes.EditSkills.routes)
+                                    } catch (e: Exception) {
+                                        Log.e("ProfileNavigation", "Navigation error: ${e.message}", e)
+                                        Toast.makeText(context, "Tidak dapat membuka halaman: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
+
                             ) {
-                                if (profile.skills.isNotEmpty()) {
+                                if (skills.isNotEmpty()) {
                                     FlowRow(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        profile.skills.forEach { skill ->
+                                        skills.forEach { skill ->
                                             AssistChip(
                                                 onClick = {},
-                                                label = { Text(skill) },
+                                                label = {
+                                                    Text(
+                                                        text = skill,
+                                                        style = MaterialTheme.typography.bodySmall
+                                                    )
+                                                },
                                                 shape = RoundedCornerShape(16.dp),
                                                 colors = AssistChipDefaults.assistChipColors(
                                                     containerColor = DodgerBlue.copy(alpha = 0.1f)
@@ -229,25 +336,6 @@ fun ProfileScreen(
                                         fontStyle = FontStyle.Italic,
                                         color = Color.Gray
                                     )
-                                }
-                            }
-                        }
-
-                        // Contact Information Section (unchanged)
-                        item {
-                            ProfileSection(title = "Informasi Kontak") {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Email, contentDescription = "Email", tint = SoftGray2)
-                                    Spacer(Modifier.width(12.dp))
-                                    Text(profile.email, style = MaterialTheme.typography.bodyMedium)
-                                }
-                                if (profile.phone.isNotEmpty()) {
-                                    Spacer(Modifier.height(12.dp))
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Phone, contentDescription = "Phone", tint = SoftGray2)
-                                        Spacer(Modifier.width(12.dp))
-                                        Text(profile.phone, style = MaterialTheme.typography.bodyMedium)
-                                    }
                                 }
                             }
                         }
@@ -330,135 +418,424 @@ fun ProfileSectionWithActions(
 
 @Composable
 fun ActivityItem(activity: Activity) {
-    Column {
-        Text(
-            activity.content,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis
-        )
-        if (activity.mediaUrls.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(activity.mediaUrls.take(3)) { mediaUrl ->
-                    Image(
-                        painter = rememberAsyncImagePainter(mediaUrl),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(60.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop
-                    )
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = White),
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                activity.content,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            val allMediaUrls = activity.getAllMediaUrls()
+            if (allMediaUrls.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(allMediaUrls.take(3)) { mediaUrl ->
+                        Image(
+                            painter = rememberAsyncImagePainter(mediaUrl),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(60.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
             }
-        }
-        Spacer(Modifier.height(4.dp))
-        Text(
-            formatTimestamp(activity.timestamp),
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray
-        )
-    }
-}
-
-@Composable
-fun ExperienceItem(experience: Experience) {
-    Row {
-        // Company logo placeholder
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(Color.Gray.copy(alpha = 0.3f), RoundedCornerShape(8.dp)),
-            contentAlignment = Alignment.Center
-        ) {
+            Spacer(Modifier.height(8.dp))
             Text(
-                experience.company.take(2).uppercase(),
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-        }
-
-        Spacer(Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                experience.position,
-                fontWeight = FontWeight.SemiBold,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Text(
-                experience.company,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray
-            )
-            val dateRange = if (experience.isCurrent) {
-                "${experience.startDate} - Saat ini"
-            } else {
-                "${experience.startDate} - ${experience.endDate}"
-            }
-            Text(
-                dateRange,
+                formatTimestamp(activity.createdAt),
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Gray
             )
-            if (experience.location.isNotEmpty()) {
+        }
+    }
+}
+
+
+@Composable
+fun ExperienceItem(experience: Experience) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = White),
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(modifier = Modifier.padding(12.dp)) {
+            // Company logo placeholder
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(Color.Gray.copy(alpha = 0.3f), RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    experience.location,
+                    experience.company.take(2).uppercase(),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    experience.position,
+                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    experience.company,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+                val dateRange = if (experience.isCurrentRole) {
+                    "${experience.startDate} - Saat ini"
+                } else {
+                    "${experience.startDate} - ${experience.endDate}"
+                }
+                Text(
+                    dateRange,
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
+                if (experience.location.isNotEmpty()) {
+                    Text(
+                        experience.location,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
             }
         }
     }
-}
-
-// Helper function
-fun formatTimestamp(timestamp: Long): String {
-    // Implementation for formatting timestamp
-    return "Baru saja" // Placeholder
 }
 
 @Composable
-fun ProfileHeader(profile: UserProfileData) {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .background(White)
-            .padding(bottom = 16.dp)
+fun EducationItem(education: Education) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = White),
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        Row(modifier = Modifier.padding(12.dp)) {
+            // School logo placeholder
             Box(
-                Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .border(2.dp, DodgerBlue, CircleShape)
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(DodgerBlue.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
             ) {
-                if (profile.profilePictureUrl.isNotEmpty()) {
-                    Image(
-                        painter = rememberAsyncImagePainter(profile.profilePictureUrl),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Icon(Icons.Default.Email, contentDescription = null, tint = Color.Gray, modifier = Modifier.fillMaxSize().padding(32.dp))
-                }
+                Text(
+                    education.school.take(2).uppercase(),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = DodgerBlue
+                )
             }
 
-            Spacer(Modifier.height(16.dp))
-            Text(profile.fullName, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(4.dp))
-            Text("@${profile.username}", fontSize = 16.sp, color = DodgerBlue)
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    education.school,
+                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                if (education.degree.isNotEmpty()) {
+                    Text(
+                        education.degree,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+                }
+                if (education.fieldOfStudy.isNotEmpty()) {
+                    Text(
+                        education.fieldOfStudy,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                if (education.startDate.isNotEmpty()) {
+                    val dateRange = if (education.isCurrentlyStudying) {
+                        "${education.startDate} - Sekarang"
+                    } else {
+                        "${education.startDate} - ${education.endDate}"
+                    }
+                    Text(
+                        dateRange,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+            }
         }
     }
 }
+
+// Helper function for timestamp formatting
+fun formatTimestamp(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+
+    return when {
+        diff < 60_000 -> "Baru saja" // Less than 1 minute
+        diff < 3_600_000 -> "${diff / 60_000} menit yang lalu" // Less than 1 hour
+        diff < 86_400_000 -> "${diff / 3_600_000} jam yang lalu" // Less than 1 day
+        diff < 604_800_000 -> "${diff / 86_400_000} hari yang lalu" // Less than 1 week
+        else -> {
+            val sdf = SimpleDateFormat("dd MMM yyyy", Locale("id", "ID"))
+            sdf.format(Date(timestamp))
+        }
+    }
+}
+
+@Composable
+fun ProfileHeader(
+    profile: UserProfileData,
+    skills: List<String> = emptyList(),
+    currentEducation: Education? = null
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(containerColor = White),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.Top
+            ) {
+                // Profile Picture - Left side (larger)
+                Box(
+                    modifier = Modifier
+                        .size(100.dp) // Increased from 80dp
+                        .clip(CircleShape)
+                        .border(3.dp, DodgerBlue, CircleShape)
+                ) {
+                    if (profile.profilePictureUrl.isNotEmpty()) {
+                        Image(
+                            painter = rememberAsyncImagePainter(profile.profilePictureUrl),
+                            contentDescription = "Profile Picture",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(DodgerBlue.copy(alpha = 0.1f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = profile.fullName.take(2).uppercase(),
+                                fontSize = 28.sp, // Increased font size for larger picture
+                                fontWeight = FontWeight.Bold,
+                                color = DodgerBlue
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(20.dp)) // Increased spacing
+
+                // Profile Information - Right side
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    // Full Name
+                    Text(
+                        text = profile.fullName,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+
+                    // Username - with minimal spacing
+                    Text(
+                        text = "@${profile.username}",
+                        fontSize = 14.sp,
+                        color = DodgerBlue,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+
+                    // University - only show if exists
+                    currentEducation?.let { education ->
+                        if (education.school.isNotEmpty()) {
+                            Text(
+                                text = education.school,
+                                fontSize = 14.sp,
+                                color = Color.Black,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(top = 6.dp)
+                            )
+                        }
+
+                        // Field of Study - only show if exists
+                        if (education.fieldOfStudy.isNotEmpty()) {
+                            Text(
+                                text = education.fieldOfStudy,
+                                fontSize = 13.sp,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                    }
+
+                    // Email
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Email,
+                            contentDescription = "Email",
+                            tint = SoftGray2,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = profile.email,
+                            fontSize = 13.sp,
+                            color = Color.Gray
+                        )
+                    }
+
+                    // Phone - only show if exists
+                    if (profile.phone.isNotEmpty()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Phone,
+                                contentDescription = "Phone",
+                                tint = SoftGray2,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = profile.phone,
+                                fontSize = 13.sp,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Bottom section below profile picture
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Bio
+                if (profile.bio.isNotEmpty()) {
+                    Text(
+                        text = profile.bio,
+                        fontSize = 14.sp,
+                        color = Color.Black,
+                        lineHeight = 20.sp
+                    )
+                }
+
+                // Skills
+                if (skills.isNotEmpty()) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Keahlian",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.Black
+                        )
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(skills.take(4)) { skill ->
+                                AssistChip(
+                                    onClick = {},
+                                    label = {
+                                        Text(
+                                            skill,
+                                            fontSize = 12.sp
+                                        )
+                                    },
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = AssistChipDefaults.assistChipColors(
+                                        containerColor = DodgerBlue.copy(alpha = 0.1f),
+                                        labelColor = DodgerBlue
+                                    ),
+                                    modifier = Modifier.height(32.dp)
+                                )
+                            }
+                            if (skills.size > 4) {
+                                item {
+                                    AssistChip(
+                                        onClick = {},
+                                        label = {
+                                            Text(
+                                                "+${skills.size - 4}",
+                                                fontSize = 12.sp
+                                            )
+                                        },
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = AssistChipDefaults.assistChipColors(
+                                            containerColor = Color.Gray.copy(alpha = 0.1f),
+                                            labelColor = Color.Gray
+                                        ),
+                                        modifier = Modifier.height(32.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Location
+                if (profile.location.isNotEmpty()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = "Location",
+                            tint = SoftGray2,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = profile.location,
+                            fontSize = 13.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 fun ProfileSection(
