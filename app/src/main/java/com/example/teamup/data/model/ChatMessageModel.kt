@@ -1,10 +1,13 @@
 package com.example.teamup.data.model
 
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentId
+
 data class ChatMessageModel(
-    val id: String = "",
+    @DocumentId val id: String = "",
     val senderId: String = "",
     val senderName: String = "",
     val content: String = "",
-    val timestamp: Long,
-    val isCurrentUser: Boolean
+    val timestamp: Timestamp = Timestamp.now(),
+    val isCurrentUser: Boolean = false // This is UI-specific, not stored in Firestore
 )

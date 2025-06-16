@@ -25,27 +25,46 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.teamup.R
 import com.example.teamup.data.model.ProfileModel
-import com.example.teamup.data.viewmodels.InviteSelectMemberViewModel
 import com.example.teamup.data.viewmodels.SharedMemberViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DraftInviteSelectMemberScreen(
     navController: NavController,
-    sharedViewModel: SharedMemberViewModel // Gunakan SharedViewModel
+    sharedViewModel: SharedMemberViewModel,
+    teamId: String = "default_team_id",
+    teamName: String = "Tim Saya"
 ) {
     val selectedMembers by sharedViewModel.selectedMembers.collectAsState()
+    val sendInviteState by sharedViewModel.sendInviteState.collectAsState()
     val selectedList = remember { mutableStateListOf<ProfileModel>() }
 
-    // Update selectedList ketika selectedMembers berubah
+    // Update selectedList when selectedMembers changes
     LaunchedEffect(selectedMembers) {
         selectedList.clear()
         selectedList.addAll(selectedMembers)
     }
 
+    // Handle send invite state changes
+    var showSuccessDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(sendInviteState) {
+        when (sendInviteState) {
+            is SharedMemberViewModel.SendInviteState.Success -> {
+                showSuccessDialog = true // Show success dialog
+            }
+            is SharedMemberViewModel.SendInviteState.Error -> {
+                // Error handling remains in UI below
+            }
+            else -> {}
+        }
+    }
+
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var memberToDelete by remember { mutableStateOf<ProfileModel?>(null) }
     var showSendConfirmDialog by remember { mutableStateOf(false) }
+
+    // Create SnackbarHostState for managing Snackbar
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
         topBar = {
@@ -57,6 +76,17 @@ fun DraftInviteSelectMemberScreen(
                     }
                 }
             )
+        },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState
+            ) { snackbarData ->
+                Snackbar(
+                    snackbarData = snackbarData,
+                    containerColor = Color.Red.copy(alpha = 0.9f),
+                    contentColor = Color.White
+                )
+            }
         }
     ) { paddingValues ->
         Column(
@@ -65,8 +95,48 @@ fun DraftInviteSelectMemberScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
+            // Show error message if exists
+            if (sendInviteState is SharedMemberViewModel.SendInviteState.Error) {
+                val errorState = sendInviteState as SharedMemberViewModel.SendInviteState.Error
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.Red.copy(alpha = 0.1f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = errorState.message,
+                            color = Color.Red,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(
+                            onClick = { sharedViewModel.resetSendInviteState() }
+                        ) {
+                            Text("Tutup", color = Color.Red)
+                        }
+                    }
+                }
+
+                // Show Snackbar for error
+                LaunchedEffect(errorState) {
+                    snackbarHostState.showSnackbar(
+                        message = errorState.message,
+                        actionLabel = "Tutup",
+                        duration = SnackbarDuration.Long
+                    )
+                    sharedViewModel.resetSendInviteState()
+                }
+            }
+
             if (selectedList.isEmpty()) {
-                // Show empty state
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -90,7 +160,6 @@ fun DraftInviteSelectMemberScreen(
                     }
                 }
             } else {
-                // List anggota yang dipilih
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
@@ -108,7 +177,6 @@ fun DraftInviteSelectMemberScreen(
                 }
             }
 
-            // Tombol kirim undangan
             Button(
                 onClick = {
                     if (selectedList.isNotEmpty()) {
@@ -118,13 +186,26 @@ fun DraftInviteSelectMemberScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp),
-                enabled = selectedList.isNotEmpty(),
+                enabled = selectedList.isNotEmpty() && sendInviteState !is SharedMemberViewModel.SendInviteState.Loading,
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text(
-                    text = "Undang (${selectedList.size})",
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
+                if (sendInviteState is SharedMemberViewModel.SendInviteState.Loading) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Mengirim...")
+                    }
+                } else {
+                    Text(
+                        text = "Undang (${selectedList.size})",
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
             }
         }
     }
@@ -181,18 +262,15 @@ fun DraftInviteSelectMemberScreen(
             },
             text = {
                 Text(
-                    text = "Kamu akan mengirim undangan ke ${selectedList.size} calon anggota.",
+                    text = "Kamu akan mengirim undangan ke ${selectedList.size} calon anggota untuk bergabung.",
                     textAlign = TextAlign.Center
                 )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        // TODO: Tambahkan logika pengiriman undangan
-                        // Setelah berhasil kirim, clear selected members
-                        sharedViewModel.clearSelectedMembers()
+                        sharedViewModel.sendInvitations(teamId, teamName)
                         showSendConfirmDialog = false
-                        navController.popBackStack()
                     }
                 ) {
                     Text("Undang")
@@ -202,7 +280,39 @@ fun DraftInviteSelectMemberScreen(
                 TextButton(
                     onClick = { showSendConfirmDialog = false }
                 ) {
-                    Text("Kembali")
+                    Text("Batal")
+                }
+            }
+        )
+    }
+
+    // Dialog untuk undangan berhasil terkirim
+    if (showSuccessDialog && sendInviteState is SharedMemberViewModel.SendInviteState.Success) {
+        val successState = sendInviteState as SharedMemberViewModel.SendInviteState.Success
+        AlertDialog(
+            onDismissRequest = {
+                showSuccessDialog = false
+                sharedViewModel.resetSendInviteState()
+                navController.popBackStack() // Navigate back after dismissing
+            },
+            title = {
+                Text(text = "Undangan Terkirim")
+            },
+            text = {
+                Text(
+                    text = successState.message,
+                    textAlign = TextAlign.Center
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showSuccessDialog = false
+                        sharedViewModel.resetSendInviteState()
+                        navController.popBackStack() // Navigate back after confirming
+                    }
+                ) {
+                    Text("OK")
                 }
             }
         )
@@ -226,7 +336,6 @@ fun SelectedMemberItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Profile image - handle both URL and resource
             if (member.profilePictureUrl.isNotEmpty()) {
                 AsyncImage(
                     model = member.profilePictureUrl,
@@ -249,7 +358,6 @@ fun SelectedMemberItem(
                 )
             }
 
-            // Member info
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -283,7 +391,6 @@ fun SelectedMemberItem(
                 }
             }
 
-            // Remove button
             IconButton(
                 onClick = onRemove,
                 modifier = Modifier
