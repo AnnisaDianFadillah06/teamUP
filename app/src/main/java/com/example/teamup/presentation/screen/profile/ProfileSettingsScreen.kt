@@ -1,7 +1,9 @@
 //ProfileSettingsScreen.kt
 package com.example.teamup.presentation.screen.profile
 
+import android.content.Context
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -41,20 +43,29 @@ import com.example.teamup.common.theme.SoftGray2
 import com.example.teamup.common.theme.White
 import com.example.teamup.common.theme.White2
 import com.example.teamup.common.utils.SessionManager
-import com.example.teamup.data.model.UserProfileData
+import com.example.teamup.data.model.user.UserProfileData
 import com.example.teamup.data.sources.ProfileItem
-import com.example.teamup.data.viewmodels.ProfileViewModel
+import com.example.teamup.data.viewmodels.user.ProfileViewModel
 import com.example.teamup.presentation.components.LogoutDialog
-import com.example.teamup.route.Routes
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.ui.text.style.TextAlign
+import com.example.teamup.data.viewmodels.user.UserViewModel
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.system.exitProcess
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileSettingsScreen(
     navController: NavController,
-    profileViewModel: ProfileViewModel = viewModel()
+    profileViewModel: ProfileViewModel = viewModel(),
+    userViewModel: UserViewModel = viewModel()
+
 ) {
     val context = LocalContext.current
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -62,15 +73,38 @@ fun ProfileSettingsScreen(
 
     // Edit mode states
     var isEditMode by remember { mutableStateOf(false) }
-    var showEditDialog by remember { mutableStateOf(false) }
+    // Logout state
+    var isLoggingOut by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(currentUser?.uid) {
-        currentUser?.uid?.let { profileViewModel.getUserData(it) }
-    }
 
+
+    // Collect all state flows
     val userData by profileViewModel.userData.collectAsState()
+    val userEducations by profileViewModel.userEducations.collectAsState()
+    val userSkills by profileViewModel.userSkills.collectAsState()
     val isLoading by profileViewModel.isLoading.collectAsState()
     val errorMessage by profileViewModel.errorMessage.collectAsState()
+
+    // Load all user data and observe changes
+    LaunchedEffect(currentUser?.uid) {
+        currentUser?.uid?.let { userId ->
+            profileViewModel.getUserData(userId)
+            profileViewModel.loadUserEducations(userId)
+            profileViewModel.loadUserSkills(userId)
+        }
+    }
+
+    // Re-fetch data when returning from edit mode to ensure fresh data
+    LaunchedEffect(isEditMode) {
+        if (!isEditMode) {
+            currentUser?.uid?.let { userId ->
+                profileViewModel.getUserData(userId)
+                profileViewModel.loadUserEducations(userId)
+                profileViewModel.loadUserSkills(userId)
+            }
+        }
+    }
 
     // Image picker states
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
@@ -80,77 +114,119 @@ fun ProfileSettingsScreen(
         selectedImageUri = uri
     }
 
-    // Profile edit states
+    // Profile edit states - only for fields that are actually supported
     var fullNameEdit by remember { mutableStateOf("") }
     var usernameEdit by remember { mutableStateOf("") }
     var phoneEdit by remember { mutableStateOf("") }
+    var bioEdit by remember { mutableStateOf("") }
+    var locationEdit by remember { mutableStateOf("") }
     var universityEdit by remember { mutableStateOf("") }
     var majorEdit by remember { mutableStateOf("") }
     var skillsEdit by remember { mutableStateOf("") }
 
-    // Initialize edit fields with current data
-    LaunchedEffect(userData) {
+    // Initialize edit fields when data changes
+    LaunchedEffect(userData, userEducations, userSkills) {
         userData?.let { data ->
             fullNameEdit = data.fullName
             usernameEdit = data.username
             phoneEdit = data.phone
-            universityEdit = data.education?.school ?: ""
-            majorEdit = data.education?.fieldOfStudy ?: ""
-            skillsEdit = data.skills.joinToString(", ")
+            bioEdit = data.bio
+            locationEdit = data.location
+        }
+
+        // Get current education data
+        val currentEducation = userEducations.firstOrNull { it.isCurrentlyStudying }
+            ?: userEducations.maxByOrNull { it.createdAt }
+        currentEducation?.let { education ->
+            universityEdit = education.school
+            majorEdit = education.fieldOfStudy
+        }
+
+        // Get skills data
+        skillsEdit = userSkills.joinToString(", ") { it.name }
+    }
+
+    fun handleLogout(scope: CoroutineScope) {
+        if (isLoggingOut) return
+
+        isLoggingOut = true
+        Log.d("ProfileSettings", "Starting logout process")
+
+        // Clear session
+        SessionManager.clearSession(context) { success ->
+            Log.d("ProfileSettings", "Session cleared: $success")
+
+            // Clear additional preferences
+            try {
+                val prefs = context.getSharedPreferences("teamup_prefs", Context.MODE_PRIVATE)
+                prefs.edit().clear().commit()
+
+                val userPrefs = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                userPrefs.edit().clear().commit()
+
+                Log.d("ProfileSettings", "Additional preferences cleared")
+            } catch (e: Exception) {
+                Log.e("ProfileSettings", "Error clearing preferences", e)
+            }
+
+            // Langsung exit aplikasi
+            scope.launch {
+                try {
+                    Toast.makeText(context, "Successfully logged out", Toast.LENGTH_SHORT).show()
+                    delay(1000) // Beri waktu untuk toast
+                    Log.d("ProfileSettings", "Exiting application")
+                    exitProcess(0)
+                } catch (e: Exception) {
+                    Log.e("ProfileSettings", "Exit failed", e)
+                    exitProcess(0)
+                }
+            }
         }
     }
 
-    val handleLogout = {
-        FirebaseAuth.getInstance().signOut()
-        context.getSharedPreferences("teamup_prefs", android.content.Context.MODE_PRIVATE)
-            .edit().clear().apply()
-        SessionManager.clearSession(context)
-        Toast.makeText(context, "Successfully logged out", Toast.LENGTH_SHORT).show()
-        navController.navigate(Routes.LoginV5.routes) {
-            popUpTo(navController.graph.startDestinationId) { inclusive = true }
-        }
-    }
 
     // Handle profile update
     val saveProfileChanges = {
         currentUser?.uid?.let { userId ->
-            val skillsList = skillsEdit.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            val currentUserData = userData ?: return@let
 
-            if (selectedImageUri != null) {
-                // If image was changed, use saveCompleteProfile
-                profileViewModel.saveCompleteProfile(
-                    userId = userId,
-                    school = universityEdit,
-                    degree = "", // You might want to add a degree field to your form
-                    fieldOfStudy = majorEdit,
-                    skills = skillsList,
-                    imageUri = selectedImageUri!!
-                ) { success ->
-                    if (success) {
-                        Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
-                        isEditMode = false
-                        selectedImageUri = null
-                    } else {
-                        Toast.makeText(context, "Failed to update profile", Toast.LENGTH_SHORT).show()
+            val updatedUserData = currentUserData.copy(
+                fullName = fullNameEdit,
+                username = usernameEdit,
+                phone = phoneEdit,
+                bio = bioEdit,
+                location = locationEdit,
+                updatedAt = System.currentTimeMillis()
+            )
+
+            // Use userViewModel instance instead of static call
+            userViewModel.updateUser(updatedUserData, selectedImageUri) { profileSuccess ->
+                if (profileSuccess) {
+                    Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
+
+                    // Save education data jika ada
+                    if (universityEdit.isNotBlank() || majorEdit.isNotBlank()) {
+                        profileViewModel.saveEducationFromProfile(
+                            userId = userId,
+                            school = universityEdit,
+                            degree = "",
+                            fieldOfStudy = majorEdit
+                        ) { _ -> }
                     }
-                }
-            } else {
-                // Basic profile update without changing the image
-                profileViewModel.saveUserProfile(
-                    userId = userId,
-                    fullName = fullNameEdit,
-                    username = usernameEdit,
-                    email = userData?.email ?: "",
-                    phone = phoneEdit,
-                    skills = skillsList,
-                    imageUri = null
-                ) { success ->
-                    if (success) {
-                        Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
-                        isEditMode = false
-                    } else {
-                        Toast.makeText(context, "Failed to update profile", Toast.LENGTH_SHORT).show()
+
+                    // Save skills jika ada
+                    if (skillsEdit.isNotBlank()) {
+                        profileViewModel.saveSkillsFromProfile(userId, skillsEdit) { _ -> }
                     }
+
+                    // Keluar dari edit mode dan refresh data
+                    isEditMode = false
+                    selectedImageUri = null
+                    profileViewModel.getUserData(userId)
+                    profileViewModel.loadUserEducations(userId)
+                    profileViewModel.loadUserSkills(userId)
+                } else {
+                    Toast.makeText(context, "Failed to update profile", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -162,15 +238,14 @@ fun ProfileSettingsScreen(
             "Edit Profile" -> {
                 isEditMode = true
             }
+
             "Notifications" -> {
-                Toast.makeText(context, R.string.in_dev, Toast.LENGTH_SHORT).show()
+                navController.navigate("notifications")
             }
-            "Invite Friends" -> {
-                Toast.makeText(context, R.string.in_dev, Toast.LENGTH_SHORT).show()
-            }
-            else -> {
-                Toast.makeText(context, R.string.in_dev, Toast.LENGTH_SHORT).show()
-            }
+
+//            else -> {
+//                Toast.makeText(context, R.string.in_dev, Toast.LENGTH_SHORT).show()
+//            }
         }
     }
 
@@ -245,12 +320,15 @@ fun ProfileSettingsScreen(
                                         when {
                                             selectedImageUri != null -> {
                                                 Image(
-                                                    painter = rememberAsyncImagePainter(selectedImageUri),
+                                                    painter = rememberAsyncImagePainter(
+                                                        selectedImageUri
+                                                    ),
                                                     contentDescription = "Selected Profile Picture",
                                                     modifier = Modifier.fillMaxSize(),
                                                     contentScale = ContentScale.Crop
                                                 )
                                             }
+
                                             !userData?.profilePictureUrl.isNullOrEmpty() -> {
                                                 Image(
                                                     painter = rememberAsyncImagePainter(userData!!.profilePictureUrl),
@@ -259,9 +337,10 @@ fun ProfileSettingsScreen(
                                                     contentScale = ContentScale.Crop
                                                 )
                                             }
+
                                             else -> {
                                                 Image(
-                                                    painter = painterResource(R.drawable.captain_icon),
+                                                    painter = painterResource(R.drawable.ic_profile),
                                                     contentDescription = "Default Profile Picture",
                                                     modifier = Modifier.fillMaxSize(),
                                                     contentScale = ContentScale.Crop
@@ -292,7 +371,7 @@ fun ProfileSettingsScreen(
                             Spacer(modifier = Modifier.height(24.dp))
                         }
 
-                        // Form Fields
+                        // Form Fields - Only supported fields
                         item {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
@@ -333,6 +412,29 @@ fun ProfileSettingsScreen(
 
                                     Spacer(modifier = Modifier.height(16.dp))
 
+                                    // Bio
+                                    OutlinedTextField(
+                                        value = bioEdit,
+                                        onValueChange = { bioEdit = it },
+                                        label = { Text("Bio") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        minLines = 2,
+                                        maxLines = 4
+                                    )
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    // Location
+                                    OutlinedTextField(
+                                        value = locationEdit,
+                                        onValueChange = { locationEdit = it },
+                                        label = { Text("Location") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true
+                                    )
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+
                                     // University
                                     OutlinedTextField(
                                         value = universityEdit,
@@ -344,7 +446,7 @@ fun ProfileSettingsScreen(
 
                                     Spacer(modifier = Modifier.height(16.dp))
 
-                                    // Major
+                                    // Major/Field of Study
                                     OutlinedTextField(
                                         value = majorEdit,
                                         onValueChange = { majorEdit = it },
@@ -379,12 +481,34 @@ fun ProfileSettingsScreen(
                                     .padding(vertical = 20.dp),
                                 horizontalArrangement = Arrangement.Center
                             ) {
-                                TextButton(onClick = { showLogoutDialog = true }) {
-                                    Text(
-                                        text = "Log Out",
-                                        color = Ruby,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
+                                if (isLoggingOut) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            color = Ruby,
+                                            strokeWidth = 2.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Logging out...",
+                                            color = Ruby,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                } else {
+                                    TextButton(
+                                        onClick = { showLogoutDialog = true },
+                                        enabled = !isLoggingOut
+                                    ) {
+                                        Text(
+                                            text = "Log Out",
+                                            color = Ruby,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -404,8 +528,19 @@ fun ProfileSettingsScreen(
         }
     }
 
+
     if (showLogoutDialog) {
-        LogoutDialog(onDismiss = { showLogoutDialog = false }, onConfirm = { handleLogout() })
+        LogoutDialog(
+            onDismiss = {
+                if (!isLoggingOut) {
+                    showLogoutDialog = false
+                }
+            },
+            onConfirm = {
+                showLogoutDialog = false
+                handleLogout(scope)
+            },
+        )
     }
 }
 
@@ -418,6 +553,7 @@ fun ProfileHeader(userData: UserProfileData?) {
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Profile Picture
         Box(
             modifier = Modifier
                 .size(120.dp)
@@ -433,25 +569,77 @@ fun ProfileHeader(userData: UserProfileData?) {
                 )
             } else {
                 Image(
-                    painter = painterResource(R.drawable.captain_icon),
+                    painter = painterResource(R.drawable.ic_profile),
                     contentDescription = "Default Profile Picture",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
             }
         }
+
         Spacer(modifier = Modifier.height(12.dp))
+
+        // Full Name
         Text(
             text = userData?.fullName ?: "User",
             fontSize = 20.sp,
             fontWeight = FontWeight.SemiBold
         )
+
         Spacer(modifier = Modifier.height(4.dp))
+
+        // Username
+        if (!userData?.username.isNullOrEmpty()) {
+            Text(
+                text = "@${userData!!.username}",
+                fontSize = 14.sp,
+                color = Color.Gray,
+                fontStyle = FontStyle.Italic
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+
+        // Email
         Text(
             text = userData?.email ?: "email@example.com",
             fontSize = 14.sp,
-            fontStyle = FontStyle.Normal
+            fontStyle = FontStyle.Normal,
+            color = Color.Gray
         )
+
+        // Bio
+        if (!userData?.bio.isNullOrEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = userData!!.bio,
+                fontSize = 14.sp,
+                color = Color.DarkGray,
+                textAlign = TextAlign.Center,
+                lineHeight = 18.sp
+            )
+        }
+
+        // Location
+        if (!userData?.location.isNullOrEmpty()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_location), // Ganti dengan icon location yang ada
+                    contentDescription = "Location",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = userData!!.location,
+                    fontSize = 13.sp,
+                    color = Color.Gray
+                )
+            }
+        }
     }
 }
 
@@ -469,6 +657,33 @@ fun ProfileBody(onItemClick: (String) -> Unit) {
         }
     }
 }
+
+// Helper function to save skills and finish update
+private fun saveSkilsAndFinish(
+    userId: String,
+    skillsEdit: String,
+    profileViewModel: ProfileViewModel,
+    context: Context,
+    selectedImageUri: Uri?,
+    onComplete: () -> Unit
+) {
+    if (skillsEdit.isNotBlank()) {
+        profileViewModel.saveSkillsFromProfile(userId, skillsEdit) { skillsSuccess ->
+            val message = if (skillsSuccess) {
+                "Profile updated successfully"
+            } else {
+                "Profile updated, but some skills could not be saved"
+            }
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            onComplete()
+        }
+    } else {
+        Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
+        onComplete()
+    }
+}
+
+
 
 @Composable
 fun BodyRow(icon: Int, label: String, onClick: () -> Unit) {

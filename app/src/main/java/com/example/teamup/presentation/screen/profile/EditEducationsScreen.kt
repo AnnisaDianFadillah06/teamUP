@@ -1,4 +1,4 @@
-//EditExperiencesScreen.kt
+//EditEducationsScreen.kt (Perbaikan)
 package com.example.teamup.presentation.screen.profile
 
 import androidx.compose.foundation.background
@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,26 +25,28 @@ import com.example.teamup.common.theme.DodgerBlue
 import com.example.teamup.common.theme.SoftGray2
 import com.example.teamup.common.theme.White
 import com.example.teamup.common.theme.White2
-import com.example.teamup.data.model.user.Experience
-import com.example.teamup.data.viewmodels.user.ExperienceViewModel
+import com.example.teamup.data.model.user.Education
+import com.example.teamup.data.model.user.getDisplayPeriod
+import com.example.teamup.data.model.user.getDisplayTitle
+import com.example.teamup.data.viewmodels.user.EducationViewModel
 import com.example.teamup.route.Routes
 import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditExperiencesScreen(
+fun EditEducationsScreen(
     navController: NavController,
-    experienceViewModel: ExperienceViewModel = viewModel()
+    educationViewModel: EducationViewModel = viewModel()
 ) {
     val currentUser = FirebaseAuth.getInstance().currentUser
-    val experiences by experienceViewModel.experiences.collectAsState()
-    val isLoading by experienceViewModel.isLoading.collectAsState()
-    val errorMessage by experienceViewModel.errorMessage.collectAsState()
+    val educations by educationViewModel.educations.collectAsState()
+    val isLoading by educationViewModel.isLoading.collectAsState()
+    val errorMessage by educationViewModel.errorMessage.collectAsState()
 
-    // Load experiences when screen opens
+    // Load educations when screen opens - PERBAIKAN: gunakan method yang benar
     LaunchedEffect(currentUser?.uid) {
         currentUser?.uid?.let { userId ->
-            experienceViewModel.loadExperiences(userId)
+            educationViewModel.loadEducations(userId) // Method yang benar sesuai ViewModel
         }
     }
 
@@ -51,14 +54,14 @@ fun EditExperiencesScreen(
     LaunchedEffect(errorMessage) {
         errorMessage?.let {
             // You can show a snackbar or toast here
-            experienceViewModel.clearError()
+            educationViewModel.clearError()
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Pengalaman") },
+                title = { Text("Pendidikan") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = White)
@@ -66,10 +69,10 @@ fun EditExperiencesScreen(
                 },
                 actions = {
                     IconButton(onClick = {
-                        // Clear current experience when adding new
-                        experienceViewModel.clearCurrentExperience()
-                        // Navigate to AddExperience without parameter (mode add)
-                        navController.navigate(Routes.AddExperience.routes.replace("/{experienceId}", ""))
+                        // Clear current education when adding new
+                        educationViewModel.clearCurrentEducation()
+                        // Navigate to AddEducation without parameter (mode add)
+                        navController.navigate("add_education") // PERBAIKAN: route yang lebih sederhana
                     }) {
                         Icon(Icons.Default.Add, contentDescription = "Add", tint = White)
                     }
@@ -96,18 +99,20 @@ fun EditExperiencesScreen(
                         CircularProgressIndicator(color = DodgerBlue)
                     }
                 }
-                experiences.isNotEmpty() -> {
+                educations.isNotEmpty() -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(experiences) { experience ->
-                            ExperienceEditItem(
-                                experience = experience,
+                        items(educations) { education ->
+                            EducationEditItem(
+                                education = education,
                                 onEditClick = {
-                                    // Navigate to form edit with experienceId
-                                    navController.navigate(Routes.AddExperience.createRoute(experience.id))
+                                    // Set current education untuk edit
+                                    educationViewModel.setCurrentEducation(education)
+                                    // Navigate to form edit dengan educationId
+                                    navController.navigate("add_education/${education.id}") // PERBAIKAN: route dengan ID
                                 }
                             )
                         }
@@ -120,21 +125,21 @@ fun EditExperiencesScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Belum ada pengalaman kerja",
+                            text = "Belum ada data pendidikan",
                             color = Color.Gray,
                             fontSize = 16.sp
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
                             onClick = {
-                                experienceViewModel.clearCurrentExperience()
-                                navController.navigate(Routes.AddExperience.routes.replace("/{experienceId}", ""))
+                                educationViewModel.clearCurrentEducation()
+                                navController.navigate("add_education")
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = DodgerBlue)
                         ) {
                             Icon(Icons.Default.Add, contentDescription = "Add")
                             Spacer(Modifier.width(8.dp))
-                            Text("Tambah Pengalaman Pertama", color = White)
+                            Text("Tambah Pendidikan Pertama", color = White)
                         }
                     }
                 }
@@ -144,8 +149,8 @@ fun EditExperiencesScreen(
 }
 
 @Composable
-fun ExperienceEditItem(
-    experience: Experience,
+fun EducationEditItem(
+    education: Education,
     onEditClick: () -> Unit
 ) {
     Card(
@@ -159,17 +164,18 @@ fun ExperienceEditItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Company logo placeholder
+            // School icon placeholder
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .background(Color.Gray.copy(alpha = 0.3f), RoundedCornerShape(8.dp)),
+                    .background(DodgerBlue.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = experience.company.take(2).uppercase(),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                Icon(
+                    Icons.Default.School,
+                    contentDescription = "School",
+                    tint = DodgerBlue,
+                    modifier = Modifier.size(24.dp)
                 )
             }
 
@@ -177,47 +183,33 @@ fun ExperienceEditItem(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = experience.position,
+                    text = education.getDisplayTitle(),
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp
                 )
                 Text(
-                    text = experience.company,
+                    text = education.school,
                     color = Color.Gray,
                     fontSize = 14.sp
                 )
-                val dateRange = if (experience.isCurrentRole) {
-                    "${experience.startDate} - Saat ini"
-                } else {
-                    "${experience.startDate} - ${experience.endDate}"
-                }
                 Text(
-                    text = dateRange,
+                    text = education.getDisplayPeriod(),
                     color = Color.Gray,
                     fontSize = 12.sp
                 )
-                if (experience.location.isNotEmpty()) {
+                if (education.grade.isNotEmpty()) {
                     Text(
-                        text = experience.location,
+                        text = "GPA: ${education.grade}",
                         color = Color.Gray,
                         fontSize = 12.sp
                     )
                 }
-                // Show job type if available
-                if (experience.jobType.isNotEmpty()) {
+                if (education.isCurrentlyStudying) {
                     Text(
-                        text = experience.jobType,
+                        text = "Sedang Belajar",
                         color = DodgerBlue,
-                        fontSize = 12.sp
-                    )
-                }
-                // Show skills if available
-                if (experience.skills.isNotEmpty()) {
-                    Text(
-                        text = "Skills: ${experience.skills.joinToString(", ")}",
-                        color = Color.Gray,
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(top = 4.dp)
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }

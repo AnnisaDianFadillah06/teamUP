@@ -2,11 +2,11 @@
 package com.example.teamup.data.viewmodels
 
 import android.app.Activity
-import androidx.activity.ComponentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.teamup.data.model.RegistrationData
 import com.example.teamup.data.repositories.AuthRepository
+import com.example.teamup.data.viewmodels.user.ProfileViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
