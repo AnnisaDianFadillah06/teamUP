@@ -10,7 +10,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,14 +17,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -43,21 +38,17 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.teamup.common.theme.DodgerBlue
 import com.example.teamup.common.theme.White
 import com.example.teamup.data.viewmodels.AuthViewModel
-import com.example.teamup.data.viewmodels.ProfileViewModel
+import com.example.teamup.data.viewmodels.user.ProfileViewModel
 import com.example.teamup.route.Routes
 import com.google.firebase.auth.FirebaseAuth
 
-@OptIn(
-    androidx.compose.material3.ExperimentalMaterial3Api::class,
-    ExperimentalLayoutApi::class
-)
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun CompleteProfileScreen(
     navController: NavController,
@@ -81,8 +72,7 @@ fun CompleteProfileScreen(
     // New fields to collect
     var university by remember { mutableStateOf("") }
     var major by remember { mutableStateOf("") }
-    var skill by remember { mutableStateOf("") }
-    var skillList by remember { mutableStateOf(emptyList<String>()) }
+    var degree by remember { mutableStateOf("") }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     val scrollState = rememberScrollState()
 
@@ -146,11 +136,17 @@ fun CompleteProfileScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Display pre-filled user info
-                if (!fullName.isBlank()) {
-                    Text(fullName, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text(email, fontSize = 14.sp, color = Color.Gray)
-                    Text("@$username", fontSize = 14.sp, color = DodgerBlue)
-                    if (!phone.isBlank()) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    if (fullName.isNotBlank()) {
+                        Text(fullName, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    }
+                    if (email.isNotBlank()) {
+                        Text(email, fontSize = 14.sp, color = Color.Gray)
+                    }
+                    if (username.isNotBlank()) {
+                        Text("@$username", fontSize = 14.sp, color = DodgerBlue)
+                    }
+                    if (phone.isNotBlank()) {
                         Text(phone, fontSize = 14.sp, color = Color.Gray)
                     }
                 }
@@ -172,11 +168,11 @@ fun CompleteProfileScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Major
+                // Degree
                 OutlinedTextField(
-                    value = major,
-                    onValueChange = { major = it },
-                    label = { Text("Major") },
+                    value = degree,
+                    onValueChange = { degree = it },
+                    label = { Text("Degree (e.g., Bachelor's, Master's)") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Text,
@@ -187,113 +183,59 @@ fun CompleteProfileScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Add Skill
-                Row(
+                // Major/Field of Study
+                OutlinedTextField(
+                    value = major,
+                    onValueChange = { major = it },
+                    label = { Text("Field of Study") },
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = skill,
-                        onValueChange = { skill = it },
-                        label = { Text("Add Skill") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Text,
-                            imeAction = ImeAction.Done
-                        ),
-                        singleLine = true
-                    )
-                    IconButton(onClick = {
-                        if (skill.isNotBlank() && !skillList.contains(skill)) {
-                            skillList = skillList + skill
-                            skill = ""
-                        }
-                    }) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Skill")
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Skills Chips
-                if (skillList.isNotEmpty()) {
-                    Text("Your Skills", fontSize = 16.sp, fontWeight = FontWeight.Medium)
-
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        skillList.forEach { skillItem ->
-                            AssistChip(
-                                onClick = { },
-                                label = { Text(skillItem) },
-                                trailingIcon = {
-                                    IconButton(onClick = {
-                                        skillList = skillList.filterNot { it == skillItem }
-                                    }) {
-                                        Icon(
-                                            Icons.Default.Close,
-                                            contentDescription = "Remove"
-                                        )
-                                    }
-                                },
-                                shape = RoundedCornerShape(16.dp),
-                                colors = AssistChipDefaults.assistChipColors(
-                                    containerColor = DodgerBlue.copy(alpha = 0.1f)
-                                )
-                            )
-                        }
-                    }
-                }
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Done
+                    ),
+                    singleLine = true
+                )
 
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Button(
                     onClick = {
-                        if (university.isBlank() || major.isBlank() || skillList.isEmpty() || imageUri == null) {
-                            Toast.makeText(context, "Please complete all fields and add a profile picture", Toast.LENGTH_SHORT).show()
+                        if (university.isBlank() || major.isBlank() || imageUri == null) {
+                            Toast.makeText(
+                                context,
+                                "Please complete all fields and add a profile picture",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         } else {
                             currentUser?.uid?.let { uid ->
-                                if (registrationData != null) {
-                                    // If we have registration data, save complete profile with all data
-                                    profileViewModel.saveUserProfile(
-                                        userId = uid,
-                                        fullName = fullName,
-                                        username = username,
-                                        email = email,
-                                        phone = phone,
-                                        university = university,
-                                        major = major,
-                                        skills = skillList,
-                                        imageUri = imageUri!!
-                                    ) { success ->
-                                        if (success) {
-                                            Toast.makeText(context, "Profile completed successfully!", Toast.LENGTH_SHORT).show()
-                                            navController.navigate(Routes.Dashboard.routes) {
-                                                popUpTo(Routes.CompleteProfile.routes) { inclusive = true }
+                                profileViewModel.saveCompleteProfile(
+                                    userId = uid,
+                                    fullName = fullName,
+                                    username = username,
+                                    email = email,
+                                    phone = phone,
+                                    school = university,
+                                    degree = degree,
+                                    fieldOfStudy = major,
+                                    imageUri = imageUri
+                                ) { success ->
+                                    if (success) {
+                                        Toast.makeText(
+                                            context,
+                                            "Profile completed successfully!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        navController.navigate(Routes.Dashboard.routes) {
+                                            popUpTo(Routes.CompleteProfile.routes) {
+                                                inclusive = true
                                             }
-                                        } else {
-                                            Toast.makeText(context, "Failed to save profile. Please try again.", Toast.LENGTH_SHORT).show()
                                         }
-                                    }
-                                } else {
-                                    // If no registration data (e.g. coming from edit profile), just update the profile
-                                    profileViewModel.saveCompleteProfile(
-                                        userId = uid,
-                                        university = university,
-                                        major = major,
-                                        skills = skillList,
-                                        imageUri = imageUri!!
-                                    ) { success ->
-                                        if (success) {
-                                            Toast.makeText(context, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
-                                            navController.navigate(Routes.Dashboard.routes) {
-                                                popUpTo(Routes.CompleteProfile.routes) { inclusive = true }
-                                            }
-                                        } else {
-                                            Toast.makeText(context, "Failed to update profile. Please try again.", Toast.LENGTH_SHORT).show()
-                                        }
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            "Failed to complete profile. Please try again.",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     }
                                 }
                             }
@@ -303,7 +245,8 @@ fun CompleteProfileScreen(
                         .fillMaxWidth()
                         .height(50.dp),
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = DodgerBlue)
+                    colors = ButtonDefaults.buttonColors(containerColor = DodgerBlue),
+                    enabled = !isLoading
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(
@@ -329,8 +272,10 @@ fun CompleteProfileScreen(
             }
 
             errorMessage?.let {
-                Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
-                profileViewModel.clearError()
+                LaunchedEffect(it) {
+                    Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+                    profileViewModel.clearError()
+                }
             }
         }
     }

@@ -24,6 +24,7 @@ sealed class Routes(val routes: String) {
     data object Profile : Routes("profile")
     object CompleteProfile : Routes("complete_profile")
     object ProfileSettings : Routes("profile_settings") // Pastikan nama route sesuai
+
     data object Competition : Routes("competition")
     data object Wishlist : Routes("wishlist")
     data object Cart : Routes("cart")
@@ -48,5 +49,44 @@ sealed class Routes(val routes: String) {
             "chat_group/$teamId/$teamName"
     }
     object InviteSelect : Routes("invite_select")
+
+    // Profile related routes - TAMBAHAN BARU
+    object CreatePost : Routes("create_post/{userId}/{activityId}") {
+        fun createRoute(userId: String, activityId: String = "") = if (activityId.isEmpty()) {
+            "create_post/$userId/new"
+        } else {
+            "create_post/$userId/$activityId"
+        }
+    }
+    object AddSkill : Routes("add_skill/{skillId}") {
+        fun createRoute(skillId: String = "") = if (skillId.isEmpty()) {
+            "add_skill/new"
+        } else {
+            "add_skill/$skillId"
+        }
+    }    object EditSkills : Routes("edit_skills")
+    object EditActivities : Routes("edit_activities")
+    object AllActivities : Routes("all_activities")
+
+    // PERBAIKAN: Ubah menjadi object dengan pattern yang sama
+    object EditExperiences : Routes("edit_experiences")
+    object AddExperience : Routes("add_experience/{experienceId}") {
+        fun createRoute(experienceId: String = "") = if (experienceId.isEmpty()) {
+            "add_experience/new" // Gunakan identifier khusus untuk item baru
+        } else {
+            "add_experience/$experienceId"
+        }
+    }
+
+    object EditEducations : Routes("edit_educations")
+    object AddEducation : Routes("add_education/{educationId}") {
+        fun createRoute(educationId: String = "") = if (educationId.isEmpty()) {
+            "add_education/new" // Gunakan identifier khusus untuk item baru
+        } else {
+            "add_education/$educationId"
+        }
+    }
+    object NotificationsScreen : Routes ("notifications")
+
     object DraftSelectMember : Routes("draft_select_member")
 }

@@ -103,6 +103,16 @@ dependencies {
     // Implementasi Fingerprint
     implementation ("androidx.biometric:biometric:1.2.0-alpha05")
 
+    //google services
+    implementation("com.google.android.gms:play-services-auth:20.7.0") // Untuk login Google, misalnya
+    implementation("com.google.android.gms:play-services-base:18.4.0") // Base services
+    implementation("com.google.android.gms:play-services-phenotype:17.0.0") // Jika pakai Phenotype API
+
+    //untuk applifecyclehandler
+    implementation("androidx.lifecycle:lifecycle-process:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose-android:2.8.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose-android:2.8.1")
+
     // Google Sign-In and Drive
     implementation ("com.google.android.gms:play-services-auth:21.0.0")
     implementation ("com.google.api-client:google-api-client-android:2.2.0")

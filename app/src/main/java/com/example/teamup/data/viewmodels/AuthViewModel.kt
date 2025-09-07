@@ -2,11 +2,11 @@
 package com.example.teamup.data.viewmodels
 
 import android.app.Activity
-import androidx.activity.ComponentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.teamup.data.model.RegistrationData
 import com.example.teamup.data.repositories.AuthRepository
+import com.example.teamup.data.viewmodels.user.ProfileViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
@@ -92,24 +92,51 @@ class AuthViewModel(
         return regex.matches(password)
     }
 
-    // 1. Registrasi email + kirim verifikasi
+    // 1. Registrasi email + kirim verifikasi + BUAT DOKUMEN USER
     fun registerWithEmail(
         data: RegistrationData,
+        profileViewModel: ProfileViewModel? = null,
         onResult: (Boolean, String?) -> Unit
     ) {
         viewModelScope.launch {
             _uiState.value = AuthUiState.Loading
             try {
-                repository.register(data.email, data.password)
+                // 1. Buat akun Firebase Auth
+                val authResult = repository.register(data.email, data.password)
+
+                // 2. Kirim email verifikasi
                 repository.sendEmailVerification()
-                _uiState.value = AuthUiState.Success("Email verifikasi terkirim")
-                onResult(true, null)
+
+                // 3. PENTING: Buat dokumen user di Firestore
+                val userId = authResult.user?.uid
+                if (userId != null && profileViewModel != null) {
+                    profileViewModel.createUserDocument(
+                        userId = userId,
+                        fullName = data.fullName,
+                        username = data.username,
+                        email = data.email,
+                        phone = data.phone
+                    ) { success ->
+                        if (success) {
+                            _uiState.value = AuthUiState.Success("Email verifikasi terkirim")
+                            onResult(true, null)
+                        } else {
+                            _uiState.value = AuthUiState.Error("Gagal membuat profil user")
+                            onResult(false, "Gagal membuat profil user")
+                        }
+                    }
+                } else {
+                    _uiState.value = AuthUiState.Success("Email verifikasi terkirim")
+                    onResult(true, null)
+                }
             } catch (e: Exception) {
                 _uiState.value = AuthUiState.Error(e.message ?: "Registrasi gagal")
                 onResult(false, e.message)
             }
         }
     }
+
+
 
     // Fungsi baru untuk mengirim ulang email verifikasi
     fun resendEmailVerification(onResult: (Boolean, String?) -> Unit) {
@@ -174,7 +201,8 @@ class AuthViewModel(
         }
     }
 
-    // 4. Simpan profil (dipanggil setelah salah satu verifikasi berhasil)
+    // 4. Simpan profil (DEPRECATED - gunakan ProfileViewModel.createUserDocument)
+    @Deprecated("Use ProfileViewModel.createUserDocument instead")
     fun saveProfile(
         data: RegistrationData,
         onResult: (Boolean, String?) -> Unit

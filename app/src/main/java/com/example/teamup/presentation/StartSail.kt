@@ -22,15 +22,15 @@ import com.example.teamup.presentation.screen.DashboardScreen
 import com.example.teamup.presentation.screen.login.FingerprintLoginScreen
 import com.example.teamup.presentation.screen.ForgotPasswordScreen
 import com.example.teamup.presentation.screen.login.LoginScreenV5
+import com.example.teamup.presentation.screen.LoginScreenV5
 import com.example.teamup.presentation.screen.register.RegisterScreen
 import com.example.teamup.presentation.screen.register.RegisterSuccessScreen
 import com.example.teamup.presentation.screen.ResetPasswordScreen
 import com.example.teamup.presentation.screen.SplashScreen
 import com.example.teamup.presentation.screen.profile.CompleteProfileScreen
-import com.example.teamup.presentation.screen.profile.ProfileSettingsScreen
 import com.example.teamup.presentation.screen.register.CekEmailScreen
 import com.example.teamup.presentation.screen.register.VerificationScreen
-import com.example.teamup.data.viewmodels.ProfileViewModel
+import com.example.teamup.data.viewmodels.user.ProfileViewModel
 import com.example.teamup.route.Routes
 
 @Composable
