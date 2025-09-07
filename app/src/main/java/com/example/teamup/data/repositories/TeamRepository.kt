@@ -4,7 +4,7 @@ import android.net.Uri
 import android.util.Log
 import com.example.teamup.data.model.TeamModel
 import com.example.teamup.data.model.UserProfile
-import com.example.teamup.data.model.UserProfileData
+import com.example.teamup.data.model.user.UserProfileData
 import com.example.teamup.data.sources.remote.GoogleDriveTeamDataSource
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore

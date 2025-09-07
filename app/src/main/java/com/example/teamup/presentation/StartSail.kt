@@ -22,7 +22,6 @@ import com.example.teamup.presentation.screen.DashboardScreen
 import com.example.teamup.presentation.screen.login.FingerprintLoginScreen
 import com.example.teamup.presentation.screen.ForgotPasswordScreen
 import com.example.teamup.presentation.screen.login.LoginScreenV5
-import com.example.teamup.presentation.screen.LoginScreenV5
 import com.example.teamup.presentation.screen.register.RegisterScreen
 import com.example.teamup.presentation.screen.register.RegisterSuccessScreen
 import com.example.teamup.presentation.screen.ResetPasswordScreen

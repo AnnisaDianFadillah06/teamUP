@@ -31,7 +31,6 @@ import com.example.teamup.data.viewmodels.CompetitionViewModelFactory
 import com.example.teamup.di.Injection
 import com.example.teamup.presentation.components.competition.AddCompetitionForm
 import com.example.teamup.presentation.components.BottomNavigationBar
-import com.example.teamup.presentation.components.CustomBottomNavigationBar
 import com.example.teamup.presentation.components.competition.EditCompetitionForm
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -104,18 +103,7 @@ fun CompetitionScreen(
             }
         },
         bottomBar = {
-            if (showAddForm || showEditForm) {
-                CustomBottomNavigationBar(
-                    navController = navController,
-                    onCompetitionClick = {
-                        showAddForm = false
-                        showEditForm = false
-                        selectedCompetition = null
-                    }
-                )
-            } else {
-                BottomNavigationBar(navController = navController)
-            }
+            BottomNavigationBar(navController = navController)
         }
     ) { paddingValues ->
         when {

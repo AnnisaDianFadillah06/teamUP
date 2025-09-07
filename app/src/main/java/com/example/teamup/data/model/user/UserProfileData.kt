@@ -1,5 +1,3 @@
-// data/model/UserProfileData.kt
-
 package com.example.teamup.data.model.user
 
 import com.google.firebase.firestore.DocumentId
@@ -21,17 +19,18 @@ data class UserProfileData(
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 
-    // Bio/About section - ini yang cocok ada di UserProfileData
+    // Bio/About section
     val bio: String = "",
     val location: String = "",
     val website: String = "",
 
-    // These will be loaded separately from subcollections
-    // Remove the default empty lists since they should be loaded separately
+    // Education & Skills - DIPINDAH DARI SUBCOLLECTION KE MAIN DOCUMENT
+    val university: String = "",
+    val major: String = "",
+    val skills: List<String> = emptyList(),
 ) {
     /**
      * Converts this UserProfileData into a Map ready for Firestore
-     * Note: subcollection data (educations, experiences, etc.) are not included
      */
     fun toMap(): Map<String, Any> = mapOf(
         "userId" to userId,
@@ -49,9 +48,29 @@ data class UserProfileData(
         "bio" to bio,
         "location" to location,
         "website" to website,
+        "university" to university,
+        "major" to major,
+        "skills" to skills,
         "createdAt" to createdAt,
         "updatedAt" to updatedAt
     )
+
+    /**
+     * Convert to legacy UserProfile for backward compatibility
+     */
+    fun toUserProfile(): com.example.teamup.data.model.UserProfile {
+        return com.example.teamup.data.model.UserProfile(
+            uid = uid.ifEmpty { userId }, // fallback to userId if uid is empty
+            fullName = fullName,
+            username = username,
+            email = email,
+            phone = phone,
+            university = university,
+            major = major,
+            skills = skills,
+            profilePictureUrl = profilePictureUrl.ifEmpty { null }
+        )
+    }
 
     companion object {
         /**
@@ -73,9 +92,31 @@ data class UserProfileData(
             bio = map["bio"] as? String ?: "",
             location = map["location"] as? String ?: "",
             website = map["website"] as? String ?: "",
+            university = map["university"] as? String ?: "",
+            major = map["major"] as? String ?: "",
+            skills = (map["skills"] as? List<String>) ?: emptyList(),
             createdAt = map["createdAt"] as? Long ?: System.currentTimeMillis(),
             updatedAt = map["updatedAt"] as? Long ?: System.currentTimeMillis()
         )
+
+        /**
+         * Create from legacy UserProfile
+         */
+        fun fromUserProfile(userProfile: com.example.teamup.data.model.UserProfile): UserProfileData {
+            return UserProfileData(
+                userId = userProfile.uid,
+                uid = userProfile.uid,
+                fullName = userProfile.fullName,
+                username = userProfile.username,
+                email = userProfile.email,
+                phone = userProfile.phone,
+                university = userProfile.university,
+                major = userProfile.major,
+                skills = userProfile.skills,
+                profilePictureUrl = userProfile.profilePictureUrl ?: "",
+                profileCompleted = userProfile.university.isNotEmpty() && userProfile.major.isNotEmpty()
+            )
+        }
     }
 }
 
