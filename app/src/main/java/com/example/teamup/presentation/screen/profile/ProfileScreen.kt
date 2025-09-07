@@ -278,7 +278,7 @@ fun ProfileScreen(
                         // Skills Section - Now using separate skills list
                         item {
                             ProfileSectionWithActions(
-                                title = "Keahlian",
+                                title = "Role & Spesialis",  // UBAH dari "Keahlian"
                                 itemCount = skills.size,
                                 onAddClick = {
                                     try {
@@ -731,13 +731,34 @@ fun ProfileHeader(
                             )
                         }
 
-                        // Field of Study - only show if exists
                         if (education.fieldOfStudy.isNotEmpty()) {
                             Text(
                                 text = education.fieldOfStudy,
                                 fontSize = 13.sp,
                                 color = Color.Gray
                             )
+                        }
+
+                        // TAMBAHAN: Tingkat dan Semester di bawah field of study
+                        if (education.isCurrentlyStudying) {
+                            val academicInfo = buildString {
+                                if (education.currentLevel.isNotEmpty()) {
+                                    append(education.currentLevel)
+                                }
+                                if (education.currentSemester.isNotEmpty()) {
+                                    if (isNotEmpty()) append(" • ")
+                                    append(education.currentSemester)
+                                }
+                            }
+
+                            if (academicInfo.isNotEmpty()) {
+                                Text(
+                                    text = academicInfo,
+                                    fontSize = 12.sp,
+                                    color = DodgerBlue,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                         }
                     }
 
@@ -781,58 +802,15 @@ fun ProfileHeader(
                     )
                 }
 
-                // Skills
-                if (skills.isNotEmpty()) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "Keahlian",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.Black
-                        )
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(skills.take(4)) { skill ->
-                                AssistChip(
-                                    onClick = {},
-                                    label = {
-                                        Text(
-                                            skill,
-                                            fontSize = 12.sp
-                                        )
-                                    },
-                                    shape = RoundedCornerShape(16.dp),
-                                    colors = AssistChipDefaults.assistChipColors(
-                                        containerColor = DodgerBlue.copy(alpha = 0.1f),
-                                        labelColor = DodgerBlue
-                                    ),
-                                    modifier = Modifier.height(32.dp)
-                                )
-                            }
-                            if (skills.size > 4) {
-                                item {
-                                    AssistChip(
-                                        onClick = {},
-                                        label = {
-                                            Text(
-                                                "+${skills.size - 4}",
-                                                fontSize = 12.sp
-                                            )
-                                        },
-                                        shape = RoundedCornerShape(16.dp),
-                                        colors = AssistChipDefaults.assistChipColors(
-                                            containerColor = Color.Gray.copy(alpha = 0.1f),
-                                            labelColor = Color.Gray
-                                        ),
-                                        modifier = Modifier.height(32.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
+                // PERUBAHAN: Specialization/Role - langsung text profesional tanpa judul dan bubble
+                if (profile.specialization.isNotEmpty()) {
+                    Text(
+                        text = profile.specialization,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = DodgerBlue,
+                        lineHeight = 22.sp
+                    )
                 }
             }
         }

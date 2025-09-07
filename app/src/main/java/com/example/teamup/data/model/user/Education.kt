@@ -18,6 +18,11 @@ data class Education(
     val description: String = "",
     val mediaUrls: List<String> = emptyList(),
     val isCurrentlyStudying: Boolean = false,
+
+    // TAMBAHAN BARU:
+    val currentSemester: String = "",  // "Semester 5"
+    val currentLevel: String = "",     // "Tingkat 3" atau "Kelas 12"
+
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 ) {
@@ -37,6 +42,8 @@ data class Education(
         "description" to description,
         "mediaUrls" to mediaUrls,
         "isCurrentlyStudying" to isCurrentlyStudying,
+        "currentSemester" to currentSemester,    // TAMBAH
+        "currentLevel" to currentLevel,          // TAMBAH
         "createdAt" to createdAt,
         "updatedAt" to updatedAt
     )
@@ -83,6 +90,8 @@ data class Education(
             description = map["description"] as? String ?: "",
             mediaUrls = (map["mediaUrls"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
             isCurrentlyStudying = map["isCurrentlyStudying"] as? Boolean ?: false,
+            currentSemester = map["currentSemester"] as? String ?: "",      // TAMBAH
+            currentLevel = map["currentLevel"] as? String ?: "",            // TAMBAH
             createdAt = map["createdAt"] as? Long ?: System.currentTimeMillis(),
             updatedAt = map["updatedAt"] as? Long ?: System.currentTimeMillis()
         )

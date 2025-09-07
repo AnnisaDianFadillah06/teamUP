@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Code
@@ -40,6 +41,7 @@ fun EditSkillsScreen(
     val skills by skillViewModel.skills.collectAsState()
     val isLoading by skillViewModel.isLoading.collectAsState()
     val errorMessage by skillViewModel.errorMessage.collectAsState()
+    var showDeleteDialog by remember { mutableStateOf<String?>(null) }
 
     // Load skills when screen opens
     LaunchedEffect(currentUser?.uid) {
@@ -109,6 +111,9 @@ fun EditSkillsScreen(
                                 onEditClick = {
                                     // Navigate to form edit with skillId
                                     navController.navigate(Routes.AddSkill.createRoute(skill.id))
+                                },
+                                onDeleteClick = {
+                                    showDeleteDialog = skill.id
                                 }
                             )
                         }
@@ -140,6 +145,37 @@ fun EditSkillsScreen(
                     }
                 }
             }
+
+            // Delete confirmation dialog
+            showDeleteDialog?.let { skillId ->
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog = null },
+                    title = { Text("Konfirmasi Hapus") },
+                    text = { Text("Apakah Anda yakin ingin menghapus keahlian ini? Tindakan ini tidak dapat dibatalkan.") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                currentUser?.uid?.let { userId ->
+                                    skillViewModel.deleteSkill(userId, skillId) { success ->
+                                        if (success) {
+                                            // No need for Toast here since deleteSkill handles it
+                                            showDeleteDialog = null
+                                        }
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                        ) {
+                            Text("Hapus")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteDialog = null }) {
+                            Text("Batal")
+                        }
+                    }
+                )
+            }
         }
     }
 }
@@ -147,7 +183,8 @@ fun EditSkillsScreen(
 @Composable
 fun SkillEditItem(
     skill: Skill,
-    onEditClick: () -> Unit
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -245,12 +282,21 @@ fun SkillEditItem(
                 }
             }
 
-            IconButton(onClick = onEditClick) {
-                Icon(
-                    Icons.Default.Edit,
-                    contentDescription = "Edit",
-                    tint = SoftGray2
-                )
+            Row {
+                IconButton(onClick = onEditClick) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Edit",
+                        tint = SoftGray2
+                    )
+                }
+                IconButton(onClick = onDeleteClick) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = Color.Red
+                    )
+                }
             }
         }
     }

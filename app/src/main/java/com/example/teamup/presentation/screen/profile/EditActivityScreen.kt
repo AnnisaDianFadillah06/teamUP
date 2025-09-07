@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.Image
@@ -21,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.teamup.common.theme.DodgerBlue
@@ -41,10 +43,10 @@ fun EditActivityScreen(
     activityViewModel: ActivityViewModel = viewModel()
 ) {
     val currentUser = FirebaseAuth.getInstance().currentUser
-    // PERBAIKAN: Gunakan userActivities bukan activities
     val userActivities by activityViewModel.userActivities.collectAsState()
     val isLoading by activityViewModel.isLoading.collectAsState()
     val errorMessage by activityViewModel.errorMessage.collectAsState()
+    var showDeleteDialog by remember { mutableStateOf<String?>(null) }
 
     // Load activities when screen opens
     LaunchedEffect(currentUser?.uid) {
@@ -72,9 +74,7 @@ fun EditActivityScreen(
                 },
                 actions = {
                     IconButton(onClick = {
-                        // Clear current activity when adding new
                         activityViewModel.clearCurrentActivity()
-                        // Navigate to CreatePost without activityId parameter (mode add)
                         val userId = FirebaseAuth.getInstance().currentUser?.uid
                         if (userId != null) {
                             navController.navigate(Routes.CreatePost.createRoute(userId))
@@ -107,7 +107,6 @@ fun EditActivityScreen(
                         CircularProgressIndicator(color = DodgerBlue)
                     }
                 }
-                // PERBAIKAN: Gunakan userActivities
                 userActivities.isNotEmpty() -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -118,15 +117,16 @@ fun EditActivityScreen(
                             ActivityEditItem(
                                 activity = activity,
                                 onEditClick = {
-                                    // Set current activity sebelum navigate
                                     activityViewModel.setCurrentActivity(activity)
-                                    // Navigate to form edit with activityId
                                     val userId = FirebaseAuth.getInstance().currentUser?.uid
                                     if (userId != null) {
                                         navController.navigate(Routes.CreatePost.createRoute(userId, activity.id))
                                     } else {
                                         Log.e("Navigation", "User ID is null, can't navigate to CreatePost")
                                     }
+                                },
+                                onDeleteClick = {
+                                    showDeleteDialog = activity.id
                                 }
                             )
                         }
@@ -163,6 +163,33 @@ fun EditActivityScreen(
                     }
                 }
             }
+
+            // Delete confirmation dialog
+            showDeleteDialog?.let { activityId ->
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog = null },
+                    title = { Text("Konfirmasi Hapus") },
+                    text = { Text("Apakah Anda yakin ingin menghapus aktivitas ini? Tindakan ini tidak dapat dibatalkan.") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                currentUser?.uid?.let { userId ->
+                                    activityViewModel.deleteActivity(userId, activityId)
+                                }
+                                showDeleteDialog = null
+                            },
+                            colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                        ) {
+                            Text("Hapus")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteDialog = null }) {
+                            Text("Batal")
+                        }
+                    }
+                )
+            }
         }
     }
 }
@@ -170,7 +197,8 @@ fun EditActivityScreen(
 @Composable
 fun ActivityEditItem(
     activity: Activity,
-    onEditClick: () -> Unit
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
     val createdDate = dateFormat.format(Date(activity.createdAt))
@@ -264,12 +292,21 @@ fun ActivityEditItem(
                 }
             }
 
-            IconButton(onClick = onEditClick) {
-                Icon(
-                    Icons.Default.Edit,
-                    contentDescription = "Edit",
-                    tint = SoftGray2
-                )
+            Row {
+                IconButton(onClick = onEditClick) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Edit",
+                        tint = SoftGray2
+                    )
+                }
+                IconButton(onClick = onDeleteClick) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = Color.Red
+                    )
+                }
             }
         }
     }

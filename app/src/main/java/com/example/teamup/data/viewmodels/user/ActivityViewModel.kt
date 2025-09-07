@@ -273,7 +273,6 @@ class ActivityViewModel(application: Application) : AndroidViewModel(application
     fun deleteActivity(
         userId: String,
         activityId: String,
-        callback: (Boolean) -> Unit
     ) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -289,12 +288,10 @@ class ActivityViewModel(application: Application) : AndroidViewModel(application
                         if (_currentActivity.value?.id == activityId) {
                             _currentActivity.value = null
                         }
-                        callback(true)
                     },
                     onFailure = { exception ->
                         _errorMessage.value = "Gagal menghapus aktivitas: ${exception.message}"
                         Log.e("ActivityViewModel", "Error deleting activity", exception)
-                        callback(false)
                     }
                 )
             } finally {
