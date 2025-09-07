@@ -2,6 +2,8 @@ package com.example.teamup.presentation.components
 
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -33,7 +35,11 @@ fun BottomNavigationBar(navController: NavController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    NavigationBar(containerColor = White, contentColor = DodgerBlue) {
+    NavigationBar(
+        containerColor = White,
+        contentColor = DodgerBlue,
+        modifier = Modifier.height(57.dp) // Kurangi tinggi dari default (80dp) ke 56dp
+    ) {
         items.forEach { item ->
             NavigationBarItem(
                 selected = currentRoute == item.route,
@@ -49,13 +55,24 @@ fun BottomNavigationBar(navController: NavController) {
                     }
                 },
                 icon = {
-                    Icon(
-                        modifier = Modifier
-                            .width(18.dp)
-                            .height(20.dp),
-                        painter = painterResource(id = item.icon),
-                        contentDescription = item.title
-                    )
+                    // Cek jika item adalah Profile, gunakan Icon Material, selain itu pakai painterResource
+                    if (item == NavigationItem.Profile) {
+                        Icon(
+                            imageVector = Icons.Default.Person, // Icon user material
+                            contentDescription = item.title,
+                            modifier = Modifier
+                                .width(18.dp)
+                                .height(20.dp)
+                        )
+                    } else {
+                        Icon(
+                            modifier = Modifier
+                                .width(18.dp)
+                                .height(20.dp),
+                            painter = painterResource(id = item.icon),
+                            contentDescription = item.title
+                        )
+                    }
                 },
                 label = null,
                 alwaysShowLabel = false,

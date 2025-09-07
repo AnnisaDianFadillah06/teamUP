@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.teamup.data.model.ProfileModel
-import com.example.teamup.data.model.UserProfileData
+import com.example.teamup.data.model.user.UserProfileData
 import com.example.teamup.presentation.screen.FilterOption
 import com.example.teamup.presentation.screen.FilterType
 import com.google.firebase.firestore.FirebaseFirestore

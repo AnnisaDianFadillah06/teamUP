@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Settings
@@ -27,11 +28,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -87,33 +92,17 @@ fun ProfileScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Profile") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DodgerBlue,
-                    titleContentColor = White
-                ),
-                actions = {
-                    IconButton(onClick = {
-                        try {
-                            Log.d("ProfileNavigation", "Attempting to navigate to: ${Routes.ProfileSettings.routes}")
-                            navController.navigate(Routes.ProfileSettings.routes)
-                        } catch (e: Exception) {
-                            Log.e("ProfileNavigation", "Navigation error: ${e.message}", e)
-                            Toast.makeText(context, "Cannot navigate to settings: ${e.message}", Toast.LENGTH_SHORT).show()
-                        }
-                    }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = White)
-                    }
-                }
-            )
-        }
+            ProfileTopBar(navController = navController)
+        },
+        contentWindowInsets = WindowInsets(0), // Remove default content insets
+        modifier = Modifier.fillMaxSize()
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(White2)
                 .padding(paddingValues)
+                .navigationBarsPadding() // Add navigation bar padding
         ) {
             if (isLoading) {
                 CircularProgressIndicator(
@@ -122,12 +111,15 @@ fun ProfileScreen(
                 )
             } else {
                 userData?.let { profile ->
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 40.dp) // Add bottom padding for better spacing
+                    ) {
                         item {
                             ProfileHeader(
                                 profile = profile,
-                                skills = skills.take(2), // Show first 2 skills in header
-                                currentEducation = currentEducation // Tambahkan parameter ini
+                                skills = skills.take(2),
+                                currentEducation = currentEducation
                             )
                         }
 
@@ -344,8 +336,58 @@ fun ProfileScreen(
                     Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Profile information not available")
+                    Text(
+                        "Profile information not available",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.Gray
+                    )
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProfileTopBar(navController: NavController) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = DodgerBlue, // Gunakan warna theme yang sama
+        shadowElevation = 4.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Profile Title
+            Text(
+                text = "Profile",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = White
+            )
+
+            // Settings Icon
+            IconButton(
+                onClick = {
+                    try {
+                        Log.d("ProfileNavigation", "Attempting to navigate to: ${Routes.ProfileSettings.routes}")
+                        navController.navigate(Routes.ProfileSettings.routes)
+                    } catch (e: Exception) {
+                        Log.e("ProfileNavigation", "Navigation error: ${e.message}", e)
+                        // Handle error
+                    }
+                }
+            ) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = White,
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
     }
@@ -620,12 +662,12 @@ fun ProfileHeader(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Profile Picture - Left side (larger)
+                // Profile Picture - Left side
                 Box(
                     modifier = Modifier
-                        .size(100.dp) // Increased from 80dp
+                        .size(100.dp)
                         .clip(CircleShape)
                         .border(3.dp, DodgerBlue, CircleShape)
                 ) {
@@ -645,7 +687,7 @@ fun ProfileHeader(
                         ) {
                             Text(
                                 text = profile.fullName.take(2).uppercase(),
-                                fontSize = 28.sp, // Increased font size for larger picture
+                                fontSize = 28.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = DodgerBlue
                             )
@@ -653,7 +695,7 @@ fun ProfileHeader(
                     }
                 }
 
-                Spacer(modifier = Modifier.width(20.dp)) // Increased spacing
+                Spacer(modifier = Modifier.width(16.dp))
 
                 // Profile Information - Right side
                 Column(
@@ -662,19 +704,21 @@ fun ProfileHeader(
                     // Full Name
                     Text(
                         text = profile.fullName,
-                        fontSize = 22.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = Color.Black,
+                        lineHeight = 13.sp  // Ditambahkan untuk mengurangi jarak vertikal default
                     )
 
-                    // Username - with minimal spacing
+                    // Username - langsung tanpa spacing
                     Text(
                         text = "@${profile.username}",
                         fontSize = 14.sp,
                         color = DodgerBlue,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(top = 2.dp)
+                        fontWeight = FontWeight.Medium
                     )
+
+                    Spacer(modifier = Modifier.height(5.dp))
 
                     // University - only show if exists
                     currentEducation?.let { education ->
@@ -683,8 +727,7 @@ fun ProfileHeader(
                                 text = education.school,
                                 fontSize = 14.sp,
                                 color = Color.Black,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.padding(top = 6.dp)
+                                fontWeight = FontWeight.Medium
                             )
                         }
 
@@ -693,50 +736,31 @@ fun ProfileHeader(
                             Text(
                                 text = education.fieldOfStudy,
                                 fontSize = 13.sp,
-                                color = Color.Gray,
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                        }
-                    }
-
-                    // Email
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 8.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Email,
-                            contentDescription = "Email",
-                            tint = SoftGray2,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = profile.email,
-                            fontSize = 13.sp,
-                            color = Color.Gray
-                        )
-                    }
-
-                    // Phone - only show if exists
-                    if (profile.phone.isNotEmpty()) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 4.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Phone,
-                                contentDescription = "Phone",
-                                tint = SoftGray2,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = profile.phone,
-                                fontSize = 13.sp,
                                 color = Color.Gray
                             )
                         }
+                    }
+
+                    // Email menggunakan ContactInfoRow
+                    ContactInfoRow(
+                        icon = Icons.Default.Email,
+                        text = profile.email
+                    )
+
+                    // Phone - only show if exists
+                    if (profile.phone.isNotEmpty()) {
+                        ContactInfoRow(
+                            icon = Icons.Default.Phone,
+                            text = profile.phone
+                        )
+                    }
+
+                    // Location - only show if exists
+                    if (profile.location.isNotEmpty()) {
+                        ContactInfoRow(
+                            icon = Icons.Default.LocationOn,
+                            text = profile.location
+                        )
                     }
                 }
             }
@@ -810,32 +834,57 @@ fun ProfileHeader(
                         }
                     }
                 }
-
-                // Location
-                if (profile.location.isNotEmpty()) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.Person,
-                            contentDescription = "Location",
-                            tint = SoftGray2,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = profile.location,
-                            fontSize = 13.sp,
-                            color = Color.Gray,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
             }
         }
     }
 }
 
+@Composable
+fun ContactInfoRow(
+    icon: ImageVector,
+    text: String,
+    horizontalSpacing: Dp = 6.dp,
+    verticalPadding: Dp = 2.dp,
+    iconSize: Dp = 16.dp,
+    fontSize: TextUnit = 13.sp
+) {
+    Row(
+        modifier = Modifier.padding(vertical = verticalPadding),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Wrap icon in Box dengan fixed height
+        Box(
+            modifier = Modifier
+                .size(iconSize)
+                .wrapContentSize(Alignment.Center),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = SoftGray2,
+                modifier = Modifier.size(iconSize)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(horizontalSpacing))
+
+        // Wrap text in Box dengan height yang lebih tinggi untuk descender
+        Box(
+            modifier = Modifier.height(iconSize + 4.dp), // Tambah 4dp untuk descender
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(
+                text = text,
+                fontSize = fontSize,
+                color = Color.Gray,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+    }
+}
 
 @Composable
 fun ProfileSection(

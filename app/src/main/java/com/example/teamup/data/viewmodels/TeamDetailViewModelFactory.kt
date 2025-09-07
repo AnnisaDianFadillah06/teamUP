@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.teamup.data.model.TeamModel
-import com.example.teamup.data.model.UserProfileData
+import com.example.teamup.data.model.user.UserProfileData
 import com.example.teamup.data.repositories.TeamRepository
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -38,7 +38,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.teamup.R
 import com.example.teamup.common.theme.*
-import com.example.teamup.data.model.UserProfileData
+import com.example.teamup.data.model.user.UserProfileData
 import com.example.teamup.data.viewmodels.TeamDetailViewModel
 import com.example.teamup.data.viewmodels.TeamDetailViewModelFactory
 import com.example.teamup.di.Injection
