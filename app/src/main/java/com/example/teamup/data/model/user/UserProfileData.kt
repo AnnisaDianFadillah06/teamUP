@@ -28,6 +28,8 @@ data class UserProfileData(
     val university: String = "",
     val major: String = "",
     val skills: List<String> = emptyList(),
+    val specialization: String = "", // field baru untuk role/spesialisasi profesi
+
 ) {
     /**
      * Converts this UserProfileData into a Map ready for Firestore
@@ -51,6 +53,7 @@ data class UserProfileData(
         "university" to university,
         "major" to major,
         "skills" to skills,
+        "specialization" to specialization,
         "createdAt" to createdAt,
         "updatedAt" to updatedAt
     )
@@ -95,6 +98,7 @@ data class UserProfileData(
             university = map["university"] as? String ?: "",
             major = map["major"] as? String ?: "",
             skills = (map["skills"] as? List<String>) ?: emptyList(),
+            specialization = map["specialization"] as? String ?: "",
             createdAt = map["createdAt"] as? Long ?: System.currentTimeMillis(),
             updatedAt = map["updatedAt"] as? Long ?: System.currentTimeMillis()
         )

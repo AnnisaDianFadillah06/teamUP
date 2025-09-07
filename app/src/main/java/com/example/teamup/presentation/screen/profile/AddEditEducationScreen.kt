@@ -58,6 +58,9 @@ fun AddEditEducationScreen(
     var grade by remember { mutableStateOf("") }
     var activities by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
+    // TAMBAHAN BARU:
+    var currentSemester by remember { mutableStateOf("") }
+    var currentLevel by remember { mutableStateOf("") }
     var mediaUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var isCurrentlyStudying by remember { mutableStateOf(false) }
 
@@ -132,6 +135,9 @@ fun AddEditEducationScreen(
             grade = edu.grade
             activities = edu.activities
             description = edu.description
+            // TAMBAHAN BARU:
+            currentSemester = edu.currentSemester
+            currentLevel = edu.currentLevel
         }
     }
 
@@ -180,7 +186,9 @@ fun AddEditEducationScreen(
                                         description = description.trim(),
                                         mediaUris = mediaUris,
                                         isCurrentlyStudying = isCurrentlyStudying,
-                                        educationId = if (isEditMode) educationId else null // PERBAIKAN: gunakan isEditMode
+                                        currentSemester = currentSemester.trim(),    // TAMBAH
+                                        currentLevel = currentLevel.trim(),          // TAMBAH
+                                        educationId = if (isEditMode) educationId else null
                                     ) { success ->
                                         if (success) {
                                             showSuccessMessage = true
@@ -355,6 +363,7 @@ fun AddEditEducationScreen(
                 }
 
                 // Currently Studying Checkbox
+                // Currently Studying Checkbox (tetap sama)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -377,7 +386,46 @@ fun AddEditEducationScreen(
                     )
                 }
 
-                // End Date (only show if not currently studying)
+// PERBAIKAN: Tampilkan field tingkat dan semester HANYA jika sedang bersekolah
+                if (isCurrentlyStudying) {
+                    // Tingkat/Kelas Field
+                    Column {
+                        Text(
+                            "Tingkat/Kelas (opsional)",
+                            fontSize = 14.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = currentLevel,
+                            onValueChange = { if (it.length <= 50) currentLevel = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Mis: Tingkat 3, Kelas 12") },
+                            enabled = !isLoading
+                        )
+                    }
+
+                    // Semester Field
+                    Column {
+                        Text(
+                            "Semester (opsional)",
+                            fontSize = 14.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = currentSemester,
+                            onValueChange = { if (it.length <= 50) currentSemester = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Mis: Semester 5") },
+                            enabled = !isLoading
+                        )
+                    }
+                }
+
+// End Date (hanya tampil jika TIDAK sedang bersekolah)
                 if (!isCurrentlyStudying) {
                     Column {
                         Text(

@@ -164,7 +164,7 @@ fun EducationEditItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // School icon placeholder
+            // School icon placeholder (tetap sama)
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -197,19 +197,39 @@ fun EducationEditItem(
                     color = Color.Gray,
                     fontSize = 12.sp
                 )
-                if (education.grade.isNotEmpty()) {
-                    Text(
-                        text = "GPA: ${education.grade}",
-                        color = Color.Gray,
-                        fontSize = 12.sp
-                    )
-                }
+
+                // TAMBAHAN: Tampilkan tingkat dan semester jika sedang belajar
                 if (education.isCurrentlyStudying) {
+                    val academicInfo = buildString {
+                        if (education.currentLevel.isNotEmpty()) {
+                            append(education.currentLevel)
+                        }
+                        if (education.currentSemester.isNotEmpty()) {
+                            if (isNotEmpty()) append(" • ")
+                            append(education.currentSemester)
+                        }
+                    }
+
+                    if (academicInfo.isNotEmpty()) {
+                        Text(
+                            text = academicInfo,
+                            color = DodgerBlue,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
                     Text(
                         text = "Sedang Belajar",
                         color = DodgerBlue,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
+                    )
+                } else if (education.grade.isNotEmpty()) {
+                    Text(
+                        text = "GPA: ${education.grade}",
+                        color = Color.Gray,
+                        fontSize = 12.sp
                     )
                 }
             }

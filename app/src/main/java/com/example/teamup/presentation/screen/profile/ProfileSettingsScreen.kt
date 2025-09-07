@@ -123,6 +123,8 @@ fun ProfileSettingsScreen(
     var universityEdit by remember { mutableStateOf("") }
     var majorEdit by remember { mutableStateOf("") }
     var skillsEdit by remember { mutableStateOf("") }
+    var specializationEdit by remember { mutableStateOf("") } // TAMBAH INI
+
 
     // Initialize edit fields when data changes
     LaunchedEffect(userData, userEducations, userSkills) {
@@ -132,6 +134,7 @@ fun ProfileSettingsScreen(
             phoneEdit = data.phone
             bioEdit = data.bio
             locationEdit = data.location
+            specializationEdit = data.specialization // TAMBAH INI
         }
 
         // Get current education data
@@ -196,6 +199,7 @@ fun ProfileSettingsScreen(
                 phone = phoneEdit,
                 bio = bioEdit,
                 location = locationEdit,
+                specialization = specializationEdit, // TAMBAH INI
                 updatedAt = System.currentTimeMillis()
             )
 
@@ -465,6 +469,18 @@ fun ProfileSettingsScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         minLines = 2
                                     )
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    // TAMBAHAN BARU: Specialization/Role
+                                    OutlinedTextField(
+                                        value = specializationEdit,
+                                        onValueChange = { specializationEdit = it },
+                                        label = { Text("Role/Specialization") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true,
+                                        placeholder = { Text("e.g., Frontend Developer, UI/UX Designer, Data Analyst") }
+                                    )
                                 }
                             }
                         }
@@ -579,22 +595,22 @@ fun ProfileHeader(userData: UserProfileData?) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Full Name
+        // Full Name - sedikit diperkecil dari ukuran sebelumnya
         Text(
             text = userData?.fullName ?: "User",
-            fontSize = 20.sp,
+            fontSize = 18.sp, // Diperkecil dari 20.sp ke 18.sp
             fontWeight = FontWeight.SemiBold
         )
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Username
+        // Username - PERUBAHAN: tidak miring lagi
         if (!userData?.username.isNullOrEmpty()) {
             Text(
                 text = "@${userData!!.username}",
                 fontSize = 14.sp,
                 color = Color.Gray,
-                fontStyle = FontStyle.Italic
+                fontStyle = FontStyle.Normal // UBAH dari FontStyle.Italic ke FontStyle.Normal
             )
             Spacer(modifier = Modifier.height(4.dp))
         }
@@ -606,6 +622,19 @@ fun ProfileHeader(userData: UserProfileData?) {
             fontStyle = FontStyle.Normal,
             color = Color.Gray
         )
+
+        Spacer(modifier = Modifier.height(4.dp)) // UBAH dari height yang tidak konsisten ke 4.dp
+
+        // TAMBAHAN: Specialization/Role - dengan jarak yang konsisten
+        if (!userData?.specialization.isNullOrEmpty()) {
+            Text(
+                text = userData!!.specialization,
+                fontSize = 14.sp, // UBAH dari 15.sp ke 14.sp untuk konsistensi
+                color = DodgerBlue,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.height(4.dp)) // UBAH dari 2.dp ke 4.dp untuk konsistensi
+        }
 
         // Bio
         if (!userData?.bio.isNullOrEmpty()) {
@@ -621,7 +650,7 @@ fun ProfileHeader(userData: UserProfileData?) {
 
         // Location
         if (!userData?.location.isNullOrEmpty()) {
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp)) // UBAH dari 6.dp ke 8.dp untuk konsistensi dengan bio
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
@@ -635,7 +664,7 @@ fun ProfileHeader(userData: UserProfileData?) {
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = userData!!.location,
-                    fontSize = 13.sp,
+                    fontSize = 14.sp, // UBAH dari 13.sp ke 14.sp untuk konsistensi
                     color = Color.Gray
                 )
             }
