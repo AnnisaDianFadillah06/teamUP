@@ -62,10 +62,14 @@ class TeamViewModel(
             try {
                 _uiState.update { it.copy(isLoading = true) }
 
-                val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
-                val members = if (currentUserId != null) listOf(currentUserId) else emptyList()
+                val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                val members = if (currentUserId.isNotEmpty()) listOf(currentUserId) else emptyList()
+
+                Log.d("TeamViewModel", "Creating team with captainId: $currentUserId")
+
 
                 val team = TeamModel(
+                    id = "",
                     name = name,
                     description = description,
                     category = category,
@@ -73,11 +77,11 @@ class TeamViewModel(
                     imageUrl = null,
                     driveFileId = null,
                     createdAt = Timestamp.now(),
-                    members = members,
+                    members = listOf(currentUserId),
                     maxMembers = maxMembers,
                     isPrivate = isPrivate,
                     memberCount = members.size,
-                    captainId = currentUserId ?: ""
+                    captainId = currentUserId
                 )
 
                 val teamId = repository.addTeam(team, imageUri)

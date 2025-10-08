@@ -38,7 +38,7 @@ fun BottomNavigationBar(navController: NavController) {
     NavigationBar(
         containerColor = White,
         contentColor = DodgerBlue,
-        modifier = Modifier.height(57.dp) // Kurangi tinggi dari default (80dp) ke 56dp
+        modifier = Modifier.height(80.dp) // Kurangi tinggi dari default (80dp) ke 56dp
     ) {
         items.forEach { item ->
             NavigationBarItem(

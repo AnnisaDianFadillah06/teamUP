@@ -32,6 +32,7 @@ import com.example.teamup.R
 import com.example.teamup.common.theme.*
 import com.example.teamup.data.model.TeamModel
 import com.example.teamup.data.repositories.TeamRepository
+import com.example.teamup.data.repositories.TeamRepositoryImpl
 import com.example.teamup.data.sources.remote.GoogleDriveHelper
 import com.example.teamup.data.sources.remote.GoogleDriveTeamDataSource
 import com.example.teamup.data.viewmodels.TeamViewModel
@@ -52,7 +53,7 @@ fun TeamManagementScreen(
     // Initialize repositories and view model
     val driveHelper = remember { GoogleDriveHelper(context) }
     val teamDataSource = remember { GoogleDriveTeamDataSource(context) }
-    val teamRepository = remember { TeamRepository.getInstance(teamDataSource) }
+    val teamRepository = remember { TeamRepositoryImpl.getInstance(teamDataSource) }
     val teamViewModel: TeamViewModel = viewModel(
         factory = TeamViewModelFactory(teamRepository, driveHelper)
     )

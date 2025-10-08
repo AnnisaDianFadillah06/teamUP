@@ -278,7 +278,7 @@ fun ProfileScreen(
                         // Skills Section - Now using separate skills list
                         item {
                             ProfileSectionWithActions(
-                                title = "Role & Spesialis",  // UBAH dari "Keahlian"
+                                title = "Keahlian",  // UBAH dari "Keahlian"
                                 itemCount = skills.size,
                                 onAddClick = {
                                     try {

@@ -1,5 +1,6 @@
 package com.example.teamup.presentation.screen
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -24,23 +26,54 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.teamup.R
+import com.example.teamup.data.model.InvitationModel
 import com.example.teamup.data.model.ProfileModel
-import com.example.teamup.data.viewmodels.InviteSelectMemberViewModel
+import com.example.teamup.data.viewmodels.InvitationUiState
+import com.example.teamup.data.viewmodels.InvitationViewModel
 import com.example.teamup.data.viewmodels.SharedMemberViewModel
+import com.example.teamup.di.Injection
+import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DraftInviteSelectMemberScreen(
+    teamId: String, // ✅ TAMBAH PARAMETER INI
+    teamName: String, // ✅ TAMBAH PARAMETER INI
     navController: NavController,
-    sharedViewModel: SharedMemberViewModel // Gunakan SharedViewModel
+    sharedViewModel: SharedMemberViewModel, // Existing
+    invitationViewModel: InvitationViewModel = Injection.provideInvitationViewModel() // ✅ TAMBAH INI
 ) {
+    val context = LocalContext.current
+    val currentUser = FirebaseAuth.getInstance().currentUser
+
     val selectedMembers by sharedViewModel.selectedMembers.collectAsState()
+    val invitationState by invitationViewModel.uiState.collectAsState() // ✅ OBSERVE STATE
+
     val selectedList = remember { mutableStateListOf<ProfileModel>() }
 
     // Update selectedList ketika selectedMembers berubah
     LaunchedEffect(selectedMembers) {
         selectedList.clear()
         selectedList.addAll(selectedMembers)
+    }
+
+    // ✅ HANDLE INVITATION STATE
+    LaunchedEffect(invitationState) {
+        when (val state = invitationState) {
+            is InvitationUiState.Success -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                invitationViewModel.resetState()
+                // Clear selected members setelah berhasil
+                sharedViewModel.clearSelectedMembers()
+                // Navigate back
+                navController.popBackStack()
+            }
+            is InvitationUiState.Error -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                invitationViewModel.resetState()
+            }
+            else -> {}
+        }
     }
 
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
@@ -108,7 +141,7 @@ fun DraftInviteSelectMemberScreen(
                 }
             }
 
-            // Tombol kirim undangan
+            // ✅ TOMBOL KIRIM UNDANGAN (UPDATED)
             Button(
                 onClick = {
                     if (selectedList.isNotEmpty()) {
@@ -118,13 +151,21 @@ fun DraftInviteSelectMemberScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp),
-                enabled = selectedList.isNotEmpty(),
+                enabled = selectedList.isNotEmpty() && invitationState !is InvitationUiState.Loading,
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text(
-                    text = "Undang (${selectedList.size})",
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
+                if (invitationState is InvitationUiState.Loading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = "Undang (${selectedList.size})",
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
             }
         }
     }
@@ -172,7 +213,7 @@ fun DraftInviteSelectMemberScreen(
         )
     }
 
-    // Dialog konfirmasi kirim undangan
+    // ✅ DIALOG KONFIRMASI KIRIM (UPDATED DENGAN LOGIC KIRIM INVITE)
     if (showSendConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showSendConfirmDialog = false },
@@ -188,11 +229,24 @@ fun DraftInviteSelectMemberScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        // TODO: Tambahkan logika pengiriman undangan
-                        // Setelah berhasil kirim, clear selected members
-                        sharedViewModel.clearSelectedMembers()
+                        currentUser?.let { user ->
+                            // ✅ PANGGIL INVITATION VIEWMODEL
+                            invitationViewModel.sendInvitations(
+                                teamId = teamId,
+                                teamName = teamName,
+                                senderId = user.uid,
+                                senderName = user.displayName ?: user.email ?: "Admin",
+                                senderEmail = user.email ?: "",
+                                recipientsList = selectedList.map { member ->
+                                    InvitationModel(
+                                        recipientId = member.id,
+                                        recipientName = member.name,
+                                        recipientEmail = member.email
+                                    )
+                                }
+                            )
+                        }
                         showSendConfirmDialog = false
-                        navController.popBackStack()
                     }
                 ) {
                     Text("Undang")
@@ -282,20 +336,21 @@ fun SelectedMemberItem(
                     )
                 }
             }
+        }
 
-            // Remove button
-            IconButton(
-                onClick = onRemove,
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(Color.Red.copy(alpha = 0.1f), CircleShape)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Remove",
-                    tint = Color.Red
-                )
-            }
+        // Remove button
+        IconButton(
+            onClick = onRemove,
+            modifier = Modifier
+                .size(40.dp)
+                .background(Color.Red.copy(alpha = 0.1f), CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = "Remove",
+                tint = Color.Red
+            )
         }
     }
+
 }

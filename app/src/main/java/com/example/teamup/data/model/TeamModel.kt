@@ -13,11 +13,11 @@ data class TeamModel(
     val imageUrl: String? = null, // URL to Firebase Storage image
     val driveFileId: String? = null, // ID file di Google Drive
     val createdAt: Timestamp = Timestamp.now(),
-    val members: List<String> = emptyList(), // List of member user IDs
+    val members: List<String?> = emptyList(), // List of member user IDs
     val maxMembers: Int = 5, // Maximum members allowed (default 5)
     val isPrivate: Boolean = true, // Team privacy setting
     val memberCount: Int = 0, // Current number of members
     val isJoined: Boolean = false, // Whether current user has joined
     val isFull: Boolean = false, // Whether team has reached capacity
-    val captainId: String = "" // ID of the team captain/admin
+    val captainId: String? = null // ID of the team captain/admin
 )

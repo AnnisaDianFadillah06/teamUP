@@ -1,6 +1,5 @@
 package com.example.teamup.presentation.screen
 
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,8 +33,10 @@ import com.example.teamup.data.repositories.NotificationRepository
 import com.example.teamup.data.sources.remote.FirebaseNotificationDataSource
 import com.example.teamup.data.viewmodels.JoinTeamViewModel
 import com.example.teamup.data.viewmodels.NotificationViewModel
+import com.example.teamup.di.Injection
 import com.example.teamup.presentation.components.NotificationIcon
 import com.example.teamup.route.Routes
+import com.google.firebase.firestore.FirebaseFirestore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,10 +50,10 @@ fun JoinTeamScreen(
     val popularTeams by viewModel.popularTeams.collectAsState()
 
     // Get NotificationViewModel to display unread count
-    val notificationRepository = NotificationRepository.getInstance(
-        FirebaseNotificationDataSource(context)
-    )
-    val notificationViewModel = NotificationViewModel.getInstance(notificationRepository)
+    val notificationViewModel: NotificationViewModel = remember {
+        Injection.provideNotificationViewModel()
+    }
+
     val unreadCount by notificationViewModel.unreadCount.collectAsState()
 
     LaunchedEffect(key1 = Unit) {
