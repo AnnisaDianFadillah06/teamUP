@@ -1,5 +1,6 @@
 package com.example.teamup.presentation.screen
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,6 +10,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -21,32 +24,36 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.teamup.R
 import com.example.teamup.common.theme.DodgerBlue
+import com.example.teamup.data.model.JoinRequestModel
 import com.example.teamup.data.model.MemberInviteModel
+import com.example.teamup.data.viewmodels.JoinRequestUiState
+import com.example.teamup.data.viewmodels.JoinRequestViewModel
+import com.example.teamup.di.Injection
 import com.example.teamup.route.Routes
+import com.google.firebase.Timestamp
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InviteMemberScreen(
-    navController: NavController
+    teamId: String, // ✅ TAMBAH PARAMETER INI (wajib dari navigation)
+    teamName: String,
+    navController: NavController,
+    joinRequestViewModel: JoinRequestViewModel = Injection.provideJoinRequestViewModel() // ✅ TAMBAH INI
 ) {
-    // Sample data for both tabs
-    val pendingMembers = remember {
-        listOf(
-            MemberInviteModel(
-                id = "1",
-                name = "Annisa Dian",
-                email = "annisadian01@gmail.com",
-                profileImage = R.drawable.captain_icon,
-                status = "PENDING"
-            )
-        )
-    }
+    // ✅ GANTI sample data dengan real data dari ViewModel
+    val teamRequests by joinRequestViewModel.teamRequests.collectAsState()
+    val uiState by joinRequestViewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
+    // Sample data untuk tab "Menunggu" (nanti diganti dengan InvitationViewModel)
     val waitingMembers = remember {
         listOf(
             MemberInviteModel(
@@ -61,6 +68,26 @@ fun InviteMemberScreen(
 
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Permintaan", "Menunggu")
+
+    // ✅ LOAD JOIN REQUESTS saat screen launch
+    LaunchedEffect(teamId) {
+        joinRequestViewModel.loadTeamJoinRequests(teamId)
+    }
+
+    // ✅ HANDLE STATE CHANGES (Toast notification)
+    LaunchedEffect(uiState) {
+        when (val state = uiState) {
+            is JoinRequestUiState.Success -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                joinRequestViewModel.resetState()
+            }
+            is JoinRequestUiState.Error -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                joinRequestViewModel.resetState()
+            }
+            else -> {}
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -80,7 +107,7 @@ fun InviteMemberScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate(Routes.InviteSelect.routes) },
+                onClick = { navController.navigate("draft_invite_select/$teamId/$teamName") },
                 containerColor = DodgerBlue,
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp),
@@ -133,8 +160,14 @@ fun InviteMemberScreen(
                         selected = selectedTabIndex == index,
                         onClick = { selectedTabIndex = index },
                         text = {
+                            // ✅ TAMBAH BADGE COUNT untuk tab Permintaan
+                            val displayTitle = if (index == 0) {
+                                "$title (${teamRequests.size})"
+                            } else {
+                                title
+                            }
                             Text(
-                                text = title,
+                                text = displayTitle,
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
                                     color = if (selectedTabIndex == index) DodgerBlue else Color.Gray
@@ -149,18 +182,53 @@ fun InviteMemberScreen(
             // Tab Content
             when (selectedTabIndex) {
                 0 -> {
-                    // Permintaan Tab
-                    if (pendingMembers.isEmpty()) {
+                    // ✅ PERMINTAAN TAB - GANTI DENGAN REAL DATA
+                    if (teamRequests.isEmpty()) {
                         EmptyStateMessage("Tidak ada permintaan bergabung")
                     } else {
-                        MemberRequestsList(
-                            members = pendingMembers,
-                            showActionButtons = true
-                        )
+                        // ✅ GANTI MemberRequestsList dengan LazyColumn real data
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                text = "Anggota Meminta Bergabung",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                modifier = Modifier.padding(16.dp)
+                            )
+
+                            LazyColumn(
+                                contentPadding = PaddingValues(bottom = 80.dp) // Space for FAB
+                            ) {
+                                items(teamRequests) { request ->
+                                    JoinRequestCard(
+                                        request = request,
+                                        onApprove = {
+                                            joinRequestViewModel.handleJoinRequest(
+                                                requestId = request.id,
+                                                approve = true,
+                                                teamId = request.teamId,
+                                                requesterId = request.requesterId,
+                                                requesterName = request.requesterName,
+                                                teamName = request.teamName
+                                            )
+                                        },
+                                        onReject = {
+                                            joinRequestViewModel.handleJoinRequest(
+                                                requestId = request.id,
+                                                approve = false,
+                                                teamId = request.teamId,
+                                                requesterId = request.requesterId,
+                                                requesterName = request.requesterName,
+                                                teamName = request.teamName
+                                            )
+                                        },
+                                        isLoading = uiState is JoinRequestUiState.Loading
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
                 1 -> {
-                    // Menunggu Tab
+                    // MENUNGGU TAB - TETAP PAKE SAMPLE DATA (nanti update dengan InvitationViewModel)
                     if (waitingMembers.isEmpty()) {
                         EmptyStateMessage("Tidak ada undangan yang menunggu")
                     } else {
@@ -175,6 +243,123 @@ fun InviteMemberScreen(
     }
 }
 
+// ✅ TAMBAH COMPOSABLE BARU untuk JOIN REQUEST CARD
+@Composable
+fun JoinRequestCard(
+    request: JoinRequestModel,
+    onApprove: () -> Unit,
+    onReject: () -> Unit,
+    isLoading: Boolean
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Avatar (placeholder dengan initial)
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(DodgerBlue),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = request.requesterName.firstOrNull()?.toString()?.uppercase() ?: "?",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Member Info
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = request.requesterName,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.SemiBold
+                )
+            )
+            Text(
+                text = request.requesterEmail,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = Color.Gray
+                )
+            )
+            // ✅ TAMBAH TIMESTAMP
+            Text(
+                text = formatTimestamp(request.createdAt),
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = Color.Gray,
+                    fontSize = 11.sp
+                )
+            )
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Action buttons
+        Button(
+            onClick = onApprove,
+            enabled = !isLoading,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF27AE60)
+            ),
+            modifier = Modifier
+                .padding(horizontal = 4.dp)
+                .height(32.dp),
+            shape = RoundedCornerShape(8.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp)
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text("Setuju")
+            }
+        }
+
+        Button(
+            onClick = onReject,
+            enabled = !isLoading,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFEB5757)
+            ),
+            modifier = Modifier
+                .padding(horizontal = 4.dp)
+                .height(32.dp),
+            shape = RoundedCornerShape(8.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp)
+        ) {
+            Text("Tolak")
+        }
+    }
+}
+
+// ✅ TAMBAH HELPER FUNCTION untuk format timestamp
+fun formatTimestamp(timestamp: Timestamp): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp.toDate().time
+    val minutes = diff / 60000
+    val hours = minutes / 60
+    val days = hours / 24
+
+    return when {
+        minutes < 1 -> "Baru saja"
+        minutes < 60 -> "$minutes menit yang lalu"
+        hours < 24 -> "$hours jam yang lalu"
+        days < 7 -> "$days hari yang lalu"
+        else -> SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(timestamp.toDate())
+    }
+}
+
+// EXISTING COMPOSABLES (TETAP SAMA, untuk tab "Menunggu")
 @Composable
 fun MemberRequestsList(
     members: List<MemberInviteModel>,

@@ -1,4 +1,4 @@
-// data/repository/NotificationRepository.kt
+// data/repository/NotificationRepositoryImpl.kt
 package com.example.teamup.data.repository.notif
 
 import com.example.teamup.data.model.notif.NotificationData

@@ -103,7 +103,7 @@ class TeamDetailViewModel(private val teamRepository: TeamRepository) : ViewMode
 
             when {
                 // Case 1: captainId is explicitly set and not empty
-                team.captainId.isNotEmpty() -> {
+                !team.captainId.isNullOrEmpty() -> {
                     captainId = team.captainId
                     Log.d(TAG, "Using explicit captainId: $captainId")
                 }
@@ -122,7 +122,7 @@ class TeamDetailViewModel(private val teamRepository: TeamRepository) : ViewMode
             for ((index, userId) in memberIds.withIndex()) {
                 Log.d(TAG, "Loading member ${index + 1}/${memberIds.size}: $userId")
                 try {
-                    val userProfile = teamRepository.getUserProfile(userId)
+                    val userProfile = userId?.let { teamRepository.getUserProfile(it) }
                     if (userProfile != null) {
                         Log.d(TAG, "Member loaded: ${userProfile.fullName}")
                         memberProfiles.add(userProfile)
@@ -185,7 +185,7 @@ class TeamDetailViewModel(private val teamRepository: TeamRepository) : ViewMode
 
         return when {
             // Check explicit captainId first
-            team.captainId.isNotEmpty() -> team.captainId == currentUserId
+            !team.captainId.isNullOrEmpty() -> team.captainId == currentUserId
             // If captainId is empty, check if current user is first member
             team.members.isNotEmpty() -> team.members.first() == currentUserId
             else -> false

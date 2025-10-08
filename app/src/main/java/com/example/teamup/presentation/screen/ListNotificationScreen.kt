@@ -17,26 +17,36 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import android.widget.Toast
 import com.example.teamup.common.theme.DodgerBlue
 import com.example.teamup.data.model.NotificationModel
+import com.example.teamup.data.model.NotificationType
 import com.example.teamup.data.viewmodels.NotificationViewModel
+import com.example.teamup.data.viewmodels.JoinRequestViewModel
+import com.example.teamup.data.viewmodels.JoinRequestUiState
+import com.example.teamup.di.Injection
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-
 fun ListNotificationScreen(
     navController: NavController,
-    viewModel: NotificationViewModel
+    viewModel: NotificationViewModel,
+    joinRequestViewModel: JoinRequestViewModel = Injection.provideJoinRequestViewModel()
 ) {
+    val context = LocalContext.current
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
     // Load notifications when the screen is shown
     LaunchedEffect(Unit) {
         viewModel.loadNotifications()
@@ -44,6 +54,8 @@ fun ListNotificationScreen(
 
     val unreadNotifications by viewModel.unreadNotifications.collectAsState()
     val readNotifications by viewModel.readNotifications.collectAsState()
+    val joinRequestState by joinRequestViewModel.uiState.collectAsState()
+
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Belum Dibaca", "Telah Dibaca")
 
@@ -53,11 +65,29 @@ fun ListNotificationScreen(
     val bottomSheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
 
+    // Handle join request state changes
+    LaunchedEffect(joinRequestState) {
+        when (val state = joinRequestState) {
+            is JoinRequestUiState.Success -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                joinRequestViewModel.resetState()
+                // Refresh notifications after handling request
+                viewModel.loadNotifications()
+            }
+            is JoinRequestUiState.Error -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                joinRequestViewModel.resetState()
+            }
+            else -> {}
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Notifikasi",
+                    Text(
+                        "Notifikasi",
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.SemiBold
                         )
@@ -163,12 +193,27 @@ fun ListNotificationScreen(
                         NotificationList(
                             notifications = unreadNotifications,
                             onNotificationClick = { notification ->
-                                if (notification.type == NotificationModel.Type.JOIN_REQUEST) {
-                                    currentNotification = notification
-                                    showBottomSheet = true
-                                } else {
-                                    // Mark as read
-                                    viewModel.markAsRead(notification.id)
+                                // Handle different notification types
+                                when (notification.type) {
+                                    NotificationType.JOIN_REQUEST -> {
+                                        // Show bottom sheet for admin to approve/reject
+                                        currentNotification = notification
+                                        showBottomSheet = true
+                                    }
+                                    NotificationType.JOIN_APPROVED,
+                                    NotificationType.JOIN_REJECTED,
+                                    NotificationType.INVITE_ACCEPTED,
+                                    NotificationType.INVITE_REJECTED -> {
+                                        // Just mark as read for info notifications
+                                        viewModel.markAsRead(notification.id)
+                                    }
+                                    NotificationType.INVITE -> {
+                                        // Show bottom sheet for invitee to accept/reject
+                                        currentNotification = notification
+                                        showBottomSheet = true
+                                    }
+
+                                    NotificationType.GENERAL -> TODO()
                                 }
                             }
                         )
@@ -190,9 +235,7 @@ fun ListNotificationScreen(
                     } else {
                         NotificationList(
                             notifications = readNotifications,
-                            onNotificationClick = { notification ->
-                                // No action needed for read notifications, maybe show details?
-                            }
+                            onNotificationClick = { /* No action for read notifications */ }
                         )
                     }
                 }
@@ -200,7 +243,7 @@ fun ListNotificationScreen(
         }
     }
 
-    // Bottom Sheet for join requests
+    // Bottom Sheet for notifications with actions
     if (showBottomSheet && currentNotification != null) {
         LaunchedEffect(Unit) {
             bottomSheetState.show()
@@ -220,27 +263,93 @@ fun ListNotificationScreen(
             containerColor = Color.White,
             modifier = Modifier.fillMaxWidth()
         ) {
-            JoinRequestBottomSheet(
-                notification = currentNotification!!,
-                onAccept = {
-                    viewModel.handleJoinRequest(currentNotification!!.id, true)
-                    scope.launch {
-                        bottomSheetState.hide()
-                    }.invokeOnCompletion {
-                        showBottomSheet = false
-                        currentNotification = null
-                    }
-                },
-                onReject = {
-                    viewModel.handleJoinRequest(currentNotification!!.id, false)
-                    scope.launch {
-                        bottomSheetState.hide()
-                    }.invokeOnCompletion {
-                        showBottomSheet = false
-                        currentNotification = null
-                    }
+            when (currentNotification!!.type) {
+                NotificationType.JOIN_REQUEST -> {
+                    JoinRequestBottomSheet(
+                        notification = currentNotification!!,
+                        onAccept = {
+                            val actionData = currentNotification!!.actionData
+                            val requestId = actionData?.get("requestId") ?: ""
+                            val teamId = actionData?.get("teamId") ?: ""
+
+                            joinRequestViewModel.handleJoinRequest(
+                                requestId = requestId,
+                                approve = true,
+                                teamId = teamId,
+                                requesterId = currentNotification!!.userId,
+                                requesterName = currentNotification!!.senderName,
+                                teamName = currentNotification!!.message.substringAfter("ke tim ").substringBefore(" Anda")
+                            )
+
+                            viewModel.markAsRead(currentNotification!!.id)
+
+                            scope.launch {
+                                bottomSheetState.hide()
+                            }.invokeOnCompletion {
+                                showBottomSheet = false
+                                currentNotification = null
+                            }
+                        },
+                        onReject = {
+                            val actionData = currentNotification!!.actionData
+                            val requestId = actionData?.get("requestId") ?: ""
+                            val teamId = actionData?.get("teamId") ?: ""
+
+                            joinRequestViewModel.handleJoinRequest(
+                                requestId = requestId,
+                                approve = false,
+                                teamId = teamId,
+                                requesterId = currentNotification!!.userId,
+                                requesterName = currentNotification!!.senderName,
+                                teamName = currentNotification!!.message.substringAfter("ke tim ").substringBefore(" Anda")
+                            )
+
+                            viewModel.markAsRead(currentNotification!!.id)
+
+                            scope.launch {
+                                bottomSheetState.hide()
+                            }.invokeOnCompletion {
+                                showBottomSheet = false
+                                currentNotification = null
+                            }
+                        },
+                        isLoading = joinRequestState is JoinRequestUiState.Loading
+                    )
                 }
-            )
+                NotificationType.INVITE -> {
+                    InvitationBottomSheet(
+                        notification = currentNotification!!,
+                        onAccept = {
+                            // TODO: Implement with InvitationViewModel
+                            // For now, just mark as read
+                            viewModel.markAsRead(currentNotification!!.id)
+                            Toast.makeText(context, "Fitur invite sedang dalam pengembangan", Toast.LENGTH_SHORT).show()
+
+                            scope.launch {
+                                bottomSheetState.hide()
+                            }.invokeOnCompletion {
+                                showBottomSheet = false
+                                currentNotification = null
+                            }
+                        },
+                        onReject = {
+                            // TODO: Implement with InvitationViewModel
+                            viewModel.markAsRead(currentNotification!!.id)
+                            Toast.makeText(context, "Fitur invite sedang dalam pengembangan", Toast.LENGTH_SHORT).show()
+
+                            scope.launch {
+                                bottomSheetState.hide()
+                            }.invokeOnCompletion {
+                                showBottomSheet = false
+                                currentNotification = null
+                            }
+                        }
+                    )
+                }
+                else -> {
+                    // Shouldn't reach here
+                }
+            }
         }
     }
 }
@@ -273,21 +382,28 @@ fun NotificationItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        onClick = onClick
+        onClick = onClick,
+        color = if (notification.isRead) Color.White else Color(0xFFF0F8FF)
     ) {
         Row(
-            modifier = Modifier.padding(8.dp),
+            modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar
-            Image(
-                painter = painterResource(id = notification.senderImageResId),
-                contentDescription = "User Avatar",
+            // Avatar (placeholder with initial)
+            Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
+                    .clip(CircleShape)
+                    .background(DodgerBlue),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = notification.senderName.firstOrNull()?.toString()?.uppercase() ?: "?",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            }
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -295,41 +411,39 @@ fun NotificationItem(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = notification.senderName,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.Bold
-                        )
+                Text(
+                    text = notification.title,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Bold
                     )
-
-                    Spacer(modifier = Modifier.width(4.dp))
-
-                    Text(
-                        text = notification.message,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                if (notification.additionalInfo != null) {
-                    Text(
-                        text = notification.additionalInfo,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = formatTimestamp(notification.timestamp),
+                    text = notification.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = formatTimestamp(notification.createdAt.toDate()),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray,
                     fontSize = 10.sp
+                )
+            }
+
+            // Unread indicator
+            if (!notification.isRead) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(DodgerBlue)
                 )
             }
         }
@@ -340,26 +454,43 @@ fun NotificationItem(
 fun JoinRequestBottomSheet(
     notification: NotificationModel,
     onAccept: () -> Unit,
-    onReject: () -> Unit
+    onReject: () -> Unit,
+    isLoading: Boolean = false
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(24.dp)
     ) {
+        // Title
+        Text(
+            text = "Permintaan Bergabung",
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontWeight = FontWeight.Bold
+            )
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         // User info
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Image(
-                painter = painterResource(id = notification.senderImageResId),
-                contentDescription = "User Avatar",
+            Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
+                    .clip(CircleShape)
+                    .background(DodgerBlue),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = notification.senderName.firstOrNull()?.toString()?.uppercase() ?: "?",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                )
+            }
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -370,14 +501,6 @@ fun JoinRequestBottomSheet(
                         fontWeight = FontWeight.Bold
                     )
                 )
-
-                if (notification.additionalInfo != null) {
-                    Text(
-                        text = "(${notification.additionalInfo})",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
-                }
             }
         }
 
@@ -385,7 +508,117 @@ fun JoinRequestBottomSheet(
 
         // Request message
         Text(
-            text = "Request: ${notification.senderName} mengajukan untuk bergabung dengan tim ${notification.additionalInfo ?:""} Anda, Terima?",
+            text = notification.message,
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Action buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedButton(
+                onClick = onReject,
+                enabled = !isLoading,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = Color.White,
+                    contentColor = Color(0xFFEB5757)
+                )
+            ) {
+                Text(text = "Tolak")
+            }
+
+            Button(
+                onClick = onAccept,
+                enabled = !isLoading,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = DodgerBlue,
+                    contentColor = Color.White
+                )
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(text = "Terima")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun InvitationBottomSheet(
+    notification: NotificationModel,
+    onAccept: () -> Unit,
+    onReject: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp)
+    ) {
+        // Title
+        Text(
+            text = "Undangan Tim",
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontWeight = FontWeight.Bold
+            )
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Sender info
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(DodgerBlue),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = notification.senderName.firstOrNull()?.toString()?.uppercase() ?: "?",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column {
+                Text(
+                    text = notification.senderName,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+                Text(
+                    text = "Admin Tim",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Invitation message
+        Text(
+            text = notification.message,
             style = MaterialTheme.typography.bodyMedium
         )
 
@@ -402,7 +635,7 @@ fun JoinRequestBottomSheet(
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = Color.White,
-                    contentColor = DodgerBlue
+                    contentColor = Color(0xFFEB5757)
                 )
             ) {
                 Text(text = "Tolak")

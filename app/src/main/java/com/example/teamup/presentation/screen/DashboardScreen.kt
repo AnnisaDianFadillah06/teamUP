@@ -119,9 +119,26 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
             composable(Routes.FormAddTeam.routes) {
                 FormCreateTeamScreen(navController = navController)
             }
-            composable(Routes.Invite.routes) {
-                InviteMemberScreen(navController = navController)
+
+            //INVITE MEMBER UPDATE
+            composable(
+                route = "invite_member/{teamId}/{teamName}",  // ✅ tambahin teamName
+                arguments = listOf(
+                    navArgument("teamId") { type = NavType.StringType },
+                    navArgument("teamName") { type = NavType.StringType }  // ✅
+                )
+            ) { backStackEntry ->
+                val teamId = backStackEntry.arguments?.getString("teamId") ?: ""
+                val teamName = backStackEntry.arguments?.getString("teamName") ?: ""  // ✅
+
+                InviteMemberScreen(
+                    teamId = teamId,
+                    teamName = teamName,  // ✅
+                    navController = navController,
+                    joinRequestViewModel = Injection.provideJoinRequestViewModel()  // ✅
+                )
             }
+
             composable(Routes.InviteSelect.routes) {
                 InviteSelectMemberScreen(
                     navController = navController,
@@ -129,9 +146,28 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
                 )
             }
 
-// Update composable untuk draft screen - hapus parameter selectedIds
-            composable(Routes.DraftSelectMember.routes) {
+            // Update composable untuk draft screen - hapus parameter selectedIds
+//            composable(Routes.DraftSelectMember.routes) {
+//                DraftInviteSelectMemberScreen(
+//                    navController = navController,
+//                    sharedViewModel = sharedMemberViewModel
+//                )
+//            }
+
+            // Di Navigation setup
+            composable(
+                route = "draft_invite_select/{teamId}/{teamName}",
+                arguments = listOf(
+                    navArgument("teamId") { type = NavType.StringType },
+                    navArgument("teamName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val teamId = backStackEntry.arguments?.getString("teamId") ?: ""
+                val teamName = backStackEntry.arguments?.getString("teamName") ?: ""
+
                 DraftInviteSelectMemberScreen(
+                    teamId = teamId,
+                    teamName = teamName,
                     navController = navController,
                     sharedViewModel = sharedMemberViewModel
                 )

@@ -3,6 +3,7 @@ package com.example.teamup.presentation.screen
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material.icons.filled.Image
@@ -39,6 +41,8 @@ import coil.request.ImageRequest
 import com.example.teamup.R
 import com.example.teamup.common.theme.*
 import com.example.teamup.data.model.user.UserProfileData
+import com.example.teamup.data.viewmodels.JoinRequestUiState
+import com.example.teamup.data.viewmodels.JoinRequestViewModel
 import com.example.teamup.data.viewmodels.TeamDetailViewModel
 import com.example.teamup.data.viewmodels.TeamDetailViewModelFactory
 import com.example.teamup.di.Injection
@@ -47,16 +51,20 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.io.File
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailTeamScreen(
     navController: NavController,
-    teamId: String = "1",
+    teamId: String,
     isJoined: Boolean = false,
     isFull: Boolean = false,
     viewModel: TeamDetailViewModel = viewModel(
         factory = TeamDetailViewModelFactory(Injection.provideTeamRepository())
-    )
+    ),
+    joinRequestViewModel: JoinRequestViewModel = Injection.provideJoinRequestViewModelWithFactory()
+
+
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
@@ -64,6 +72,8 @@ fun DetailTeamScreen(
     val teamMembers by viewModel.teamMembers.collectAsState()
     val teamAdmin by viewModel.teamAdmin.collectAsState()
     val currentUserUid = FirebaseAuth.getInstance().currentUser?.uid
+    val joinRequestState by joinRequestViewModel.uiState.collectAsState()
+
 
     // Search state
     var searchQuery by remember { mutableStateOf("") }
@@ -85,6 +95,22 @@ fun DetailTeamScreen(
             viewModel.clearError()
         }
     }
+
+    // ✅ TAMBAH OBSERVER untuk state changes
+    LaunchedEffect(joinRequestState) {
+        when (val state = joinRequestState) {
+            is JoinRequestUiState.Success -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                joinRequestViewModel.resetState()
+            }
+            is JoinRequestUiState.Error -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                joinRequestViewModel.resetState()
+            }
+            else -> {}
+        }
+    }
+
 
     // PERBAIKAN: Logika untuk menampilkan semua anggota
     val allTeamMembers = remember(teamMembers, teamAdmin) {
@@ -135,8 +161,7 @@ fun DetailTeamScreen(
                 title = { },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")                    }
                 }
             )
         }
@@ -221,25 +246,76 @@ fun DetailTeamScreen(
                             Spacer(modifier = Modifier.height(16.dp))
 
                             // Action Buttons
+                            // Action Buttons
+                            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
                             val isUserInTeam = viewModel.isCurrentUserInTeam()
+                            val isAdmin = team?.captainId == currentUserId
+                            val isFull = team?.memberCount ?: 0 >= team?.maxMembers ?: 5
 
-                            if (!isUserInTeam) {
-                                Button(
-                                    onClick = { /* Handle join team */ },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(48.dp),
-                                    shape = RoundedCornerShape(8.dp),
-                                    enabled = !(team?.isFull ?: false),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = DodgerBlue,
-                                        disabledContainerColor = Color.Gray
-                                    )
-                                ) {
-                                    Text(text = if (team?.isFull == true) "Full Team" else "Join")
+                            when {
+                                isAdmin -> {
+                                    // If admin, show both buttons (Group Messages + Invite Members)
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        // Group Messages Button
+                                        Button(
+                                            onClick = {
+                                                navController.navigate(
+                                                    Routes.ChatGroup.createRoute(
+                                                        teamId = teamId,
+                                                        teamName = team?.name ?: "Team Chat"
+                                                    )
+                                                )
+                                            },
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(48.dp),
+                                            shape = RoundedCornerShape(8.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = DodgerBlue)
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.comments),
+                                                    contentDescription = "Message",
+                                                    tint = Color.White
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(text = "Group Messages")
+                                            }
+                                        }
+
+                                        // Invite Members Button
+                                        Button(
+                                            onClick = {
+                                                navController.navigate("invite/$teamId/${team?.name ?: "Team"}")
+                                            },
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(48.dp),
+                                            shape = RoundedCornerShape(8.dp),
+                                            enabled = !isFull,
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = Color(0xFF2F80ED),
+                                                disabledContainerColor = Color.Gray
+                                            )
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.ic_baseline_keyboard_arrow_right_24),
+                                                    contentDescription = if (isFull) "Full" else "Invite",
+                                                    tint = Color.White
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(text = if (isFull) "Full Team" else "Invite Members")
+                                            }
+                                        }
+                                    }
                                 }
-                            } else {
-                                Column(modifier = Modifier.fillMaxWidth()) {
+
+                                isUserInTeam -> {
+                                    // Already a member, show group messages button
                                     Button(
                                         onClick = {
                                             navController.navigate(
@@ -265,29 +341,54 @@ fun DetailTeamScreen(
                                             Text(text = "Group Messages")
                                         }
                                     }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
+                                }
+                                isFull -> {
+                                    // Team is full
+                                    Text(
+                                        text = "Team is full (${team?.memberCount ?: 0}/${team?.maxMembers ?: 5})",
+                                        color = Color.Red,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 8.dp),
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                }
+                                else -> {
+                                    // Show join button
                                     Button(
-                                        onClick = { navController.navigate(Routes.Invite.routes) },
+                                        onClick = {
+                                            Log.d("DetailTeamScreen", "Join button clicked")
+                                            Log.d("DetailTeamScreen", "TeamId: $teamId")
+                                            Log.d("DetailTeamScreen", "CaptainId: ${team?.captainId}")
+                                            Log.d("DetailTeamScreen", "CurrentUserId: $currentUserId")
+
+                                            joinRequestViewModel.sendJoinRequest(
+                                                teamId = teamId,
+                                                teamName = team?.name ?: "Unknown Team",
+                                                requesterId = currentUserId,
+                                                requesterName = FirebaseAuth.getInstance().currentUser?.displayName ?: "Unknown",
+                                                requesterEmail = FirebaseAuth.getInstance().currentUser?.email ?: "",
+                                                captainId = team?.captainId ?: ""
+                                            )
+                                        },
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(48.dp),
                                         shape = RoundedCornerShape(8.dp),
-                                        enabled = !(team?.isFull ?: false),
+                                        enabled = joinRequestState !is JoinRequestUiState.Loading,
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFF2F80ED),
+                                            containerColor = DodgerBlue,
                                             disabledContainerColor = Color.Gray
                                         )
                                     ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                painter = painterResource(id = R.drawable.ic_baseline_keyboard_arrow_right_24),
-                                                contentDescription = if (team?.isFull == true) "Full" else "Invite",
-                                                tint = Color.White
+                                        if (joinRequestState is JoinRequestUiState.Loading) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(20.dp),
+                                                color = Color.White
                                             )
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text(text = if (team?.isFull == true) "Full Team" else "Invite Members")
+                                        } else {
+                                            Text("Join Team")
                                         }
                                     }
                                 }
@@ -308,9 +409,12 @@ fun DetailTeamScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp),
-                            colors = TextFieldDefaults.outlinedTextFieldColors(
-                                containerColor = Color(0xFFF5F5F5),
-                                unfocusedBorderColor = Color.Transparent
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color(0xFFF5F5F5),
+                                unfocusedContainerColor = Color(0xFFF5F5F5),
+                                disabledContainerColor = Color(0xFFF5F5F5),
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedBorderColor = DodgerBlue
                             ),
                             shape = RoundedCornerShape(12.dp),
                             singleLine = true

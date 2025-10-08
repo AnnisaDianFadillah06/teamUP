@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.teamup.data.repositories.CompetitionRepositoryDummy
 import com.example.teamup.data.repositories.TeamRepository
+import com.example.teamup.data.repositories.TeamRepositoryImpl
 import com.example.teamup.data.sources.remote.GoogleDriveTeamDataSource
 import com.example.teamup.data.viewmodels.JoinTeamViewModel
 
@@ -32,7 +33,7 @@ class ViewModelJoinFactory(
                 // Log untuk debugging
                 Log.d("ViewModelJoinFactory", "Creating TeamRepository with GoogleDriveTeamDataSource")
 
-                val teamRepository = TeamRepository.getInstance(googleDriveTeamDataSource)
+                val teamRepository = TeamRepositoryImpl.getInstance(googleDriveTeamDataSource)
                 val competitionRepository = CompetitionRepositoryDummy()
 
                 instance ?: ViewModelJoinFactory(
