@@ -43,12 +43,24 @@ sealed class Routes(val routes: String) {
         fun createRoute(teamId: String, isJoined: Boolean, isFull: Boolean) =
             "team_detail/$teamId/$isJoined/$isFull"
     }
-    object Invite : Routes("invite_member")
     object ChatGroup : Routes("chat_group/{teamId}/{teamName}") {
         fun createRoute(teamId: String, teamName: String) =
             "chat_group/$teamId/$teamName"
     }
-    object InviteSelect : Routes("invite_select")
+    object Invite : Routes("invite_member/{teamId}/{teamName}") {
+        fun createRoute(teamId: String, teamName: String) =
+            "invite_member/$teamId/$teamName"
+    }
+
+    object InviteSelect : Routes("invite_select/{teamId}/{teamName}") {
+        fun createRoute(teamId: String, teamName: String) =
+            "invite_select/$teamId/$teamName"
+    }
+
+    object DraftSelectMember : Routes("draft_invite_select/{teamId}/{teamName}") {
+        fun createRoute(teamId: String, teamName: String) =
+            "draft_invite_select/$teamId/$teamName"
+    }
 
     // Profile related routes - TAMBAHAN BARU
     object CreatePost : Routes("create_post/{userId}/{activityId}") {
@@ -88,5 +100,4 @@ sealed class Routes(val routes: String) {
     }
     object NotificationsScreen : Routes ("notifications")
 
-    object DraftSelectMember : Routes("draft_select_member")
 }

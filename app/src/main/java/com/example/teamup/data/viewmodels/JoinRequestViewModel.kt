@@ -6,8 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.teamup.data.model.*
 import com.example.teamup.data.repositories.*
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class JoinRequestViewModel(
     private val joinRequestRepository: JoinRequestRepository,
@@ -21,18 +23,42 @@ class JoinRequestViewModel(
     private val _teamRequests = MutableStateFlow<List<JoinRequestModel>>(emptyList())
     val teamRequests: StateFlow<List<JoinRequestModel>> = _teamRequests.asStateFlow()
 
+    private val firestore = FirebaseFirestore.getInstance()
+
+    // ✅ FUNGSI BARU: Get full name dari Firestore
+    private suspend fun getUserFullName(userId: String): String {
+        return try {
+            val doc = firestore.collection("users").document(userId).get().await()
+            doc.getString("fullName") ?: "Unknown User"
+        } catch (e: Exception) {
+            Log.e("JoinRequestViewModel", "Error getting user name: ${e.message}")
+            "Unknown User"
+        }
+    }
+
     fun sendJoinRequest(
         teamId: String,
         teamName: String,
         requesterId: String,
-        requesterName: String,
+        requesterName: String, // Ini masih dipakai untuk backup
         requesterEmail: String,
         captainId: String
     ) {
         viewModelScope.launch {
             _uiState.value = JoinRequestUiState.Loading
-            Log.d("JoinRequestViewModel", "State changed to Loading")
+            Log.d("JoinRequestViewModel", "sendJoinRequest called")
+            Log.d("JoinRequestViewModel", "TeamId: $teamId, CaptainId: $captainId")
 
+            // ✅ VALIDASI: Cek captainId tidak kosong
+            if (captainId.isEmpty()) {
+                Log.e("JoinRequestViewModel", "ERROR: captainId is empty!")
+                _uiState.value = JoinRequestUiState.Error("Error: Admin tim tidak ditemukan")
+                return@launch
+            }
+
+            // ✅ Ambil nama lengkap dari Firestore
+            val fullName = getUserFullName(requesterId)
+            Log.d("JoinRequestViewModel", "User full name from Firestore: $fullName")
 
             // Cek dulu apakah user sudah member
             val isMemberResult = teamRepository.isUserMemberOfTeam(teamId, requesterId)
@@ -41,11 +67,21 @@ class JoinRequestViewModel(
                 return@launch
             }
 
+            // ✅ Cek apakah sudah pernah request (PENDING)
+            val existingRequest = joinRequestRepository.getUserJoinRequests(requesterId)
+                .first() // Ambil data pertama kali
+                .find { it.teamId == teamId && it.status == RequestStatus.PENDING }
+
+            if (existingRequest != null) {
+                _uiState.value = JoinRequestUiState.Error("Permintaan bergabung sudah dikirim sebelumnya")
+                return@launch
+            }
+
             val request = JoinRequestModel(
                 teamId = teamId,
                 teamName = teamName,
                 requesterId = requesterId,
-                requesterName = requesterName,
+                requesterName = fullName, // ✅ Gunakan nama dari Firestore
                 requesterEmail = requesterEmail,
                 status = RequestStatus.PENDING,
                 createdAt = Timestamp.now(),
@@ -57,13 +93,17 @@ class JoinRequestViewModel(
             if (result.isSuccess) {
                 val requestId = result.getOrNull()!!
 
-                // Kirim notifikasi ke admin
+                Log.d("JoinRequestViewModel", "Join request created: $requestId")
+                Log.d("JoinRequestViewModel", "Sending notification to captainId: $captainId")
+
+                // Kirim notifikasi ke admin dengan nama lengkap
                 sendNotificationToAdmin(
                     captainId = captainId,
-                    requesterName = requesterName,
+                    requesterName = fullName, // ✅ Gunakan nama dari Firestore
                     teamName = teamName,
                     requestId = requestId,
-                    teamId = teamId
+                    teamId = teamId,
+                    requesterId = requesterId // ✅ TAMBAH requesterId untuk ambil userId di notifikasi
                 )
 
                 _uiState.value = JoinRequestUiState.Success("Permintaan bergabung terkirim")
@@ -97,6 +137,13 @@ class JoinRequestViewModel(
             }
 
             if (approve) {
+                // ✅ Cek dulu apakah user sudah member (double check)
+                val isMemberResult = teamRepository.isUserMemberOfTeam(teamId, requesterId)
+                if (isMemberResult.isSuccess && isMemberResult.getOrNull() == true) {
+                    _uiState.value = JoinRequestUiState.Error("User sudah menjadi member tim ini")
+                    return@launch
+                }
+
                 // Add member ke team (atomic transaction)
                 val addMemberResult = teamRepository.addMemberToTeam(teamId, requesterId)
 
@@ -138,30 +185,41 @@ class JoinRequestViewModel(
         }
     }
 
+    // ✅ FIX: Tambah requesterId parameter
     private fun sendNotificationToAdmin(
         captainId: String,
         requesterName: String,
         teamName: String,
         requestId: String,
-        teamId: String
+        teamId: String,
+        requesterId: String // ✅ TAMBAH INI
     ) {
         viewModelScope.launch {
+            Log.d("JoinRequestViewModel", "Creating notification for userId: $captainId")
+
             val notification = NotificationModel(
-                userId = captainId,
+                userId = captainId, // Admin yang terima notif
                 type = NotificationType.JOIN_REQUEST,
                 title = "Permintaan Bergabung",
                 message = "$requesterName ingin bergabung ke tim $teamName",
                 relatedId = requestId,
                 relatedType = "REQUEST",
-                senderName = requesterName,
+                senderName = requesterName, // ✅ Nama lengkap dari Firestore
                 createdAt = Timestamp.now(),
                 isRead = false,
                 actionData = mapOf(
                     "requestId" to requestId,
-                    "teamId" to teamId
+                    "teamId" to teamId,
+                    "requesterId" to requesterId // ✅ Tambahkan ini untuk trace userId
                 )
             )
-            notificationRepository.createNotification(notification)
+
+            val result = notificationRepository.createNotification(notification)
+            if (result.isSuccess) {
+                Log.d("JoinRequestViewModel", "Notification created successfully: ${result.getOrNull()}")
+            } else {
+                Log.e("JoinRequestViewModel", "Failed to create notification: ${result.exceptionOrNull()?.message}")
+            }
         }
     }
 

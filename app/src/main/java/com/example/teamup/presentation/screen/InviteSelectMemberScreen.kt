@@ -50,6 +50,8 @@ enum class FilterType {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InviteSelectMemberScreen(
+    teamId: String,  // ✅ TAMBAH ini
+    teamName: String,  // ✅ TAMBAH ini
     navController: NavController,
     viewModel: InviteSelectMemberViewModel = remember { InviteSelectMemberViewModel() },
     sharedViewModel: SharedMemberViewModel // Tambahkan parameter ini
@@ -192,7 +194,7 @@ fun InviteSelectMemberScreen(
                 onClick = {
                     val selectedMembers = viewModel.getSelectedMembers()
                     sharedViewModel.setSelectedMembers(selectedMembers)
-                    navController.navigate(Routes.DraftSelectMember.routes)
+                    navController.navigate("draft_invite_select/$teamId/$teamName")  // ✅ Dengan parameter
                 },
                 modifier = Modifier
                     .fillMaxWidth()

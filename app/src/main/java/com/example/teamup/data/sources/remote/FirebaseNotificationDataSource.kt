@@ -1,6 +1,6 @@
 package com.example.teamup.data.sources.remote
 
-import android.content.Context
+import android.util.Log
 import com.example.teamup.data.model.NotificationModel
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -14,6 +14,7 @@ import kotlinx.coroutines.tasks.await
 class FirebaseNotificationDataSource(
     private val firestore: FirebaseFirestore
 ) {
+    private val TAG = "FirebaseNotifDS"
     private val notificationsCollection = firestore.collection("notifications")
     private val auth = FirebaseAuth.getInstance()
 
@@ -23,7 +24,7 @@ class FirebaseNotificationDataSource(
         return try {
             val snapshot = notificationsCollection
                 .whereEqualTo("userId", userId)
-                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .limit(100)
                 .get()
                 .await()
@@ -32,10 +33,12 @@ class FirebaseNotificationDataSource(
                 try {
                     doc.toObject(NotificationModel::class.java)
                 } catch (e: Exception) {
+                    Log.e(TAG, "Error parsing notification: ${e.message}")
                     null
                 }
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error getting all notifications: ${e.message}")
             emptyList()
         }
     }
@@ -47,7 +50,7 @@ class FirebaseNotificationDataSource(
             val snapshot = notificationsCollection
                 .whereEqualTo("userId", userId)
                 .whereEqualTo("isRead", false)
-                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .get()
                 .await()
 
@@ -55,10 +58,12 @@ class FirebaseNotificationDataSource(
                 try {
                     doc.toObject(NotificationModel::class.java)
                 } catch (e: Exception) {
+                    Log.e(TAG, "Error parsing unread notification: ${e.message}")
                     null
                 }
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error getting unread notifications: ${e.message}")
             emptyList()
         }
     }
@@ -74,26 +79,34 @@ class FirebaseNotificationDataSource(
 
         val listener = notificationsCollection
             .whereEqualTo("userId", userId)
-            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
             .limit(50)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    Log.e(TAG, "Error observing notifications: ${error.message}")
                     close(error)
                     return@addSnapshotListener
                 }
+
                 val notifications = snapshot?.documents?.mapNotNull { doc ->
                     try {
                         doc.toObject(NotificationModel::class.java)
                     } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing notification in observer: ${e.message}")
                         null
                     }
                 } ?: emptyList()
+
                 trySend(notifications)
             }
-        awaitClose { listener.remove() }
+
+        awaitClose {
+            Log.d(TAG, "Closing notification observer for user: $userId")
+            listener.remove()
+        }
     }
 
-    // ✅ TAMBAH METHOD INI (yang dipanggil dari ViewModel)
+    // ✅ CREATE NOTIFICATION (digunakan oleh Invitation & Join Request)
     suspend fun createNotification(notification: NotificationModel): Result<String> {
         return try {
             val docRef = notificationsCollection.document()
@@ -102,8 +115,10 @@ class FirebaseNotificationDataSource(
                 createdAt = Timestamp.now()
             )
             docRef.set(notificationWithId).await()
+            Log.d(TAG, "✅ Notification created: ${docRef.id}")
             Result.success(docRef.id)
         } catch (e: Exception) {
+            Log.e(TAG, "❌ Error creating notification: ${e.message}")
             Result.failure(e)
         }
     }
@@ -114,8 +129,9 @@ class FirebaseNotificationDataSource(
             notificationsCollection.document(notificationId)
                 .update("isRead", true)
                 .await()
+            Log.d(TAG, "Notification marked as read: $notificationId")
         } catch (e: Exception) {
-            // Log error
+            Log.e(TAG, "Error marking as read: ${e.message}")
         }
     }
 
@@ -134,8 +150,9 @@ class FirebaseNotificationDataSource(
                 batch.update(doc.reference, "isRead", true)
             }
             batch.commit().await()
+            Log.d(TAG, "All notifications marked as read for user: $userId")
         } catch (e: Exception) {
-            // Log error
+            Log.e(TAG, "Error marking all as read: ${e.message}")
         }
     }
 
@@ -150,19 +167,20 @@ class FirebaseNotificationDataSource(
                 .await()
             snapshot.size()
         } catch (e: Exception) {
+            Log.e(TAG, "Error getting unread count: ${e.message}")
             0
         }
     }
 
-    // Accept join request (dummy implementation - nanti dipindah ke JoinRequestViewModel)
+    // Accept join request (deprecated - logic moved to JoinRequestViewModel)
     suspend fun acceptJoinRequest(notificationId: String) {
-        // Method ini sekarang deprecated, logic udah di JoinRequestViewModel
+        // Just mark as read, actual logic is in JoinRequestViewModel
         markAsRead(notificationId)
     }
 
-    // Reject join request (dummy implementation - nanti dipindah ke JoinRequestViewModel)
+    // Reject join request (deprecated - logic moved to JoinRequestViewModel)
     suspend fun rejectJoinRequest(notificationId: String) {
-        // Method ini sekarang deprecated, logic udah di JoinRequestViewModel
+        // Just mark as read, actual logic is in JoinRequestViewModel
         markAsRead(notificationId)
     }
 
@@ -170,8 +188,10 @@ class FirebaseNotificationDataSource(
     suspend fun deleteNotification(notificationId: String): Result<Unit> {
         return try {
             notificationsCollection.document(notificationId).delete().await()
+            Log.d(TAG, "Notification deleted: $notificationId")
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Error deleting notification: ${e.message}")
             Result.failure(e)
         }
     }

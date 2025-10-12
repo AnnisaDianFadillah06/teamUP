@@ -13,6 +13,9 @@ interface NotificationRepository {
     suspend fun getUnreadNotificationsCount(): Int
     suspend fun markAllAsRead()
 
-    // TAMBAH METHOD BARU:
+    // ✅ METHOD BARU untuk Invitation & Join Request Flow
     suspend fun createNotification(notification: NotificationModel): Result<String>
+    fun getUserNotifications(userId: String): Flow<List<NotificationModel>>
+    suspend fun deleteNotification(notificationId: String): Result<Unit>
+
 }
