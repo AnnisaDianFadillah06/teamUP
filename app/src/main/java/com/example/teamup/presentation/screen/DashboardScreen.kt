@@ -139,8 +139,20 @@ fun DashboardScreen(navController: NavHostController = rememberNavController(), 
                 )
             }
 
-            composable(Routes.InviteSelect.routes) {
+            // ✅ UPDATE: InviteSelect dengan parameter
+            composable(
+                route = "invite_select/{teamId}/{teamName}",
+                arguments = listOf(
+                    navArgument("teamId") { type = NavType.StringType },
+                    navArgument("teamName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val teamId = backStackEntry.arguments?.getString("teamId") ?: ""
+                val teamName = backStackEntry.arguments?.getString("teamName") ?: ""
+
                 InviteSelectMemberScreen(
+                    teamId = teamId,  // ✅ TAMBAH parameter ini
+                    teamName = teamName,  // ✅ TAMBAH parameter ini
                     navController = navController,
                     sharedViewModel = sharedMemberViewModel
                 )

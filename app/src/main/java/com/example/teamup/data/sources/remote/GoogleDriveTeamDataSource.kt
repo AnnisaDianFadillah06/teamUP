@@ -85,7 +85,7 @@ class GoogleDriveTeamDataSource(private val context: Context) {
                 "isPrivate" to updatedTeam.isPrivate,
                 "members" to updatedTeam.members,
                 "memberCount" to updatedTeam.members.size,
-                "captainId" to "" // Menambahkan captainId kosong sesuai skema Firestore
+                "captainId" to updatedTeam.captainId // ✅ FIX: Pakai captainId dari model
             )
 
             Log.d(TAG, "Saving team to Firestore with imageUrl: ${updatedTeam.imageUrl}, driveFileId: ${updatedTeam.driveFileId}")
@@ -115,12 +115,18 @@ class GoogleDriveTeamDataSource(private val context: Context) {
                     val members = doc.get("members") as? List<String> ?: emptyList()
                     val memberCount = doc.getLong("memberCount")?.toInt() ?: members.size
 
+                    val captainId = doc.getString("captainId") ?: ""
+                    val finalCaptainId = if (captainId.isEmpty() && members.isNotEmpty()) {
+                        members.first()
+                    } else {
+                        captainId
+                    }
+
                     val team = TeamModel(
                         id = doc.id,
                         name = doc.getString("name") ?: "",
                         description = doc.getString("description") ?: "",
-                        captainId = doc.getString("captainId") ?: "",
-                        category = doc.getString("category") ?: "",
+                        captainId = finalCaptainId,                        category = doc.getString("category") ?: "",
                         avatarResId = doc.getLong("avatarResId")?.toInt() ?: R.drawable.captain_icon,
                         imageUrl = doc.getString("imageUrl"),
                         driveFileId = doc.getString("driveFileId"),
@@ -155,12 +161,21 @@ class GoogleDriveTeamDataSource(private val context: Context) {
             if (docSnapshot.exists()) {
                 val members = docSnapshot.get("members") as? List<String> ?: emptyList()
                 val memberCount = docSnapshot.getLong("memberCount")?.toInt() ?: members.size
+                val captainId = docSnapshot.getString("captainId") ?: "" // ✅ Ambil captainId
+
+                // ✅ FIX: Jika captainId kosong, gunakan first member
+                val finalCaptainId = if (captainId.isEmpty() && members.isNotEmpty()) {
+                    members.first()
+                } else {
+                    captainId
+                }
 
                 TeamModel(
                     id = docSnapshot.id,
                     name = docSnapshot.getString("name") ?: "",
                     description = docSnapshot.getString("description") ?: "",
                     category = docSnapshot.getString("category") ?: "",
+                    captainId = finalCaptainId, // ✅ Gunakan finalCaptainId
                     avatarResId = docSnapshot.getLong("avatarResId")?.toInt() ?: R.drawable.captain_icon,
                     imageUrl = docSnapshot.getString("imageUrl"),
                     driveFileId = docSnapshot.getString("driveFileId"),

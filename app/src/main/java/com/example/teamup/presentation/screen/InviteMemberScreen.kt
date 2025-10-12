@@ -10,8 +10,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -31,11 +29,11 @@ import coil.request.ImageRequest
 import com.example.teamup.R
 import com.example.teamup.common.theme.DodgerBlue
 import com.example.teamup.data.model.JoinRequestModel
-import com.example.teamup.data.model.MemberInviteModel
+import com.example.teamup.data.model.InvitationModel
 import com.example.teamup.data.viewmodels.JoinRequestUiState
 import com.example.teamup.data.viewmodels.JoinRequestViewModel
+import com.example.teamup.data.viewmodels.InvitationViewModel
 import com.example.teamup.di.Injection
-import com.example.teamup.route.Routes
 import com.google.firebase.Timestamp
 import java.text.SimpleDateFormat
 import java.util.*
@@ -43,38 +41,30 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InviteMemberScreen(
-    teamId: String, // ✅ TAMBAH PARAMETER INI (wajib dari navigation)
+    teamId: String,
     teamName: String,
     navController: NavController,
-    joinRequestViewModel: JoinRequestViewModel = Injection.provideJoinRequestViewModel() // ✅ TAMBAH INI
+    joinRequestViewModel: JoinRequestViewModel = Injection.provideJoinRequestViewModel(),
+    invitationViewModel: InvitationViewModel = Injection.provideInvitationViewModel() // ✅ TAMBAH INI
 ) {
-    // ✅ GANTI sample data dengan real data dari ViewModel
     val teamRequests by joinRequestViewModel.teamRequests.collectAsState()
     val uiState by joinRequestViewModel.uiState.collectAsState()
-    val context = LocalContext.current
 
-    // Sample data untuk tab "Menunggu" (nanti diganti dengan InvitationViewModel)
-    val waitingMembers = remember {
-        listOf(
-            MemberInviteModel(
-                id = "2",
-                name = "Annisa Dian",
-                email = "annisadian01@gmail.com",
-                profileImage = R.drawable.captain_icon,
-                status = "WAITING"
-            )
-        )
-    }
+    // ✅ TAMBAH: Observe team invitations
+    val teamInvitations by invitationViewModel.teamInvitations.collectAsState()
+
+    val context = LocalContext.current
 
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Permintaan", "Menunggu")
 
-    // ✅ LOAD JOIN REQUESTS saat screen launch
+    // ✅ LOAD DATA saat screen launch
     LaunchedEffect(teamId) {
         joinRequestViewModel.loadTeamJoinRequests(teamId)
+        invitationViewModel.loadTeamInvitations(teamId) // ✅ Load invitations
     }
 
-    // ✅ HANDLE STATE CHANGES (Toast notification)
+    // Handle state changes
     LaunchedEffect(uiState) {
         when (val state = uiState) {
             is JoinRequestUiState.Success -> {
@@ -107,7 +97,9 @@ fun InviteMemberScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate("draft_invite_select/$teamId/$teamName") },
+                onClick = {
+                    navController.navigate("invite_select/$teamId/$teamName")
+                },
                 containerColor = DodgerBlue,
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp),
@@ -160,12 +152,8 @@ fun InviteMemberScreen(
                         selected = selectedTabIndex == index,
                         onClick = { selectedTabIndex = index },
                         text = {
-                            // ✅ TAMBAH BADGE COUNT untuk tab Permintaan
-                            val displayTitle = if (index == 0) {
-                                "$title (${teamRequests.size})"
-                            } else {
-                                title
-                            }
+                            val count = if (index == 0) teamRequests.size else teamInvitations.size
+                            val displayTitle = "$title ($count)"
                             Text(
                                 text = displayTitle,
                                 style = MaterialTheme.typography.bodyMedium.copy(
@@ -182,11 +170,10 @@ fun InviteMemberScreen(
             // Tab Content
             when (selectedTabIndex) {
                 0 -> {
-                    // ✅ PERMINTAAN TAB - GANTI DENGAN REAL DATA
+                    // TAB PERMINTAAN
                     if (teamRequests.isEmpty()) {
                         EmptyStateMessage("Tidak ada permintaan bergabung")
                     } else {
-                        // ✅ GANTI MemberRequestsList dengan LazyColumn real data
                         Column(modifier = Modifier.fillMaxSize()) {
                             Text(
                                 text = "Anggota Meminta Bergabung",
@@ -195,7 +182,7 @@ fun InviteMemberScreen(
                             )
 
                             LazyColumn(
-                                contentPadding = PaddingValues(bottom = 80.dp) // Space for FAB
+                                contentPadding = PaddingValues(bottom = 80.dp)
                             ) {
                                 items(teamRequests) { request ->
                                     JoinRequestCard(
@@ -228,14 +215,25 @@ fun InviteMemberScreen(
                     }
                 }
                 1 -> {
-                    // MENUNGGU TAB - TETAP PAKE SAMPLE DATA (nanti update dengan InvitationViewModel)
-                    if (waitingMembers.isEmpty()) {
+                    // ✅ TAB MENUNGGU - REAL DATA
+                    if (teamInvitations.isEmpty()) {
                         EmptyStateMessage("Tidak ada undangan yang menunggu")
                     } else {
-                        MemberRequestsList(
-                            members = waitingMembers,
-                            showActionButtons = false
-                        )
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                text = "Anggota Belum Merespon Undangan",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                modifier = Modifier.padding(16.dp)
+                            )
+
+                            LazyColumn(
+                                contentPadding = PaddingValues(bottom = 80.dp)
+                            ) {
+                                items(teamInvitations) { invitation ->
+                                    WaitingInvitationCard(invitation = invitation)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -243,7 +241,73 @@ fun InviteMemberScreen(
     }
 }
 
-// ✅ TAMBAH COMPOSABLE BARU untuk JOIN REQUEST CARD
+// ✅ COMPOSABLE BARU untuk WAITING INVITATION
+@Composable
+fun WaitingInvitationCard(invitation: InvitationModel) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Avatar dengan initial
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(DodgerBlue),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = invitation.recipientName.firstOrNull()?.toString()?.uppercase() ?: "?",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Member Info
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = invitation.recipientName,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.SemiBold
+                )
+            )
+            Text(
+                text = invitation.recipientEmail,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = Color.Gray
+                )
+            )
+            Text(
+                text = formatTimestamp(invitation.createdAt),
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = Color.Gray,
+                    fontSize = 11.sp
+                )
+            )
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Status badge
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = Color(0xFFFFA726).copy(alpha = 0.2f)
+        ) {
+            Text(
+                text = "Menunggu",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFFFFA726),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+            )
+        }
+    }
+}
+
 @Composable
 fun JoinRequestCard(
     request: JoinRequestModel,
@@ -257,7 +321,6 @@ fun JoinRequestCard(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Avatar (placeholder dengan initial)
         Box(
             modifier = Modifier
                 .size(40.dp)
@@ -275,7 +338,6 @@ fun JoinRequestCard(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // Member Info
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = request.requesterName,
@@ -289,7 +351,6 @@ fun JoinRequestCard(
                     color = Color.Gray
                 )
             )
-            // ✅ TAMBAH TIMESTAMP
             Text(
                 text = formatTimestamp(request.createdAt),
                 style = MaterialTheme.typography.bodySmall.copy(
@@ -301,7 +362,6 @@ fun JoinRequestCard(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Action buttons
         Button(
             onClick = onApprove,
             enabled = !isLoading,
@@ -342,7 +402,6 @@ fun JoinRequestCard(
     }
 }
 
-// ✅ TAMBAH HELPER FUNCTION untuk format timestamp
 fun formatTimestamp(timestamp: Timestamp): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp.toDate().time
@@ -356,117 +415,6 @@ fun formatTimestamp(timestamp: Timestamp): String {
         hours < 24 -> "$hours jam yang lalu"
         days < 7 -> "$days hari yang lalu"
         else -> SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(timestamp.toDate())
-    }
-}
-
-// EXISTING COMPOSABLES (TETAP SAMA, untuk tab "Menunggu")
-@Composable
-fun MemberRequestsList(
-    members: List<MemberInviteModel>,
-    showActionButtons: Boolean
-) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        if (showActionButtons) {
-            Text(
-                text = "Anggota Meminta Bergabung",
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                modifier = Modifier.padding(16.dp)
-            )
-        } else {
-            Text(
-                text = "Anggota Belum Merespon Undangan",
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                modifier = Modifier.padding(16.dp)
-            )
-        }
-
-        LazyColumn {
-            items(members) { member ->
-                MemberRequestItem(member = member, showActionButtons = showActionButtons)
-            }
-        }
-    }
-}
-
-@Composable
-fun MemberRequestItem(
-    member: MemberInviteModel,
-    showActionButtons: Boolean
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Member Avatar
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(member.profileImage)
-                .crossfade(true)
-                .build(),
-            contentDescription = "Member Avatar",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-        )
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // Member Info
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = member.name,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = FontWeight.SemiBold
-                )
-            )
-
-            Text(
-                text = member.email,
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = Color.Gray
-                )
-            )
-        }
-
-        // Action buttons
-        if (showActionButtons) {
-            Button(
-                onClick = { /* Handle accept */ },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF27AE60)
-                ),
-                modifier = Modifier
-                    .padding(horizontal = 4.dp)
-                    .height(32.dp),
-                shape = RoundedCornerShape(8.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp)
-            ) {
-                Text("Setuju")
-            }
-
-            Button(
-                onClick = { /* Handle reject */ },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFEB5757)
-                ),
-                modifier = Modifier
-                    .padding(horizontal = 4.dp)
-                    .height(32.dp),
-                shape = RoundedCornerShape(8.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp)
-            ) {
-                Text("Tolak")
-            }
-        } else {
-            Text(
-                text = "Menunggu",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
-            )
-        }
     }
 }
 

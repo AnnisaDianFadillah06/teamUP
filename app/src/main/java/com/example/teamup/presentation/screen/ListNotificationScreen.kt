@@ -271,14 +271,20 @@ fun ListNotificationScreen(
                             val actionData = currentNotification!!.actionData
                             val requestId = actionData?.get("requestId") ?: ""
                             val teamId = actionData?.get("teamId") ?: ""
+                            val requesterId = actionData?.get("requesterId") ?: ""  // ✅ TAMBAH INI
+
+                            // ✅ Parse team name dengan aman
+                            val teamName = currentNotification!!.message
+                                .substringAfter("ke tim ", "")
+                                .substringBefore(" ", currentNotification!!.message)
 
                             joinRequestViewModel.handleJoinRequest(
                                 requestId = requestId,
                                 approve = true,
                                 teamId = teamId,
-                                requesterId = currentNotification!!.userId,
+                                requesterId = requesterId,  // ✅ GUNAKAN INI
                                 requesterName = currentNotification!!.senderName,
-                                teamName = currentNotification!!.message.substringAfter("ke tim ").substringBefore(" Anda")
+                                teamName = teamName
                             )
 
                             viewModel.markAsRead(currentNotification!!.id)
@@ -294,14 +300,19 @@ fun ListNotificationScreen(
                             val actionData = currentNotification!!.actionData
                             val requestId = actionData?.get("requestId") ?: ""
                             val teamId = actionData?.get("teamId") ?: ""
+                            val requesterId = actionData?.get("requesterId") ?: ""  // ✅ TAMBAH INI
+
+                            val teamName = currentNotification!!.message
+                                .substringAfter("ke tim ", "")
+                                .substringBefore(" ", currentNotification!!.message)
 
                             joinRequestViewModel.handleJoinRequest(
                                 requestId = requestId,
                                 approve = false,
                                 teamId = teamId,
-                                requesterId = currentNotification!!.userId,
+                                requesterId = requesterId,  // ✅ GUNAKAN INI
                                 requesterName = currentNotification!!.senderName,
-                                teamName = currentNotification!!.message.substringAfter("ke tim ").substringBefore(" Anda")
+                                teamName = teamName
                             )
 
                             viewModel.markAsRead(currentNotification!!.id)

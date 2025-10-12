@@ -5,22 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.teamup.data.repositories.CabangLombaRepository
-import com.example.teamup.data.repositories.CartRepository
-import com.example.teamup.data.repositories.CompetitionRepository
-import com.example.teamup.data.repositories.ContentRepository
-import com.example.teamup.data.repositories.CoursesRepository
-import com.example.teamup.data.repositories.DetailRepository
-import com.example.teamup.data.repositories.InvitationRepository
-import com.example.teamup.data.repositories.InvitationRepositoryImpl
-import com.example.teamup.data.repositories.JoinRequestRepository
-import com.example.teamup.data.repositories.JoinRequestRepositoryImpl
-import com.example.teamup.data.repositories.MyCoursesRepository
-import com.example.teamup.data.repositories.NotificationRepository
-import com.example.teamup.data.repositories.NotificationRepositoryImpl
-import com.example.teamup.data.repositories.TeamRepository
-import com.example.teamup.data.repositories.TeamRepositoryImpl
-import com.example.teamup.data.repositories.WishlistRepository
+import com.example.teamup.data.repositories.*
+import com.example.teamup.data.repositories.user.UserRepository
 import com.example.teamup.data.sources.remote.FirebaseCompetitionDataSource
 import com.example.teamup.data.sources.remote.FirebaseNotificationDataSource
 import com.example.teamup.data.sources.remote.GoogleDriveHelper
@@ -28,13 +14,13 @@ import com.example.teamup.data.sources.remote.GoogleDriveTeamDataSource
 import com.example.teamup.data.viewmodels.InvitationViewModel
 import com.example.teamup.data.viewmodels.JoinRequestViewModel
 import com.example.teamup.data.viewmodels.NotificationViewModel
+import com.example.teamup.data.viewmodels.SharedMemberViewModel
+import com.example.teamup.data.viewmodels.user.ProfileViewModel
 import com.google.firebase.firestore.FirebaseFirestore
 
 object Injection {
-    // Add context property to the Injection object
     private var appContext: Context? = null
 
-    // Initialize method to set context
     fun initialize(context: Context) {
         appContext = context.applicationContext
     }
@@ -44,6 +30,8 @@ object Injection {
             "Application context not initialized. Call Injection.initialize() first."
         )
     }
+
+    // ===== EXISTING REPOSITORIES =====
 
     fun provideCourseRepository(): CoursesRepository {
         return CoursesRepository.getInstance()
@@ -77,8 +65,9 @@ object Injection {
         return GoogleDriveTeamDataSource(getContext())
     }
 
+    // ===== TEAM & INVITATION REPOSITORIES =====
 
-    fun provideTeamRepository(): TeamRepository {  // ✅ TAMBAHIN ": TeamRepository"
+    fun provideTeamRepository(): TeamRepository {
         return TeamRepositoryImpl.getInstance(provideGoogleDriveTeamDataSource())
     }
 
@@ -89,6 +78,24 @@ object Injection {
     private fun provideInvitationRepository(): InvitationRepository {
         return InvitationRepositoryImpl(FirebaseFirestore.getInstance())
     }
+
+    // ===== NOTIFICATION REPOSITORY (SINGLETON) =====
+
+    private fun provideFirebaseNotificationDataSource(): FirebaseNotificationDataSource {
+        return FirebaseNotificationDataSource(FirebaseFirestore.getInstance())
+    }
+
+    fun provideNotificationRepository(): NotificationRepository {
+        return NotificationRepositoryImpl.getInstance(provideFirebaseNotificationDataSource())
+    }
+
+    // ✅ USER REPOSITORY
+    fun provideUserRepository(): UserRepository {
+        return UserRepository()
+    }
+
+
+    // ===== VIEW MODELS =====
 
     fun provideJoinRequestViewModel(): JoinRequestViewModel {
         return JoinRequestViewModel(
@@ -110,7 +117,6 @@ object Injection {
         )
     }
 
-
     fun provideInvitationViewModel(): InvitationViewModel {
         return InvitationViewModel(
             invitationRepository = provideInvitationRepository(),
@@ -119,8 +125,30 @@ object Injection {
         )
     }
 
+    @Composable
+    fun provideInvitationViewModelWithFactory(): InvitationViewModel {
+        return viewModel(
+            factory = object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    return provideInvitationViewModel() as T
+                }
+            }
+        )
+    }
 
-    // Competition related injections
+    // ✅ TAMBAH: SharedMemberViewModel (stateless, bisa baru setiap kali)
+    fun provideSharedMemberViewModel(): SharedMemberViewModel {
+        return SharedMemberViewModel()
+    }
+
+    fun provideNotificationViewModel(): NotificationViewModel {
+        val repository = provideNotificationRepository()
+        return NotificationViewModel.getInstance(repository)
+    }
+
+    // ===== COMPETITION REPOSITORIES =====
+
     private fun provideFirebaseCompetitionDataSource(): FirebaseCompetitionDataSource {
         return FirebaseCompetitionDataSource()
     }
@@ -133,17 +161,6 @@ object Injection {
         return CabangLombaRepository.getInstance()
     }
 
-    // Notification related injection
-    private fun provideFirebaseNotificationDataSource(): FirebaseNotificationDataSource {
-        return FirebaseNotificationDataSource(FirebaseFirestore.getInstance())  // ✅ GANTI
-    }
 
-    fun provideNotificationRepository(): NotificationRepository {
-        return NotificationRepositoryImpl.getInstance(provideFirebaseNotificationDataSource())
-    }
 
-    fun provideNotificationViewModel(): NotificationViewModel {
-        val repository = provideNotificationRepository()
-        return NotificationViewModel.getInstance(repository)
-    }
 }

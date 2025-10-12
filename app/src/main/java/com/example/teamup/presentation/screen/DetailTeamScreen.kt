@@ -289,7 +289,8 @@ fun DetailTeamScreen(
                                         // Invite Members Button
                                         Button(
                                             onClick = {
-                                                navController.navigate("invite/$teamId/${team?.name ?: "Team"}")
+                                                navController.navigate("invite_member/$teamId/${team?.name ?: "Team"}")
+
                                             },
                                             modifier = Modifier
                                                 .fillMaxWidth()
@@ -356,20 +357,33 @@ fun DetailTeamScreen(
                                 }
                                 else -> {
                                     // Show join button
+                                    val teamCaptainId = team?.captainId ?: ""
+
                                     Button(
                                         onClick = {
                                             Log.d("DetailTeamScreen", "Join button clicked")
                                             Log.d("DetailTeamScreen", "TeamId: $teamId")
-                                            Log.d("DetailTeamScreen", "CaptainId: ${team?.captainId}")
+                                            Log.d("DetailTeamScreen", "CaptainId: $teamCaptainId")
                                             Log.d("DetailTeamScreen", "CurrentUserId: $currentUserId")
 
+                                            // ✅ VALIDASI: Pastikan captainId tidak kosong
+                                            if (teamCaptainId.isEmpty()) {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Error: Admin tim tidak ditemukan",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                                return@Button
+                                            }
+
+                                            // ✅ HANYA KIRIM JOIN REQUEST, TIDAK LANGSUNG ADD MEMBER
                                             joinRequestViewModel.sendJoinRequest(
                                                 teamId = teamId,
                                                 teamName = team?.name ?: "Unknown Team",
                                                 requesterId = currentUserId,
-                                                requesterName = FirebaseAuth.getInstance().currentUser?.displayName ?: "Unknown",
+                                                requesterName = FirebaseAuth.getInstance().currentUser?.displayName ?: "Unknown", // Backup saja
                                                 requesterEmail = FirebaseAuth.getInstance().currentUser?.email ?: "",
-                                                captainId = team?.captainId ?: ""
+                                                captainId = teamCaptainId
                                             )
                                         },
                                         modifier = Modifier
@@ -388,7 +402,7 @@ fun DetailTeamScreen(
                                                 color = Color.White
                                             )
                                         } else {
-                                            Text("Join Team")
+                                            Text("Request to Join") // ✅ Ubah text agar jelas ini REQUEST
                                         }
                                     }
                                 }

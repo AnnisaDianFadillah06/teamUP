@@ -1,5 +1,6 @@
 package com.example.teamup.presentation.screen
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -28,30 +29,61 @@ import coil.compose.AsyncImage
 import com.example.teamup.R
 import com.example.teamup.data.model.InvitationModel
 import com.example.teamup.data.model.ProfileModel
+import com.example.teamup.data.repositories.user.UserRepository
 import com.example.teamup.data.viewmodels.InvitationUiState
 import com.example.teamup.data.viewmodels.InvitationViewModel
 import com.example.teamup.data.viewmodels.SharedMemberViewModel
 import com.example.teamup.di.Injection
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.Timestamp
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DraftInviteSelectMemberScreen(
-    teamId: String, // ✅ TAMBAH PARAMETER INI
-    teamName: String, // ✅ TAMBAH PARAMETER INI
+    teamId: String,
+    teamName: String,
     navController: NavController,
-    sharedViewModel: SharedMemberViewModel, // Existing
-    invitationViewModel: InvitationViewModel = Injection.provideInvitationViewModel() // ✅ TAMBAH INI
+    sharedViewModel: SharedMemberViewModel,
+    invitationViewModel: InvitationViewModel = Injection.provideInvitationViewModel(),
+    userRepository: UserRepository = Injection.provideUserRepository()
 ) {
     val context = LocalContext.current
     val currentUser = FirebaseAuth.getInstance().currentUser
+    val scope = rememberCoroutineScope()
 
     val selectedMembers by sharedViewModel.selectedMembers.collectAsState()
-    val invitationState by invitationViewModel.uiState.collectAsState() // ✅ OBSERVE STATE
+    val invitationState by invitationViewModel.uiState.collectAsState()
 
     val selectedList = remember { mutableStateListOf<ProfileModel>() }
 
-    // Update selectedList ketika selectedMembers berubah
+    // ✅ STATE untuk menyimpan user profile data
+    var currentUserName by remember { mutableStateOf("") }
+    var currentUserEmail by remember { mutableStateOf("") }
+    var isLoadingUserData by remember { mutableStateOf(true) }
+
+    // ✅ FETCH USER DATA saat screen load
+    LaunchedEffect(currentUser?.uid) {
+        currentUser?.uid?.let { userId ->
+            isLoadingUserData = true
+            scope.launch {
+                try {
+                    val userProfile = userRepository.getUser(userId)
+                    currentUserName = userProfile?.fullName ?: currentUser.displayName ?: currentUser.email?.substringBefore("@") ?: "Admin"
+                    currentUserEmail = userProfile?.email ?: currentUser.email ?: ""
+
+                    Log.d("DraftInvite", "✅ User loaded: name=$currentUserName, email=$currentUserEmail")
+                } catch (e: Exception) {
+                    Log.e("DraftInvite", "❌ Error loading user: ${e.message}")
+                    currentUserName = currentUser.displayName ?: currentUser.email?.substringBefore("@") ?: "Admin"
+                    currentUserEmail = currentUser.email ?: ""
+                } finally {
+                    isLoadingUserData = false
+                }
+            }
+        }
+    }
+
     LaunchedEffect(selectedMembers) {
         selectedList.clear()
         selectedList.addAll(selectedMembers)
@@ -63,13 +95,17 @@ fun DraftInviteSelectMemberScreen(
             is InvitationUiState.Success -> {
                 Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
                 invitationViewModel.resetState()
-                // Clear selected members setelah berhasil
                 sharedViewModel.clearSelectedMembers()
-                // Navigate back
-                navController.popBackStack()
+
+                navController.navigate("invite_member/$teamId/$teamName") {
+                    popUpTo("invite_member/$teamId/$teamName") {
+                        inclusive = false
+                    }
+                    launchSingleTop = true
+                }
             }
             is InvitationUiState.Error -> {
-                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
                 invitationViewModel.resetState()
             }
             else -> {}
@@ -99,7 +135,6 @@ fun DraftInviteSelectMemberScreen(
                 .padding(horizontal = 16.dp)
         ) {
             if (selectedList.isEmpty()) {
-                // Show empty state
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -123,7 +158,6 @@ fun DraftInviteSelectMemberScreen(
                     }
                 }
             } else {
-                // List anggota yang dipilih
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
@@ -141,36 +175,48 @@ fun DraftInviteSelectMemberScreen(
                 }
             }
 
-            // ✅ TOMBOL KIRIM UNDANGAN (UPDATED)
+            // ✅ TOMBOL KIRIM UNDANGAN
             Button(
                 onClick = {
-                    if (selectedList.isNotEmpty()) {
+                    if (selectedList.isNotEmpty() && !isLoadingUserData) {
                         showSendConfirmDialog = true
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp),
-                enabled = selectedList.isNotEmpty() && invitationState !is InvitationUiState.Loading,
+                enabled = selectedList.isNotEmpty() &&
+                        !isLoadingUserData &&
+                        invitationState !is InvitationUiState.Loading,
                 shape = RoundedCornerShape(8.dp)
             ) {
-                if (invitationState is InvitationUiState.Loading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text(
-                        text = "Undang (${selectedList.size})",
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
+                when {
+                    isLoadingUserData -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                    invitationState is InvitationUiState.Loading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                    else -> {
+                        Text(
+                            text = "Undang (${selectedList.size})",
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
                 }
             }
         }
     }
 
-    // Dialog konfirmasi hapus anggota
+    // Dialog konfirmasi hapus
     if (showDeleteConfirmDialog && memberToDelete != null) {
         AlertDialog(
             onDismissRequest = {
@@ -213,7 +259,7 @@ fun DraftInviteSelectMemberScreen(
         )
     }
 
-    // ✅ DIALOG KONFIRMASI KIRIM (UPDATED DENGAN LOGIC KIRIM INVITE)
+    // ✅ DIALOG KONFIRMASI KIRIM (FIXED - USE REAL USER DATA)
     if (showSendConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showSendConfirmDialog = false },
@@ -221,33 +267,61 @@ fun DraftInviteSelectMemberScreen(
                 Text(text = "Kirim Undangan")
             },
             text = {
-                Text(
-                    text = "Kamu akan mengirim undangan ke ${selectedList.size} calon anggota.",
-                    textAlign = TextAlign.Center
-                )
+                Column {
+                    Text(
+                        text = "Kamu akan mengirim undangan ke ${selectedList.size} calon anggota.",
+                        textAlign = TextAlign.Center
+                    )
+                    // Debug info (hapus di production)
+                    if (currentUserName.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Dari: $currentUserName",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         currentUser?.let { user ->
-                            // ✅ PANGGIL INVITATION VIEWMODEL
+                            // ✅ LOG untuk debugging
+                            Log.d("DraftInvite", "Sending invitations:")
+                            Log.d("DraftInvite", "  - Sender ID: ${user.uid}")
+                            Log.d("DraftInvite", "  - Sender Name: $currentUserName")
+                            Log.d("DraftInvite", "  - Sender Email: $currentUserEmail")
+
+                            // ✅ Create COMPLETE InvitationModel objects with real data
+                            val completeInvitations = selectedList.map { member ->
+                                InvitationModel(
+                                    teamId = teamId,
+                                    teamName = teamName,
+                                    senderId = user.uid,
+                                    senderName = currentUserName, // ✅ REAL NAME from Firestore
+                                    senderEmail = currentUserEmail, // ✅ REAL EMAIL from Firestore
+                                    recipientId = member.id,
+                                    recipientName = member.name,
+                                    recipientEmail = member.email,
+                                    createdAt = Timestamp.now(),
+                                    updatedAt = Timestamp.now()
+                                )
+                            }
+
                             invitationViewModel.sendInvitations(
                                 teamId = teamId,
                                 teamName = teamName,
                                 senderId = user.uid,
-                                senderName = user.displayName ?: user.email ?: "Admin",
-                                senderEmail = user.email ?: "",
-                                recipientsList = selectedList.map { member ->
-                                    InvitationModel(
-                                        recipientId = member.id,
-                                        recipientName = member.name,
-                                        recipientEmail = member.email
-                                    )
-                                }
+                                senderName = currentUserName, // ✅ PASS REAL NAME
+                                senderEmail = currentUserEmail, // ✅ PASS REAL EMAIL
+                                recipientsList = completeInvitations
                             )
                         }
                         showSendConfirmDialog = false
-                    }
+                    },
+                    enabled = currentUserName.isNotEmpty() // ✅ Only enable if user data loaded
                 ) {
                     Text("Undang")
                 }
@@ -280,7 +354,6 @@ fun SelectedMemberItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Profile image - handle both URL and resource
             if (member.profilePictureUrl.isNotEmpty()) {
                 AsyncImage(
                     model = member.profilePictureUrl,
@@ -303,7 +376,6 @@ fun SelectedMemberItem(
                 )
             }
 
-            // Member info
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -336,21 +408,19 @@ fun SelectedMemberItem(
                     )
                 }
             }
-        }
 
-        // Remove button
-        IconButton(
-            onClick = onRemove,
-            modifier = Modifier
-                .size(40.dp)
-                .background(Color.Red.copy(alpha = 0.1f), CircleShape)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = "Remove",
-                tint = Color.Red
-            )
+            IconButton(
+                onClick = onRemove,
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(Color.Red.copy(alpha = 0.1f), CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Remove",
+                    tint = Color.Red
+                )
+            }
         }
     }
-
 }
