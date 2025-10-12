@@ -1,7 +1,10 @@
 package com.example.teamup.presentation.screen.login
 
+import android.app.Activity
 import android.content.Context
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +35,8 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -49,147 +54,190 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.teamup.R
 import com.example.teamup.common.theme.DodgerBlue
 import com.example.teamup.common.theme.SoftGray2
 import com.example.teamup.common.utils.BiometricAuthUtil
 import com.example.teamup.common.utils.SessionManager
+import com.example.teamup.data.viewmodels.AuthUiState
+import com.example.teamup.data.viewmodels.AuthViewModel
 import com.example.teamup.route.Routes
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Composable
-fun LoginScreenV5(navController: NavController) {
+fun LoginScreenV5(
+    navController: NavController,
+    authViewModel: AuthViewModel = viewModel()
+) {
     val scrollState = rememberScrollState()
     val context = LocalContext.current
     val fragmentActivity = context as? FragmentActivity
-    val auth = FirebaseAuth.getInstance()
-    val db = FirebaseFirestore.getInstance()
     val sharedPrefs = context.getSharedPreferences("teamup_prefs", Context.MODE_PRIVATE)
 
-    // Check if biometric login is available using the utility class
+    // Initialize Google Sign-In
+    LaunchedEffect(Unit) {
+        authViewModel.initGoogleSignIn(context)
+    }
+
+    // Google Sign-In Launcher
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        println("🔧 DEBUG: ===== GOOGLE SIGN-IN RESULT =====")
+        println("🔧 DEBUG: Result code: ${result.resultCode}")
+
+        when (result.resultCode) {
+            Activity.RESULT_OK -> {
+                println("🔧 DEBUG: Result OK, processing...")
+                try {
+                    val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                    val account = task.getResult(ApiException::class.java)
+                    println("🔧 DEBUG: Got account: ${account?.email}")
+                    authViewModel.handleGoogleSignInResult(account)
+                } catch (e: ApiException) {
+                    println("🔧 ERROR: ApiException: ${e.statusCode} - ${e.message}")
+                    Toast.makeText(
+                        context,
+                        "Google Sign-In failed: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } catch (e: Exception) {
+                    println("🔧 ERROR: Unexpected exception: ${e.message}")
+                    Toast.makeText(context, "Unexpected error: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+            Activity.RESULT_CANCELED -> {
+                println("🔧 DEBUG: User canceled Google Sign-In")
+                Toast.makeText(context, "Google Sign-In canceled", Toast.LENGTH_SHORT).show()
+            }
+            else -> {
+                println("🔧 DEBUG: Unexpected result code: ${result.resultCode}")
+            }
+        }
+    }
+
+    // Observe AuthViewModel state
+    val uiState by authViewModel.uiState.collectAsState()
+
+    // Check if biometric login is available
     val isBiometricAvailable = remember { BiometricAuthUtil.isBiometricAvailable(context) }
     val hasSavedCredentials = remember { BiometricAuthUtil.hasSavedCredentials(context) }
 
     // Loading state
     var isLoading by remember { mutableStateOf(false) }
 
-    // State untuk tab email/phone
+    // Tab state
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Email", "Phone Number")
 
-    // State untuk remember me checkbox
+    // Remember me checkbox
     var rememberMe by remember { mutableStateOf(false) }
 
-    // State untuk password visibility
+    // Password visibility
     var passwordVisible by remember { mutableStateOf(false) }
 
-    // State untuk menyimpan email/phone dan password
+    // Credentials state
     var emailOrPhone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    // Fungsi untuk proses login dengan Firebase
+    // Handle AuthViewModel states
+    LaunchedEffect(uiState) {
+        when (val currentState = uiState) {
+            is AuthUiState.Loading -> {
+                isLoading = true
+            }
+            is AuthUiState.GoogleSignInSuccess -> {
+                isLoading = false
+                Toast.makeText(context, "Google Sign-In successful!", Toast.LENGTH_SHORT).show()
+                SessionManager.setLoggedIn(context, true)
+                navController.navigate(Routes.Dashboard.routes) {
+                    popUpTo(Routes.LoginV5.routes) { inclusive = true }
+                }
+            }
+            is AuthUiState.LoginSuccess -> {
+                isLoading = false
+                Toast.makeText(context, "Login successful!", Toast.LENGTH_SHORT).show()
+                SessionManager.setLoggedIn(context, true)
+                navController.navigate(Routes.Dashboard.routes) {
+                    popUpTo(Routes.LoginV5.routes) { inclusive = true }
+                }
+            }
+            is AuthUiState.Error -> {
+                isLoading = false
+                Toast.makeText(context, currentState.error, Toast.LENGTH_SHORT).show()
+                authViewModel.clearError()
+            }
+            is AuthUiState.Success -> {
+                isLoading = false
+                currentState.message?.let {
+                    Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+                }
+            }
+            is AuthUiState.Idle -> {
+                isLoading = false
+            }
+        }
+    }
+
+    // Function for Google Sign-In
+    fun performGoogleSignIn() {
+        val signInIntent = authViewModel.getGoogleSignInClient()?.signInIntent
+        if (signInIntent != null) {
+            googleSignInLauncher.launch(signInIntent)
+        } else {
+            Toast.makeText(context, "Google Sign-In not initialized", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Function for login
     fun performLogin() {
-        // Validasi input sebelum login
-        if ((selectedTab == 0 && emailOrPhone.isEmpty()) ||
-            (selectedTab == 1 && emailOrPhone.isEmpty()) ||
-            password.isEmpty()) {
+        if (emailOrPhone.isEmpty() || password.isEmpty()) {
             Toast.makeText(context, "Please fill all fields", Toast.LENGTH_SHORT).show()
             return
         }
 
-        isLoading = true
-
-        // Login dengan Firebase Authentication
         if (selectedTab == 0) {
-            // Login with email
-            auth.signInWithEmailAndPassword(emailOrPhone, password)
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        // Login berhasil - create/update user document and set online status
-                        SessionManager.createOrUpdateUserDocument { documentSuccess ->
-                            if (documentSuccess) {
-                                // Set user as logged in and update online status
-                                SessionManager.setLoggedIn(context, true) { statusSuccess ->
-                                    isLoading = false
-
-                                    if (statusSuccess) {
-                                        Toast.makeText(context, "Login successful", Toast.LENGTH_SHORT).show()
-
-                                        // Simpan kredensial jika "Remember me" dicentang
-                                        if (rememberMe) {
-                                            val editor = sharedPrefs.edit()
-                                            editor.putString("saved_email", emailOrPhone)
-                                            editor.putString("saved_password", password)
-                                            editor.apply()
-                                        }
-
-                                        // Navigasi ke dashboard
-                                        navController.navigate(Routes.Dashboard.routes) {
-                                            popUpTo(Routes.LoginV5.routes) {
-                                                inclusive = true
-                                            }
-                                        }
-                                    } else {
-                                        Toast.makeText(context, "Login successful but failed to update status", Toast.LENGTH_SHORT).show()
-                                        // Still navigate to dashboard even if status update fails
-                                        navController.navigate(Routes.Dashboard.routes) {
-                                            popUpTo(Routes.LoginV5.routes) {
-                                                inclusive = true
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                isLoading = false
-                                Toast.makeText(context, "Login successful but failed to create user profile", Toast.LENGTH_SHORT).show()
-                                // Still navigate to dashboard
-                                navController.navigate(Routes.Dashboard.routes) {
-                                    popUpTo(Routes.LoginV5.routes) {
-                                        inclusive = true
-                                    }
-                                }
-                            }
+            // Login with email using AuthViewModel
+            authViewModel.loginWithEmail(emailOrPhone, password) { success, error ->
+                if (success) {
+                    // Save credentials if "Remember me" is checked
+                    if (rememberMe) {
+                        sharedPrefs.edit().apply {
+                            putString("saved_email", emailOrPhone)
+                            putString("saved_password", password)
+                            apply()
                         }
-                    } else {
-                        // Login gagal
-                        isLoading = false
-                        Toast.makeText(context, "Login failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                     }
+                } else {
+                    Toast.makeText(context, error ?: "Login failed", Toast.LENGTH_SHORT).show()
                 }
+            }
         } else {
-            // Login with phone (you would need to implement phone auth with Firebase)
+            // Phone authentication not implemented
             Toast.makeText(context, "Phone authentication not implemented yet", Toast.LENGTH_SHORT).show()
-            isLoading = false
         }
     }
 
-    // Function to handle fingerprint login - updated to use BiometricAuthUtil
+    // Function to handle fingerprint login
     fun handleFingerprintLogin() {
         if (!isBiometricAvailable) {
-            Toast.makeText(context, "Biometric authentication is not available on this device", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Biometric authentication not available", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // Use the enhanced BiometricAuthUtil for quick login
         fragmentActivity?.let {
             BiometricAuthUtil.performQuickLogin(
                 activity = it,
                 navController = navController,
                 onSuccess = {
-                    // Create/update user document and set online status
                     SessionManager.createOrUpdateUserDocument { documentSuccess ->
-//                        SessionManager.setLoggedIn(context, true) { statusSuccess ->
-//                            if (statusSuccess) {
-//                                Toast.makeText(context, "Biometric login successful", Toast.LENGTH_SHORT).show()
-//                            }
-//                        }
                         SessionManager.setLoggedIn(context, true) { success ->
-                            // Pindah ke Main thread untuk Toast
                             CoroutineScope(Dispatchers.Main).launch {
                                 if (success) {
                                     Toast.makeText(context, "Login successful", Toast.LENGTH_SHORT).show()
@@ -205,7 +253,7 @@ fun LoginScreenV5(navController: NavController) {
                 }
             )
         } ?: run {
-            Toast.makeText(context, "This feature requires a FragmentActivity context", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "This feature requires FragmentActivity", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -243,7 +291,6 @@ fun LoginScreenV5(navController: NavController) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Subtitle
             Text(
                 text = "Create an account or log in to explore about our app",
                 style = MaterialTheme.typography.bodyMedium.copy(
@@ -342,26 +389,17 @@ fun LoginScreenV5(navController: NavController) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
                         checked = rememberMe,
                         onCheckedChange = { rememberMe = it },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = DodgerBlue
-                        )
+                        colors = CheckboxDefaults.colors(checkedColor = DodgerBlue)
                     )
-                    Text(
-                        text = "Remember me",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Text(text = "Remember me", style = MaterialTheme.typography.bodySmall)
                 }
 
                 TextButton(onClick = {
-                    navController.navigate(Routes.ForgotPassword.routes) {
-                        popUpTo(Routes.LoginV5.routes) { inclusive = false }
-                    }
+                    navController.navigate(Routes.ForgotPassword.routes)
                 }) {
                     Text(
                         text = "Forgot Password?",
@@ -382,16 +420,12 @@ fun LoginScreenV5(navController: NavController) {
                     .fillMaxWidth()
                     .height(48.dp),
                 shape = MaterialTheme.shapes.medium,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = DodgerBlue
-                ),
+                colors = ButtonDefaults.buttonColors(containerColor = DodgerBlue),
                 enabled = !isLoading
             ) {
                 Text(
                     text = "Login",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Bold
-                    )
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
                 )
             }
 
@@ -405,9 +439,7 @@ fun LoginScreenV5(navController: NavController) {
             ) {
                 Text(
                     text = "Or login with",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = SoftGray2
-                    )
+                    style = MaterialTheme.typography.bodySmall.copy(color = SoftGray2)
                 )
             }
 
@@ -420,9 +452,9 @@ fun LoginScreenV5(navController: NavController) {
             ) {
                 // Google Button
                 IconButton(
-                    onClick = { /* Handle Google login */ },
-                    modifier = Modifier
-                        .size(48.dp)
+                    onClick = { performGoogleSignIn() },
+                    modifier = Modifier.size(48.dp),
+                    enabled = !isLoading
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.google),
@@ -435,8 +467,7 @@ fun LoginScreenV5(navController: NavController) {
                 // Facebook Button
                 IconButton(
                     onClick = { /* Handle Facebook login */ },
-                    modifier = Modifier
-                        .size(48.dp)
+                    modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.facebook),
@@ -446,11 +477,10 @@ fun LoginScreenV5(navController: NavController) {
                     )
                 }
 
-                // Fingerprint Button - Now using our enhanced utility function
+                // Fingerprint Button
                 IconButton(
                     onClick = { handleFingerprintLogin() },
-                    modifier = Modifier
-                        .size(48.dp)
+                    modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.fingerprint),
@@ -474,9 +504,7 @@ fun LoginScreenV5(navController: NavController) {
                     style = MaterialTheme.typography.bodySmall
                 )
                 TextButton(
-                    onClick = {
-                        navController.navigate(Routes.Register.routes)
-                    },
+                    onClick = { navController.navigate(Routes.Register.routes) },
                     contentPadding = PaddingValues(0.dp)
                 ) {
                     Text(

@@ -161,6 +161,7 @@ dependencies {
     kapt(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation ("androidx.compose.material:material:1.5.4")
+    implementation(libs.androidx.lifecycle.process)
 
     implementation ("com.google.accompanist:accompanist-pager:0.32.0")
     implementation ("com.google.accompanist:accompanist-pager-indicators:0.32.0")
