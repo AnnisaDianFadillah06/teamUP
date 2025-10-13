@@ -34,7 +34,10 @@ TeamUp hadir sebagai solusi bagi mahasiswa yang ingin:
 - Dokumentasi prestasi, pengalaman, dan aktivitas
 - Manajemen keahlian dengan tingkat kemahiran (Beginner - Expert)
 
-**[Sisipkan Screenshot: Halaman Profil & Edit Profil]**
+<p align="center">
+  <img src="asset/profile.jpg" alt="Page Profile" width="200">
+  <img src="asset/profile2.jpg" alt="Page Add Activity" width="200">
+</p>
 
 ### 2. 👥 Pencarian & Pembentukan Tim
 - Buat tim lomba dengan deskripsi dan kategori yang jelas
@@ -42,7 +45,10 @@ TeamUp hadir sebagai solusi bagi mahasiswa yang ingin:
 - Sistem undangan dan permintaan bergabung yang terstruktur
 - Chat grup real-time untuk koordinasi tim
 
-**[Sisipkan Screenshot: Halaman Daftar Tim, Buat Tim, Pencarian Anggota, dan Chat Grup]**
+<p align="center">
+  <img src="asset/team.jpg" alt="Page Detail Team" width="200">
+  <img src="asset/team2.jpg" alt="Page Invite Member" width="200">
+</p>
 
 ### 3. 🏆 Manajemen Kompetisi
 - Browse kompetisi dari berbagai kategori (IT, Bisnis, Desain, Sains, dll)
@@ -51,20 +57,27 @@ TeamUp hadir sebagai solusi bagi mahasiswa yang ingin:
 - Download file panduan dan lampiran kompetisi
 - Buat dan kelola kompetisi sendiri
 
-**[Sisipkan Screenshot: Dashboard Kompetisi, Detail Kompetisi, Filter, dan Form Buat Kompetisi]**
+<p align="center">
+  <img src="asset/competition.jpg" alt="Page List Competition" width="200">
+  <img src="asset/competition2.jpg" alt="Page Detail Competition" width="200">
+</p>
 
 ### 4. 🔔 Sistem Notifikasi Cerdas
 - Notifikasi undangan tim
 - Pengingat deadline kompetisi
 
-**[Sisipkan Screenshot: Halaman Notifikasi]**
+<p align="center">
+  <img src="asset/notification.jpg" alt="Page Notification" width="200">
+</p>
 
 ### 5. 🏠 Dashboard Interaktif
 - Carousel banner kompetisi
 - Quick access menu ke fitur utama
 - Kompetisi trending berdasarkan popularitas
 
-**[Sisipkan Screenshot: Dashboard Utama dengan Carousel dan Menu]**
+<p align="center">
+  <img src="asset/dashboard.jpg" alt="Page Dashboard" width="200">
+</p>
 
 ---
 
@@ -246,7 +259,7 @@ teamup/
 
 ## 📚 Panduan Penggunaan
 
-Untuk panduan lengkap penggunaan aplikasi, silakan baca dokumen [Manual Guide TeamUp](MANUAL_GUIDE_TEAM_UP.pdf).
+Untuk panduan lengkap penggunaan aplikasi, silakan baca dokumen [Manual Guide TeamUp](https://github.com/AnnisaDianFadillah06/teamUP/blob/main/DOKUMENTASI_KMIPN_2025/MANUAL_GUIDE_CIPTAINOVASI_KMIPN2025_TEAM%20UP_POLITEKNIK%20NEGERI%20BANDUNG.pdf).
 
 ### Quick Start untuk Pengguna:
 
@@ -257,7 +270,11 @@ Untuk panduan lengkap penggunaan aplikasi, silakan baca dokumen [Manual Guide Te
 5. **Buat/Join Tim** - Bentuk tim baru atau bergabung dengan tim existing
 6. **Berkolaborasi** - Gunakan chat grup untuk koordinasi tim
 
-**[Sisipkan Screenshot: Onboarding Flow - Splash Screen, Login, Register]**
+<p align="center">
+  <img src="asset/splashScreen.jpg" alt="Page Splash Screen" width="200">
+  <img src="asset/login.jpg" alt="Page Login" width="200">
+  <img src="asset/verified_email.jpg" alt="Page Verified Email" width="200">
+</p>
 
 ---
 
