@@ -45,5 +45,5 @@ fun getInvitationsForUser(userId: String): Flow<List<InvitationModel>> = callbac
             } ?: emptyList()
             trySend(invitations)
         }
-        awaitClose { listener.remove() }
+    awaitClose { listener.remove() }
 }
