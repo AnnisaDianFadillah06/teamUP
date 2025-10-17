@@ -15,3 +15,5 @@
 local.properties
 .idea/other.xml 
 .idea/
+app/google-services.json
+app/service-account-key.json
