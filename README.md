@@ -1,4 +1,4 @@
-# TeamUp - Platform Kolaborasi Mahasiswa 🎓
+# TeamUp - Platform Kolaborasi Mahasiswa 🎓 - 2025
 
 [![HAKI Protected](https://img.shields.io/badge/HAKI-Protected-green.svg)](https://dgip.go.id/)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9+-purple.svg)](https://kotlinlang.org/)
